@@ -23,8 +23,8 @@
 - **ADR (Architecture Decision Record)**: 아키텍처 결정 1건당 1문서로 남기는 기록.
 - **샌드박스 (Sandbox)**: 신뢰할 수 없는 코드를 격리 실행하는 환경.
 - **자체 채점 엔진 (from-scratch judge)**: 오픈소스(Judge0 등)를 쓰지 않고 직접 구현한 채점 엔진.
-- **contracts (`@cotejs/contracts`)**: arena·hub가 함께 import하는 공유 타입 패키지. 도메인 타입 + zod 스키마의 단일 진실원.
-- **짝 A (pairing A)**: 프론트(arena)·백엔드(hub)를 같은 TS로 두고 `contracts`로 타입을 공유하는 전략. 폴리글랏 경계(hub↔judge 등)는 IDL로 계약. ([ADR-0005](decisions/0005-backend-language-and-type-sharing.md))
+- **contracts / 짝 A**: (폐기 — [ADR-0007](decisions/0007-backend-kotlin-return.md)) 한때 arena·hub가 TS 타입을 공유하던 전략(ADR-0005). hub의 Kotlin 전환으로 폐기되고 **OpenAPI codegen 계약**으로 대체됨.
+- **OpenAPI codegen 계약**: hub(springdoc)가 생성한 `/v3/api-docs` 스펙을 arena가 `pnpm gen:api`로 타입 생성(`schema.d.ts`) + `contract-check.ts`가 컴파일 타임에 도메인 모델과 대조. 계약이 어긋나면 `next build` 실패.
 - **IDL (Interface Definition Language)**: 언어 중립 계약 정의(Protobuf/Avro·OpenAPI). 서로 다른 언어 서비스 간 메시지·API 계약에 사용.
 
 ## 서비스 네이밍
@@ -32,7 +32,7 @@
 폴더명이 곧 역할이다(경쟁 프로그래밍 도메인 용어). 상세: [ADR-0003](decisions/0003-monorepo-structure.md).
 
 - **arena**: 참가자가 문제를 풀고 제출하는 경기장 = 프론트엔드(Next.js).
-- **hub**: 유저·문제·제출·랭킹을 잇는 중심 = 백엔드 API(NestJS).
+- **hub**: 유저·문제·제출·랭킹을 잇는 중심 = 백엔드 API(Kotlin + Spring Boot, [ADR-0007](decisions/0007-backend-kotlin-return.md)).
 - **judge**: 제출을 채점 = 채점 엔진(Go).
 - **setter**: 문제를 출제("problem setter") = AI 생성 + 품질 검증 + 파이프라인 지휘(Python). 실제 CP처럼 출제자가 문제와 테스트 검증을 함께 담당.
 - **scout**: 기존 문제와 중복을 정찰 = 유사도 검증(Python, 임베딩 서빙이라 독립 서비스).

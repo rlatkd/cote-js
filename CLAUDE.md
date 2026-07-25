@@ -41,6 +41,17 @@
 - **이 원칙을 특정 키워드·상황 트리거로 축소하지 말 것.** (예: "'~등'이 나오면 확장한다" 식으로 좁게 encode하는 것 자체가 이 원칙 위반이다. "~등"은 문자주의의 한 증상일 뿐, 원칙은 그보다 넓다.) 규칙을 패턴 매칭으로 만들지 말고, 매 순간 의도를 해석하라.
 - 빠진 것·함께 필요한 것을 알아서 챙기고, 애매하면 의도를 먼저 헤아린다. 단, 되돌리기 어렵거나 외부에 영향 주는 행동은 능동적으로 판단하되 실행 전 확인한다(전역 지침 우선). 능동성과 무분별함은 다르다.
 
+### 4. 결정의 파급은 결정 시점에 드러낼 것 (조용한 보류 금지)
+
+- 어떤 결정·변경이 기존 규칙·구조·문서의 **전제를 무효화**하면, 그 모순을 **그 자리에서 사용자에게 명시적으로 보고**한다. "규칙의 문자를 따랐으니 문제없다"로 넘어가지 않는다 — **전제가 죽은 규칙은 더 이상 규칙이 아니다.**
+- 파급의 처리는 사용자가 보이는 곳에서 정한다: **① 즉시 정합**시키거나 **② "임시 상태임 + 언제 정리할지"를 선언**하거나. 속으로만 보류하는 것 금지. 임시 상태로 두면 TODO·worklog에 기록해 추적한다.
+- 사례(2026-07-25, 재발 금지): 백엔드를 Kotlin으로 전환하면서 "platform/=TS 그룹"이라는 전제가 소멸했는데, 규칙 문자대로 hub를 루트에 조용히 배치하고 모순(멤버 하나 남은 그룹 폴더)을 보고하지 않음 → 사용자가 직접 발견. 이런 비대칭·모순은 발생 즉시 표면화했어야 한다.
+
+### 5. 대화와 구현을 구분할 것
+
+- 사용자가 **논의·질문 중이면 구현하지 않는다.** 구현은 명시적 "진행" 신호 후에.
+- 작업 중 질문이 들어오면 **구현을 멈추고 눈에 보이게 먼저 답한 뒤** 진행 여부를 확인하고 재개한다. 답변을 툴 호출 사이에 한 줄로 묻어버리는 것 금지(묻힌 답변은 안 한 답변과 같다).
+
 ---
 
 ## 확정 사항 (Claude가 지켜야 할 제약)
@@ -52,8 +63,10 @@
 | 영역 | 확정 | 배제/보류 |
 |---|---|---|
 | Frontend | Next.js + TypeScript + Tailwind(직접) + Monaco Editor | — |
-| Backend API | **TypeScript + NestJS + Prisma** (PostgreSQL) | Kotlin+Spring, Java, Go, TypeORM |
-| 프론트·백 타입 공유 | **짝 A** — `@cotejs/contracts`(타입+zod) 공유. 폴리글랏 경계는 IDL(Protobuf/OpenAPI) | — |
+| Backend API | **Kotlin + Spring Boot** — WebFlux+코루틴, R2DBC, Flyway, Hexagonal, Gradle(Kotlin DSL). **실무 재탕 금지 조항**: MVC·JPA·블로킹 스타일 금지 ([ADR-0007](docs/decisions/0007-backend-kotlin-return.md)) | NestJS(0005, 대체됨), Java, Go, MVC/JPA |
+| arena↔hub 계약 | **OpenAPI codegen** — hub springdoc → `pnpm gen:api` → `schema.d.ts`(커밋) + `contract-check.ts` 컴파일타임 검사. 폴리글랏 경계(judge/AI)는 IDL | contracts 패키지(폐기) |
+| 버전 정책 | **LTS/안정판 기준** — JDK 21 LTS, Boot 4.0.x(성숙 마이너), Node 22 LTS, Postgres 16. 최신 첫 릴리스 회피 | 최신 우선주의 |
+| Docker 사용 | **개발 = 인프라만** compose(postgres→redis·kafka). 앱은 호스트 네이티브(핫리로드·디버거). 앱 컨테이너화는 배포 마일스톤(M5)에서 | 개발용 앱 컨테이너 |
 | 문제 생성 | LLM API + LangChain | 자체 모델 파인튜닝, LlamaIndex |
 | 임베딩(유사도) | 자체 Sentence Transformer (PyTorch / HuggingFace) | 임베딩 API |
 | Vector 검색 | pgvector | FAISS / Milvus |
@@ -72,13 +85,12 @@
 ### 아키텍처 (일부 진행 중)
 
 - **프론트엔드**: **확정** — 자체 정의 도메인 레이어드(`app` 라우팅 → `views` 화면 → `entities` 도메인 → `shared` 공용, 단방향 의존) + MVVM(entities의 훅=ViewModel) + Server Actions. RSC는 정적 화면만 부분 적용(인터랙션은 client island). 배민·Money Forward 실무 사례 기반. 상세: [ADR-0004](docs/decisions/0004-frontend-architecture.md), [architecture/frontend.md](docs/architecture/frontend.md).
-- **백엔드(hub / NestJS)**: **확정(진행 중)** — 모듈 단위 레이어드(Controller → Service → PrismaService=Repository 경계), zod로 입력 검증, `@cotejs/contracts` 타입 공유. 상세: [ADR-0005](docs/decisions/0005-backend-language-and-type-sharing.md), [architecture/hub.md](docs/architecture/hub.md).
+- **백엔드(hub / Kotlin)**: **확정** — Hexagonal(`domain`(모델+port) → `application`(유스케이스) → `adapter`(inbound web / outbound persistence)), suspend 핸들러, R2DBC, Flyway 마이그레이션. 상세: [ADR-0007](docs/decisions/0007-backend-kotlin-return.md), [architecture/hub.md](docs/architecture/hub.md).
 - **AI(Python/FastAPI)**: **setter/scout 2서비스**([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md) — tester는 setter 내부 검증 모듈로 병합). 내부는 (잠정) Layered + LangChain 체인 모듈 분리.
 - **Judge(Go)**: (잠정) 경량 클린 (`cmd/` + `internal/`: consumer·executor·sandbox 어댑터).
 - **서비스 이음새(확정 — [ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md))**: ① 채점 결과 = judge→Kafka 결과토픽→hub 소비→DB 저장+SSE 푸시(judge는 DB 접근 금지) ② DB 스키마당 단일 작성자(hub=코어, scout=임베딩, setter=파이프라인) ③ 실행 QoS 3레인(run/submit/batch — 배치가 유저 제출을 굶기지 않게) ④ 오프라인 파이프라인 지휘자=setter(워크플로 엔진 미도입) ⑤ 검수 UI=arena admin+hub admin API(신규 서비스 아님) ⑥ Redis=rate limit·리더보드·SSE pub/sub("캐시"라는 모호한 용도 금지).
 
-### 모노레포 구조 (확정 — [ADR-0003](docs/decisions/0003-monorepo-structure.md))
+### 모노레포 구조 (확정 — [ADR-0003](docs/decisions/0003-monorepo-structure.md) 2026-07-25 재개정)
 
-- 폴리글랏 루트 밑에 **`platform/` 그룹**(TS 워크스페이스)을 두고 그 안에 `arena`(Next)·`hub`(NestJS)·`contracts`(공유 타입). Go/Python 서비스는 루트 직속 형제.
+- **`platform/` = 제품 서비스 전체의 그룹** (순수 그룹 폴더, 자체 도구 설정 없음). 현재 `arena`(Next/pnpm)·`hub`(Kotlin/Gradle), 추후 `judge`(Go)·`setter`·`scout`(Python)도 여기에. **각 서비스가 자기 빌드 도구를 자기 안에 소유.** 루트는 `platform / infra / docs` 3개념.
 - **서비스명 = 역할 도메인 용어**: `arena`(프론트)·`hub`(백엔드)·`judge`(채점, Go)·`setter`(출제=생성+품질검증+파이프라인 지휘)·`scout`(유사도). "frontend/backend" 같은 계층명 배제. `tester`는 setter 내부 모듈([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
-- `contracts`는 TS 짝 전용 공유 라이브러리(Turborepo 전체 컨벤션 배제와 무관). 폴리글랏 경계 계약은 IDL.

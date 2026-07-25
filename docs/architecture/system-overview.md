@@ -9,7 +9,7 @@
 | 서비스(폴더) | 기술 | 책임 |
 |---|---|---|
 | arena | Next.js | 문제 조회·풀이·제출 UI, 채점 결과·랭킹 (+ 추후 admin 검수 큐) |
-| hub | TypeScript + NestJS + Prisma | 회원·인증, 문제·제출·랭킹 비즈니스 로직, 결과 소비·SSE 푸시, admin API |
+| hub | Kotlin + Spring Boot (WebFlux·코루틴·R2DBC, Hexagonal — [ADR-0007](../decisions/0007-backend-kotlin-return.md)) | 회원·인증, 문제·제출·랭킹 비즈니스 로직, 결과 소비·SSE 푸시, admin API |
 | setter | Python + FastAPI + LLM API/LangChain | 문제 생성 + 품질 검증(정답 교차검증, 내부 `tester` 모듈) + **파이프라인 지휘** |
 | scout | Python + FastAPI + 자체 임베딩 | 기존 문제와 유사도 판정(pgvector) — 모델 상주 서빙이라 독립 |
 | judge | Go + Docker Sandbox | 제출 코드 격리 실행·채점. **DB 접근 금지, 이벤트만 발행** |
@@ -20,7 +20,7 @@
 
 | 저장소 | 영역 | 주인 |
 |---|---|---|
-| PostgreSQL | 코어(회원·문제·제출·랭킹) | hub (Prisma) |
+| PostgreSQL | 코어(회원·문제·제출·랭킹) | hub (R2DBC + Flyway) |
 | PostgreSQL + pgvector | 임베딩 | scout |
 | PostgreSQL | 출제 파이프라인(초안·검증·검수 상태) | setter |
 | Redis | ① 제출 rate limiting ② 랭킹 리더보드(sorted set) ③ SSE 팬아웃 pub/sub | hub |
@@ -52,4 +52,4 @@ hub: 결과 소비 → DB 저장 → SSE로 arena 실시간 푸시
 
 ## 마일스톤과의 관계
 
-전체를 한 번에 만들지 않고 M1~M5로 세로 슬라이스 구현([TODO](../TODO.md)). 현재: arena(Next) + hub(NestJS) + Postgres가 연결돼 문제·제출을 실제 DB에서 서빙(채점은 stub, Judge 마일스톤 예정). 사람 검수 UI(arena admin + hub admin API)는 M3 범위.
+전체를 한 번에 만들지 않고 M1~M5로 세로 슬라이스 구현([TODO](../TODO.md)). 현재: arena(Next) + hub(Kotlin/Spring) + Postgres가 연결돼 문제·제출을 실제 DB에서 서빙(채점은 stub, Judge 마일스톤 예정). 사람 검수 UI(arena admin + hub admin API)는 M3 범위.

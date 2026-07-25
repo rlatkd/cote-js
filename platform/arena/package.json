@@ -7,10 +7,10 @@
     "open": "node opener.js",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "gen:api": "openapi-typescript http://localhost:4000/api/v3/api-docs -o shared/api/schema.d.ts"
   },
   "dependencies": {
-    "@cotejs/contracts": "workspace:*",
     "@monaco-editor/react": "^4.6.0",
     "lucide-react": "^0.446.0",
     "next": "^14.2.15",
@@ -27,6 +27,7 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.15",
     "eslint-import-resolver-typescript": "^3.6.3",
+    "openapi-typescript": "^7.13.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2"

@@ -1,65 +1,64 @@
-# hub — 사용자 API 아키텍처 (Active)
+# hub 아키텍처 (Kotlin + Spring Boot)
 
-> NestJS 백엔드(`platform/hub`). 결정 근거는 [ADR-0005](../decisions/0005-backend-language-and-type-sharing.md), 폴더 구조는 [ADR-0003](../decisions/0003-monorepo-structure.md).
+- **관련 ADR**: [0007 백엔드 Kotlin 복귀](../decisions/0007-backend-kotlin-return.md) (0005 대체), [0006 서비스 이음새](../decisions/0006-service-seams-and-ai-consolidation.md)
+- **상태**: Active (2026-07-25 Kotlin 재구현)
+- **위치**: [`platform/hub/`](../../platform/hub/)
 
 ## 책임
 
-유저·문제·제출·랭킹 등 플랫폼 비즈니스 로직과 데이터 접근을 담당한다. 실제 코드 채점은 하지 않는다 — 제출을 받아 (추후) Kafka로 judge에 넘기는 **중심(hub)** 역할.
+유저·문제·제출·랭킹 등 플랫폼 비즈니스 로직과 데이터 접근. 실제 코드 채점은 하지 않는다 — 제출을 받아 (추후) Kafka로 judge에 넘기고 결과를 소비해 SSE로 arena에 푸시하는 **중심(hub)** 역할.
 
-## 레이어 구조
+## 스택 (적재적소 근거는 ADR-0007)
 
-Nest의 모듈 단위로 관심사를 나눈다. 요청 흐름은 단방향이다.
+Kotlin 2.2 · Spring Boot 4.0.x · **WebFlux + 코루틴**(suspend 핸들러) · **R2DBC**(논블로킹 Postgres) · **Flyway**(스키마 이관) · springdoc(OpenAPI) · Gradle Kotlin DSL · JDK 21 LTS
+
+> **실무 재탕 금지 조항**: MVC·JPA·블로킹 스타일 금지. hub는 I/O bound 오케스트레이터(+추후 SSE·Kafka)라 논블로킹이 도메인 정합.
+
+## Hexagonal 구조
+
+의존 방향: **adapter → application → domain** (domain은 프레임워크 무의존).
 
 ```
-Controller (HTTP 경계, 라우팅·검증)
-    ↓
-Service   (비즈니스 로직)
-    ↓
-PrismaService (DB 접근 경계 = Repository)
-    ↓
-PostgreSQL
+platform/hub/src/main/kotlin/com/cotejs/hub/
+├─ domain/
+│  ├─ model/                  Problem·Example·Submission·NewSubmission,
+│  │                          Difficulty/Language/JudgeResult(enum+label), ProblemNotFoundException
+│  └─ port/
+│     ├─ inbound/             ProblemQueries · SubmissionQueries · SubmitCode  (유스케이스 계약)
+│     └─ outbound/            ProblemRepository · SubmissionRepository        (영속 계약)
+├─ application/               ProblemService · SubmissionService (인바운드 포트 구현, 채점은 PENDING stub)
+├─ adapter/
+│  ├─ inbound/web/            suspend @RestController + DTO(응답 계약) + GlobalErrorHandler(404/400)
+│  └─ outbound/persistence/   R2DBC 엔티티·CoroutineCrudRepository·도메인 매핑(JSONB↔Map, 배열↔List)
+└─ config/                    CORS(WebFluxConfigurer)
 ```
 
-- **Controller**: URL·HTTP 메서드 매핑, 요청 본문을 zod 파이프로 검증, 응답 반환. 로직 없음.
-- **Service**: 유스케이스 로직 + DB row → **계약(`@cotejs/contracts`) 타입 매핑**. 외부에 나가는 형태를 여기서 확정(Repository 경계).
-- **PrismaService**: `PrismaClient` 확장(`@Global` 모듈로 주입). DB 접근을 한 곳에 격리 → 이후 스키마·엔진 교체가 이 경계 안에 갇힘.
+- **DTO가 JSON 계약의 원본**: 응답 필드명·포맷(submittedAt `"YYYY-MM-DD HH:mm:ss"`, difficulty/language/result는 label 문자열)은 구 contracts와 동일 유지(drop-in). enum은 도메인이 소유하고 DTO 경계에서 label로 직렬화.
+- **전역 prefix** `/api`는 `spring.webflux.base-path`.
 
-## 모듈
+## API (현행)
 
-| 모듈 | 엔드포인트 | 설명 |
+| 메서드 | 경로 | 응답 |
 |---|---|---|
-| `ProblemsModule` | `GET /api/problems`, `GET /api/problems/:id` | 문제 목록·상세. 404 처리. |
-| `SubmissionsModule` | `GET /api/submissions`, `POST /api/submissions` | 제출 목록 + 제출 생성(zod 검증). |
-| `PrismaModule` | — | `PrismaService` 전역 제공. |
+| GET | `/api/problems` | 문제 목록(id asc, examples 포함) |
+| GET | `/api/problems/{id}` | 단건 · 없으면 404 |
+| GET | `/api/submissions` | 제출 목록(최신순) |
+| POST | `/api/submissions` | 201 생성("채점 중" stub) · 검증 실패 400 |
+| GET | `/api/v3/api-docs` | OpenAPI 스펙(arena codegen 원천) |
 
-전역 프리픽스 `/api`, CORS 허용(개발). 포트 기본 `4000`(`PORT` env).
+## arena와의 계약 흐름
 
-## contracts 경계 (짝 A)
-
-`arena`(프론트)와 **같은 타입 패키지 `@cotejs/contracts`를 공유**한다.
-
-- 타입·zod 스키마의 **단일 진실원**이 `contracts`에 있다(`Problem`, `Submission`, `createSubmissionSchema` 등).
-- hub는 응답을 `contracts`의 `Problem`/`Submission` 타입으로 매핑하고, POST 본문을 `createSubmissionSchema`(zod)로 검증한다.
-- 계약을 바꾸면 arena·hub 양쪽이 컴파일 단계에서 맞물린다. → 프론트-백 표류(drift) 차단.
-
-## 데이터 모델 (Prisma)
-
-`Problem` 1—N `Example`, `Problem` 1—N `Submission`. 초기 슬라이스는 arena가 쓰던 mock 형태를 그대로 담아 프론트 교체가 drop-in 되게 했다(예: `timeLimit`·`memoryLimit`을 문자열로). **수치화 모델링(ms·MB)은 후속 refine** — [engineering-notes](../engineering-notes.md) 참고.
-
-## 미구현 (다음 마일스톤)
-
-- **실제 채점**: 현재 `POST /submissions`는 제출을 영속화하고 `"채점 중"`으로 반환하는 stub. 진짜 채점은 **Judge(Go) 마일스톤**에서 Kafka → judge worker → 샌드박스로 연결한다.
-- 인증/인가(Spring Security 대체), 랭킹·통계, 페이지네이션.
-- hub↔judge 메시지 계약은 언어가 달라 `contracts`가 아닌 **Protobuf/Avro(IDL)** 로 정의 예정.
-
-## 로컬 실행
-
-```bash
-# 1) DB
-cd infra && docker compose up -d
-# 2) hub (platform/hub)
-pnpm prisma:generate && pnpm prisma:migrate && pnpm prisma:seed
-pnpm start:dev            # http://localhost:4000/api
-# 3) arena (platform/arena)
-pnpm dev                  # http://localhost:3000  (HUB_URL 기본 localhost:4000)
 ```
+hub DTO → springdoc /v3/api-docs → (arena) pnpm gen:api → shared/api/schema.d.ts(커밋)
+→ shared/api/contract-check.ts가 도메인 모델과 키 집합·타입 호환을 컴파일 타임 검사
+→ 어긋나면 next build 실패 (계약 드리프트 조기 검출)
+```
+
+## 데이터
+
+- 스키마·시드는 **Flyway가 소유**(`src/main/resources/db/migration/V1__schema.sql`, `V2__seed.sql`) — 기동 시 자동 적용. 상세: [data-model.md](data-model.md).
+- 함정 기록: Flyway 플레이스홀더가 PG 달러 인용(`$tag${`)을 오인 → `placeholder-replacement: false` 필수.
+
+## 다음 단계 (Judge 마일스톤 — ADR-0006 경로)
+
+제출 시 Kafka 제출 토픽 발행 → judge 채점 → 결과 토픽 소비(코루틴 컨슈머) → DB 저장 + **SSE(Flow)** 로 arena 푸시. 인증/랭킹(Redis)·rate limit은 hub 후속 백로그.

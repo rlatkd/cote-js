@@ -1,0 +1,21 @@
+# hub 설정 — 로컬 기본값 + 환경변수 오버라이드(도커 컴포즈에서 주입).
+server:
+  port: 4000
+
+spring:
+  webflux:
+    base-path: /api # 전역 prefix
+  r2dbc: # 런타임(논블로킹)
+    url: ${DB_R2DBC_URL:r2dbc:postgresql://localhost:5432/cotejs}
+    username: ${DB_USER:cotejs}
+    password: ${DB_PASSWORD:cotejs}
+  flyway: # 마이그레이션(기동 시, JDBC 경유)
+    url: ${DB_JDBC_URL:jdbc:postgresql://localhost:5432/cotejs}
+    user: ${DB_USER:cotejs}
+    password: ${DB_PASSWORD:cotejs}
+    # 시드 SQL의 $tag${...} 달러 인용이 ${placeholder}로 오인되는 것 방지(플레이스홀더 미사용)
+    placeholder-replacement: false
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs # base-path 적용 → 실제 경로 /api/v3/api-docs

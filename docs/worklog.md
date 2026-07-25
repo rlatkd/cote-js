@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-07-25 14:07 — 백엔드 Kotlin 재구축 + platform 재편 + 개발용 도커 원칙
+
+- **한 일**: ① [ADR-0007](decisions/0007-backend-kotlin-return.md) — NestJS→Kotlin+Spring 복귀(모던 스택 강제: 코루틴·WebFlux·R2DBC·Hexagonal, 실무 재탕 금지). hub 재구현(Boot 4.0.7/JDK21/Gradle, hexagonal 4계층, Flyway 스키마+시드 이관) ② 계약 전환 — contracts 폐기→OpenAPI codegen(`gen:api`)+`contract-check.ts`(컴파일타임 드리프트 검출) ③ **platform/ = 전 서비스 그룹 재정의**(사용자 제안, ADR-0003 2차 개정) — hub를 platform/hub로, arena 단독 패키지화 ④ compose 인프라 전용화(postgres만)+앱 Dockerfile 제거 ⑤ CLAUDE.md 작업 원칙 4·5 신설(결정 파급 즉시 표면화 / 대화·구현 구분 — 사용자 질책 반영, 영구 메모리에도 기록) ⑥ 문서 전면 정합(ADR 3건·CLAUDE.md·hub.md·system-overview·data-model·glossary·README·RUN·getting-started·verification·TODO).
+- **검증**: hub curl 스위트 전부 그린(7문제/10제출/201/404/400×2/OpenAPI 200, 기동 ~2초) · arena `next build` 통과(계약 체크 포함) · 재편 후 4라우트 200 + hub 데이터 실렌더.
+- **함정 기록**: Flyway 플레이스홀더 vs PG 달러 인용(`placeholder-replacement: false`), r2dbc-postgresql은 JSONB 코덱 때문에 implementation 의존.
+- **중단점**: 전체 미커밋(구조 재편 포함 대량 변경 — 커밋은 사용자 담당). **서비스 이름 재논의**가 사용자 큐에 걸려 있었으나 Kotlin 재론으로 밀림 — 미해결.
+- **다음**: ① 커밋 ② 이름 재논의(사용자 발제) ③ Judge(Go) 착수 논의.
+
 ## 2026-07-25 12:48 — 전체 구성 리뷰 → ADR-0006 + 살아있는 문서 도입
 
 - **한 일**: 전체 서비스 구성 리뷰(적재적소 심문: judge=Go 재확인, AI 3→2 병합 결정) → [ADR-0006](decisions/0006-service-seams-and-ai-consolidation.md)(이음새 6규칙: 결과경로 SSE·DB 단일작성자·QoS 3레인·지휘자 setter·검수 UI·Redis 역할) 신설, 문서 8종 반영(system-overview 재서술, ADR-0003 개정, glossary·CLAUDE.md·루트 README·TODO·notes). 루트 `frontend/` 잔재(미추적 빌드 산출물) 삭제. 살아있는 문서 4종 신설(worklog·learning-notes·verification·data-model) + 타임스탬프 규칙 도입.

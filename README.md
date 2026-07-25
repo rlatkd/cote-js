@@ -80,9 +80,9 @@
       v                   v
 +----------------------+    +---------------------------+
 | Frontend (arena)     |    | Backend API (hub)         |
-| Next.js              |    | TypeScript + NestJS       |
-| TypeScript           |    | Prisma (ORM)              |
-| Monaco Editor        |    | 공유 타입 @cotejs/contracts |
+| Next.js              |    | Kotlin + Spring Boot      |
+| TypeScript           |    | WebFlux·코루틴·R2DBC      |
+| Monaco Editor        |    | 계약: OpenAPI codegen     |
 +----------------------+    +---------------------------+
                                   |
                                   v
@@ -333,15 +333,18 @@ Human Review Gate (승인 시에만 공개)
 
 | 구분 | 기술 |
 |---|---|
-| Language | TypeScript |
-| Framework | NestJS |
-| ORM | Prisma |
-| 입력 검증 | zod (`@cotejs/contracts` 공유 스키마) |
+| Language | Kotlin (JDK 21 LTS) |
+| Framework | Spring Boot 4.0.x — **WebFlux + 코루틴**(suspend) |
+| 데이터 접근 | **R2DBC** (논블로킹 Postgres) |
+| 마이그레이션 | Flyway (스키마+시드, 기동 시 자동) |
+| 아키텍처 | **Hexagonal** (domain/port → application → adapter) |
+| 계약 | springdoc OpenAPI → arena 타입 codegen + 컴파일타임 계약 체크 |
+| 입력 검증 | jakarta validation + 도메인 enum |
 | Security | (예정) — 인증/인가 후속 |
 | Database | PostgreSQL |
 | Cache | Redis |
 
-> 백엔드 언어를 Kotlin+Spring → NestJS로 재선정하고, 프론트(arena)와 타입을 공유한다(짝 A). 근거: [ADR-0005](docs/decisions/0005-backend-language-and-type-sharing.md).
+> NestJS(ADR-0005)에서 **Kotlin+Spring으로 복귀** — 단, 실무(Java+Spring MVC/JPA) 재탕 금지 조항과 함께 모던 스택을 강제한다. 근거: [ADR-0007](docs/decisions/0007-backend-kotlin-return.md).
 
 
 # 9. Judge System
@@ -389,7 +392,7 @@ hub 소비 → DB 저장 → SSE로 arena 실시간 푸시
 ```
 
 - **QoS 3레인**: `run`(예제 실행, 인터랙티브 저지연) / `submit`(정식 제출) / `batch`(setter의 교차검증 대량 실행, 최저 우선순위). 배치가 유저 제출을 굶기지 않는다.
-- **결과는 이벤트로만**: judge가 DB에 직접 쓰면 Go와 Prisma가 스키마를 이중 소유하게 되므로 금지([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
+- **결과는 이벤트로만**: judge가 DB에 직접 쓰면 Go와 Kotlin(hub)이 스키마를 이중 소유하게 되므로 금지([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
 
 ## 기술 스택
 
@@ -402,7 +405,7 @@ hub 소비 → DB 저장 → SSE로 arena 실시간 푸시
 
 # 10. Database
 
-> **단일 작성자 원칙([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md))**: 스키마당 주인 하나 — 코어=hub(Prisma), 임베딩=scout, 출제 파이프라인=setter, **judge=DB 접근 금지(이벤트만)**. 교차 접근은 API/이벤트로. Redis 용도는 ① 제출 rate limit ② 랭킹 sorted set ③ SSE 팬아웃 pub/sub.
+> **단일 작성자 원칙([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md))**: 스키마당 주인 하나 — 코어=hub(R2DBC+Flyway), 임베딩=scout, 출제 파이프라인=setter, **judge=DB 접근 금지(이벤트만)**. 교차 접근은 API/이벤트로. Redis 용도는 ① 제출 rate limit ② 랭킹 sorted set ③ SSE 팬아웃 pub/sub.
 
 ## Main Database (PostgreSQL)
 
@@ -442,7 +445,7 @@ hub 소비 → DB 저장 → SSE로 arena 실시간 푸시
 | 영역 | 기술 |
 |---|---|
 | Frontend | Next.js + TypeScript |
-| Backend API | TypeScript + NestJS + Prisma |
+| Backend API | Kotlin + Spring Boot (WebFlux·코루틴·R2DBC·Flyway, Hexagonal) |
 | AI Service | Python + FastAPI |
 | 문제 생성 | LLM API + LangChain |
 | 임베딩/NLP | Sentence Transformer (PyTorch / HuggingFace, 자체 구동) |
@@ -460,7 +463,9 @@ hub 소비 → DB 저장 → SSE로 arena 실시간 푸시
 
 | 결정 | 채택 | 배제/보류 | 이유 |
 |---|---|---|---|
-| Backend API | TypeScript + NestJS | Kotlin+Spring, Go | 실무(Java+Spring)와 차별화 + 프론트와 타입 공유(짝 A) + VSCode DX |
+| Backend API | Kotlin + Spring (모던 스택 강제) | NestJS(0005), Go, MVC/JPA | 코루틴·WebFlux·R2DBC·Hexagonal은 실무(Java+Spring MVC)와 다른 패러다임 — 신규 학습 성립. 계약은 OpenAPI codegen([ADR-0007](docs/decisions/0007-backend-kotlin-return.md)) |
+| 버전 정책 | LTS/안정판 (JDK 21, Boot 4.0.x, Node 22, PG 16) | 최신 첫 릴리스 | "최신이 무조건 좋은 건 아니다" — 패치가 쌓인 선 선택 |
+| 로컬 도커 | 인프라만 컨테이너(개발용) | 앱 컨테이너 | 앱은 네이티브 실행(핫리로드·디버거), 컨테이너화는 배포 시(M5) |
 | 문제 생성 | LLM API | 자체 모델 파인튜닝 | 데이터·GPU·품질 확보 난이도가 과함 |
 | 임베딩 | 자체 Sentence Transformer | 임베딩 API | ML 생태계 실제 학습 목적 |
 | 벡터 저장 | pgvector | FAISS / Milvus | PostgreSQL로 통합, 인프라 최소화 |
@@ -495,7 +500,7 @@ hub 소비 → DB 저장 → SSE로 arena 실시간 푸시
 
 | 단계 | 목표 | 범위 |
 |---|---|---|
-| **M1** | 온라인 채점 코어 | Next.js(arena) + NestJS(hub) + PostgreSQL, 수기 등록 문제, Go Judge + Docker Sandbox(격리), 동기 채점 |
+| **M1** | 온라인 채점 코어 | Next.js(arena) + Kotlin/Spring(hub) + PostgreSQL, 수기 등록 문제, Go Judge + Docker Sandbox(격리), 동기 채점 |
 | **M2** | 비동기 채점 | Kafka 도입, Judge Worker 분리, 제출량 처리 |
 | **M3** | AI 생성 파이프라인 | LLM API + LangChain 생성, 사람 검수 게이트 |
 | **M4** | 유사도/품질 검증 | 자체 임베딩 + pgvector 유사도, 정답 교차검증 자동화 |

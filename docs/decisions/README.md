@@ -17,5 +17,6 @@
 | [0002](0002-poc-scope-and-design.md) | POC 범위 및 디자인 방향 | Accepted |
 | [0003](0003-monorepo-structure.md) | 모노레포 폴더 구조 | Accepted (platform 그룹·네이밍 확정) |
 | [0004](0004-frontend-architecture.md) | 프론트엔드 코드 아키텍처 | Accepted |
-| [0005](0005-backend-language-and-type-sharing.md) | 백엔드 언어 재선정 + 프론트·백 타입 공유(짝 A) | Accepted |
+| [0005](0005-backend-language-and-type-sharing.md) | 백엔드 언어 재선정 + 프론트·백 타입 공유(짝 A) | Superseded by 0007 |
 | [0006](0006-service-seams-and-ai-consolidation.md) | 서비스 이음새 규칙 + AI 서비스 병합(3→2) | Accepted |
+| [0007](0007-backend-kotlin-return.md) | 백엔드 Kotlin+Spring 복귀 — 모던 스택 제약 + OpenAPI 계약 | Accepted |

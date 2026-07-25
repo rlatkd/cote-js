@@ -1,4 +1,28 @@
-// submission 도메인 모델 — 공유 계약(@cotejs/contracts)에서 재수출.
+// submission 도메인 모델 — arena 로컬 정의.
+// hub(Kotlin)와의 API 계약 정합은 shared/api/contract-check.ts가 컴파일 타임에 검사한다(ADR-0007).
 
-export { JUDGE_RESULTS } from "@cotejs/contracts";
-export type { JudgeResult, Submission } from "@cotejs/contracts";
+import type { Language } from "@/entities/problem/model";
+
+export const JUDGE_RESULTS = [
+  "맞았습니다",
+  "틀렸습니다",
+  "시간 초과",
+  "메모리 초과",
+  "런타임 에러",
+  "컴파일 에러",
+  "채점 중",
+] as const;
+export type JudgeResult = (typeof JUDGE_RESULTS)[number];
+
+export interface Submission {
+  id: number;
+  user: string;
+  problemId: number;
+  problemTitle: string;
+  result: JudgeResult;
+  language: Language;
+  time: string;
+  memory: string;
+  length: number;
+  submittedAt: string; // "YYYY-MM-DD HH:mm:ss"
+}

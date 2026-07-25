@@ -1,6 +1,6 @@
 # 0005. 백엔드 API 언어·프레임워크 재선정 + 프론트·백 타입 공유(짝 A)
 
-- **상태**: Accepted
+- **상태**: **Superseded by [0007](0007-backend-kotlin-return.md)** (2026-07-25 — Kotlin+Spring 복귀. 본 ADR의 전제 "Kotlin=실무 재탕"은 모던 스택 강제(코루틴·WebFlux·R2DBC·Hexagonal) 조건에서 반박됨. 짝 A 타입 공유는 OpenAPI codegen+컴파일타임 계약 체크로 대체)
 - **일자**: 2026-07-11
 - **관련**: [0001](0001-tech-stack.md) 백엔드 항목을 대체(부분 supersede), [0003](0003-monorepo-structure.md) 모노레포 구조와 연동, [0004](0004-frontend-architecture.md) 프론트 아키텍처와 정합
 

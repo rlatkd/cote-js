@@ -1,7 +1,7 @@
 # 0003. 모노레포 폴더 구조
 
-- **상태**: Accepted (2026-07-25 갱신 — AI 서비스 3→2 병합, [0006](0006-service-seams-and-ai-consolidation.md))
-- **일자**: 2026-07-09 (개정 2026-07-11, 2026-07-25)
+- **상태**: Accepted (2026-07-25 2차 개정 — **platform/ = 전 서비스 그룹**으로 재정의, [0007](0007-backend-kotlin-return.md)과 연동. 같은 날 1차: AI 3→2 병합 [0006](0006-service-seams-and-ai-consolidation.md))
+- **일자**: 2026-07-09 (개정 2026-07-11, 2026-07-25 ×2)
 
 ## 맥락
 
@@ -9,22 +9,24 @@
 
 ## 결정
 
-### 1. TS 제품 표면은 `platform/` 그룹 하위에 묶는다
+### 1. `platform/` = **제품 서비스 전체의 그룹** (2026-07-25 재정의)
 
-폴리글랏 루트를 통째로 JS 워크스페이스로 만들지 않는다. 대신 **루트 밑에 `platform/` 계층을 하나 두고**, 그 안에서만 pnpm 워크스페이스를 돌린다. Go(judge)·Python(AI)은 `platform/` 밖 **루트 직속 형제**로 두어 JS 워크스페이스와 완전히 분리한다.
+> **개정 경위**: 당초 `platform/`은 "TS 워크스페이스 그룹"(arena·hub·contracts가 타입을 공유)이었다. [0007]로 hub가 Kotlin이 되고 contracts가 폐기되며 그 전제가 소멸 → 사용자 제안으로 **"코딩테스트 플랫폼을 구성하는 서비스 전체의 그룹"으로 재정의**. 루트는 `platform / infra / docs` 3개념으로 정리되고, 서비스가 늘어도(judge·setter·scout) 루트가 어수선해지지 않는다.
+
+- **`platform/`은 순수 그룹 폴더** — 자체 도구 설정을 갖지 않는다. **각 서비스가 자기 빌드 도구를 자기 안에 소유**한다(arena=pnpm, hub=Gradle, 추후 judge=Go mod, setter/scout=uv/poetry). 언어별 그룹핑이 아니므로 폴리글랏 중립.
 
 ```
-cotejs/                     폴리글랏 루트 (JS 워크스페이스 아님, git 루트)
-├─ platform/                TS/JS 워크스페이스 루트 (pnpm-workspace.yaml 여기)
-│  ├─ arena/                Next.js — 참가자가 문제를 풀고 제출하는 경기장 (구 frontend)
-│  ├─ hub/                  NestJS — 유저·문제·제출·랭킹을 잇는 중심 (구 backend/api)
-│  └─ contracts/            @cotejs/contracts — arena·hub 공유 타입+zod (짝 A의 실체)
-├─ infra/                   docker-compose (postgres → 추후 redis·kafka)
+cotejs/                     git 루트
+├─ platform/                제품 서비스 전체 (폴더 = 서비스, 각자 도구 소유)
+│  ├─ arena/                Next.js + TS — 경기장(프론트). pnpm 단독 패키지
+│  ├─ hub/                  Kotlin + Spring Boot — 중심 API. Gradle ([0007])
+│  └─ (추후 마일스톤)
+│     ├─ judge/             Go — 제출 채점
+│     ├─ setter/            Python — 문제 출제(생성+품질 검증+파이프라인 지휘, [0006])
+│     └─ scout/             Python — 중복 정찰(유사도, 임베딩 서빙)
+├─ infra/                   docker-compose — 인프라만(postgres → 추후 redis·kafka)
 ├─ docs/
-└─ (추후 마일스톤, 루트 직속)
-   ├─ judge/                Go — 제출 채점
-   ├─ setter/               Python — 문제 출제(생성 + 품질 검증 + 파이프라인 지휘, [0006])
-   └─ scout/                Python — 기존 문제와 중복 정찰(유사도, 임베딩 서빙)
+└─ CLAUDE.md · README.md · RUN.md
 ```
 
 ### 2. 서비스명은 역할이 드러나는 도메인 용어로
@@ -34,8 +36,8 @@ cotejs/                     폴리글랏 루트 (JS 워크스페이스 아님, g
 | 폴더 | 역할 | 스택 |
 |---|---|---|
 | `arena` | 참가자가 문제를 풀고 제출하는 경기장 | Next.js |
-| `hub` | 유저·문제·제출·랭킹을 잇고 judge로 디스패치하는 중심 | NestJS |
-| `contracts` | arena·hub가 지키는 API 계약(타입) | TS + zod |
+| `hub` | 유저·문제·제출·랭킹을 잇고 judge로 디스패치하는 중심 | Kotlin + Spring ([0007]) |
+| ~~`contracts`~~ | ~~arena·hub 공유 타입~~ → [0007]로 폐기, OpenAPI codegen으로 대체 | — |
 | `judge` | 제출을 채점 (실제 CP 용어) | Go |
 | `setter` | 문제 출제 = "problem setter" (실제 CP 용어). 생성 + 품질 검증(내부 `tester` 모듈) + 파이프라인 지휘 | Python |
 | `scout` | 기존 문제와 겹치는지 정찰 | Python |
@@ -46,8 +48,8 @@ cotejs/                     폴리글랏 루트 (JS 워크스페이스 아님, g
 
 ## 근거
 
-- **`platform/` 그룹**: pnpm을 폴리글랏 루트에 얹으면 Go/Python과 개념이 뒤섞인다. 계층을 하나 둬서 JS 워크스페이스를 격리 → 루트는 순수 서비스 분해를 유지. `platform`은 [0005]에서 정의한 "제품 표면(프론트+백)" 개념과도 정합.
-- **`contracts` 위치**: [0003 원안]이 배제한 것은 Turborepo의 `apps/packages`를 **전체 레포 컨벤션**으로 쓰는 것(폴리글랏에 반만 맞음)이었다. 여기서는 **TS 서비스끼리만 쓰는 공유 라이브러리**이므로 `platform/` 안에 두는 것이 자연스럽고 그 배제와 모순되지 않는다.
+- **`platform/` 그룹(재정의 후)**: 루트가 `platform`(서비스) / `infra` / `docs` 3개념으로 정리되고 서비스 증가에 안정적. 그룹 폴더가 도구 중립이라 폴리글랏과 충돌 없음. "코딩테스트 **플랫폼**을 구성하는 서비스들"이라는 도메인 의미와도 정합.
+- ~~(구) TS 워크스페이스 격리 근거~~: hub의 Kotlin 전환([0007])으로 전제 소멸 — 재정의로 대체.
 - **역할 네이밍**: 서비스 분해·도메인 이해도가 폴더만 봐도 드러나 포트폴리오 자산. 실제 CP 용어(setter/tester/judge)라 억지 작명이 아님.
 
 ## 검토한 대안
@@ -59,6 +61,7 @@ cotejs/                     폴리글랏 루트 (JS 워크스페이스 아님, g
 
 ## 결과
 
-- `frontend/` → `platform/arena/` 이동 완료. `platform/hub`(NestJS)·`platform/contracts` 신설.
-- 폴리글랏 경계 계약(hub↔judge, hub↔AI)은 같은 언어로 못 묶으므로 추후 **IDL(Protobuf/Avro·OpenAPI)** 로 처리 — `contracts`는 TS 짝 전용.
+- (2026-07-11) `frontend/` → `platform/arena/` 이동, `platform/hub`(NestJS)·`platform/contracts` 신설.
+- (2026-07-25) hub를 Kotlin으로 재구현하며 `platform/hub`로 재배치, `contracts` 폐기([0007]). platform 그룹용 pnpm 파일 제거 — arena가 단독 패키지로 자기 설정 소유. 앱 Dockerfile 제거, compose는 인프라 전용(개발용 세팅).
+- 폴리글랏 경계 계약: arena↔hub는 **OpenAPI codegen + 컴파일타임 계약 체크**([0007]), hub↔judge/AI는 추후 IDL(Kafka 스키마 포함).
 - AI 서비스 구성: ~~3분할(setter/scout/tester)~~ → **2분할(setter/scout)** 로 개정([ADR-0006](0006-service-seams-and-ai-consolidation.md)). judge/AI 폴더는 각 마일스톤 착수 시 생성.

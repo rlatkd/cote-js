@@ -1,0 +1,3 @@
+# 네이티브 postinstall 승인 (미승인 시 ERR_PNPM_IGNORED_BUILDS)
+allowBuilds:
+  unrs-resolver: true

@@ -75,6 +75,6 @@ platform/arena/
 
 ## 데이터 연동
 
-- `entities/*/api.ts`(Repository)가 `@/shared/api/hub`로 **hub(NestJS) API를 서버에서 fetch**한다. mock → hub 교체가 이 파일들에서만 일어났고 뷰·뷰모델은 무변경(Repository 경계 덕분).
-- 응답 타입은 `@cotejs/contracts`의 `Problem`/`Submission` — hub와 동일 계약(짝 A).
+- `entities/*/api.ts`(Repository)가 `@/shared/api/hub`로 **hub(Kotlin/Spring) API를 서버에서 fetch**한다. mock → hub 교체가 이 파일들에서만 일어났고 뷰·뷰모델은 무변경(Repository 경계 덕분).
+- 응답 타입은 arena 로컬 도메인 모델(`entities/*/model.ts`) — hub OpenAPI 스키마와의 정합은 `shared/api/contract-check.ts`가 컴파일 타임에 검사([ADR-0007](../decisions/0007-backend-kotlin-return.md)).
 - 단, 에디터의 실행/제출 채점은 아직 client mock(`use-problem-solving.ts`) — 실제 채점은 Judge 마일스톤.
