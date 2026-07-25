@@ -7,6 +7,19 @@
 
 ## 진행 중 논의 (Deliberation Log)
 
+### 전체 서비스 구성 리뷰 — 이음새 6규칙 + AI 3→2 병합 (2026-07-25) → ✅ [ADR-0006](decisions/0006-service-seams-and-ai-consolidation.md)
+
+**계기**: 백엔드 착수 전 "전체 구성에 개선할 부분이 없나" 리뷰. 결론: **서비스 목록은 건강, 구멍은 전부 서비스 "사이"(이음새)에 있었다.**
+
+**적재적소 재확인(심문 기록)**:
+- **judge=Go 심문**: 워크로드 = 워커 층(동시성·타임아웃·취소) + 샌드박스 층(cgroups·namespaces·seccomp 시스템콜). goroutine+context가 워커 층의 정답이고, 컨테이너 생태계(runc/Docker/K8s/gVisor)가 전부 Go라 격리 레퍼런스를 그대로 읽을 수 있음. 대안 기각: Rust(기술 동급이나 이 도메인은 메모리 곡예가 없어 강점이 안 팔림+생태계 시너지 열세), C/C++(내부 샌드박스 툴 층 얘기, 워커까지 C일 이유 없음), Python(GIL·배포·측정부 결국 C), **JVM(가장 명백한 부적합** — 워밍업·메모리·fork/exec 궁합·JNI), Node(네이티브 애드온 의존). GC 우려는 측정 대상이 자식 프로세스(커널이 잼)라 무효.
+- **백엔드 재론**: 이 세션에서 "구현은 Claude가 하니 VSCode DX 무관 → Kotlin 복귀" 논의가 있었으나, 병렬 세션에서 [ADR-0005](decisions/0005-backend-language-and-type-sharing.md)(NestJS, 실무 Java+Spring과의 차별화가 결정타)가 이미 확정·구현됨 → 그에 따름.
+- **AI 3→2**: setter(생성)와 tester(검증)는 항상 붙어 도는 한 파이프라인 + 둘 다 경량 I/O 오케스트레이션 → 네트워크 경계 실익 없음, "전시용 분해"로 판정. **scout만 임베딩 모델 상주 서빙이라 자원 특성이 달라 독립 유지.** 경계 원칙: "설명하기 좋은 곳"이 아니라 "다르게 스케일하는 곳". tester는 setter 내부 모듈명으로 강등(실제 CP에서 setter가 출제+검증 겸임이라 명칭 정합). 부하 급증 시 재분리 여지(모듈 경계 유지).
+
+**이음새 6구멍 → 6규칙** (상세는 ADR-0006): ① 채점 결과 실시간 경로 부재 → judge→Kafka 결과토픽→hub→SSE ② DB 소유권 규칙 부재 → 스키마당 단일 작성자(judge는 DB 금지) ③ 실행 요청 3등급(run/submit/batch)이 한 큐에 뭉개짐 → QoS 레인 분리 ④ 오프라인 파이프라인 지휘자 부재 → setter 소유 상태머신 ⑤ 검수 게이트 UI 계획 부재 → arena admin+hub admin(M3) ⑥ Redis "캐시" 모호 → rate limit·리더보드·pub/sub.
+
+**오버엔지니어링 방어선(배제)**: API Gateway 서비스(hub가 단일 진입점), Airflow(파이프라인 1개), WebSocket(단방향 알림엔 SSE), 마이크로서비스 추가 세분화.
+
 ### 백엔드 재선정 + 프론트·백 타입 공유 + 서비스 네이밍 (2026-07-11) → ✅ [ADR-0005](decisions/0005-backend-language-and-type-sharing.md), [ADR-0003](decisions/0003-monorepo-structure.md) 갱신
 
 **계기**: 백엔드 착수 시점에 [ADR-0001]의 Kotlin+Spring을 재검토. 사용자 제기: "VSCode에서 작업하기 좋은 NestJS나 Go 등"으로 대체 가능한가.

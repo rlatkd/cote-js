@@ -1,7 +1,7 @@
 # 0003. 모노레포 폴더 구조
 
-- **상태**: Accepted (2026-07-11 갱신 — platform 그룹 + 서비스 네이밍 확정)
-- **일자**: 2026-07-09 (개정 2026-07-11)
+- **상태**: Accepted (2026-07-25 갱신 — AI 서비스 3→2 병합, [0006](0006-service-seams-and-ai-consolidation.md))
+- **일자**: 2026-07-09 (개정 2026-07-11, 2026-07-25)
 
 ## 맥락
 
@@ -23,9 +23,8 @@ cotejs/                     폴리글랏 루트 (JS 워크스페이스 아님, g
 ├─ docs/
 └─ (추후 마일스톤, 루트 직속)
    ├─ judge/                Go — 제출 채점
-   ├─ setter/               Python — 문제 출제(AI 생성)
-   ├─ scout/                Python — 기존 문제와 중복 정찰(유사도)
-   └─ tester/               Python — 출제 전 정답·조건 검증
+   ├─ setter/               Python — 문제 출제(생성 + 품질 검증 + 파이프라인 지휘, [0006])
+   └─ scout/                Python — 기존 문제와 중복 정찰(유사도, 임베딩 서빙)
 ```
 
 ### 2. 서비스명은 역할이 드러나는 도메인 용어로
@@ -38,11 +37,12 @@ cotejs/                     폴리글랏 루트 (JS 워크스페이스 아님, g
 | `hub` | 유저·문제·제출·랭킹을 잇고 judge로 디스패치하는 중심 | NestJS |
 | `contracts` | arena·hub가 지키는 API 계약(타입) | TS + zod |
 | `judge` | 제출을 채점 (실제 CP 용어) | Go |
-| `setter` | 문제 출제 = "problem setter" (실제 CP 용어) | Python |
+| `setter` | 문제 출제 = "problem setter" (실제 CP 용어). 생성 + 품질 검증(내부 `tester` 모듈) + 파이프라인 지휘 | Python |
 | `scout` | 기존 문제와 겹치는지 정찰 | Python |
-| `tester` | 출제 전 정답·조건 검증 (실제 CP 용어) | Python |
 
-파이프라인이 폴더명으로 읽힌다: **setter가 내고 → scout이 거르고 → tester가 검증하고 → judge가 채점한다.**
+파이프라인이 폴더명으로 읽힌다: **setter가 내고 검증하고 → scout이 거르고 → judge가 채점한다.**
+
+> **개정(2026-07-25)**: 당초 `tester`를 독립 서비스로 뒀으나, 생성·검증은 항상 붙어 도는 한 파이프라인이고 둘 다 경량 I/O 오케스트레이션이라 분리 실익이 없어 **setter의 내부 모듈로 병합**했다(scout만 임베딩 서빙이라 자원 특성이 달라 독립 유지). 상세 근거: [ADR-0006](0006-service-seams-and-ai-consolidation.md). 실제 CP에서도 setter가 출제와 테스트 준비·검증을 함께 담당하므로 명칭 정합.
 
 ## 근거
 
@@ -61,4 +61,4 @@ cotejs/                     폴리글랏 루트 (JS 워크스페이스 아님, g
 
 - `frontend/` → `platform/arena/` 이동 완료. `platform/hub`(NestJS)·`platform/contracts` 신설.
 - 폴리글랏 경계 계약(hub↔judge, hub↔AI)은 같은 언어로 못 묶으므로 추후 **IDL(Protobuf/Avro·OpenAPI)** 로 처리 — `contracts`는 TS 짝 전용.
-- AI 서비스 3분할(setter/scout/tester) 확정. judge/AI 폴더는 각 마일스톤 착수 시 생성.
+- AI 서비스 구성: ~~3분할(setter/scout/tester)~~ → **2분할(setter/scout)** 로 개정([ADR-0006](0006-service-seams-and-ai-consolidation.md)). judge/AI 폴더는 각 마일스톤 착수 시 생성.

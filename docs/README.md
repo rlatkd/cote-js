@@ -8,12 +8,16 @@ AI 기반 알고리즘 문제 생성·검증 + 온라인 코딩 테스트 플랫
 
 | 문서 | 용도 |
 |---|---|
+| [worklog.md](worklog.md) | **작업 일지** — 세션별 한 일·검증·중단점·다음 (세션 간 연속성) |
+| [learning-notes.md](learning-notes.md) | **학습 노트** — 구현·설계에서 배운 것 축적 (면접 대비 자산) |
 | [engineering-notes.md](engineering-notes.md) | 진행 중 고민·검토·아이디어·열린 질문 (사고 과정) |
 | [TODO.md](TODO.md) | 로드맵(마일스톤) + 작업 백로그 |
 | [glossary.md](glossary.md) | 도메인·기술 용어집 |
 | [decisions/](decisions/) | ADR — 아키텍처 결정 기록(확정 결정의 정식 문서) |
-| [architecture/](architecture/) | 시스템 전체 + 서비스별 아키텍처 상세 |
-| [guides/](guides/) | 개발 가이드 (시작하기·컨벤션) |
+| [architecture/](architecture/) | 시스템 전체 + 서비스별 아키텍처 상세 + 데이터 모델 |
+| [guides/](guides/) | 개발 가이드 (시작하기·컨벤션·검증 체크리스트) |
+
+> 살아있는 문서(worklog·learning-notes·verification·data-model)는 기록 추가 시 **날짜+시각**을 기입한다.
 
 ## 문서 역할 분리
 
@@ -30,8 +34,9 @@ AI 기반 알고리즘 문제 생성·검증 + 온라인 코딩 테스트 플랫
 
 빈 문서를 미리 만들지 않는다. 실제 착수할 때 만든다.
 
-- **API 계약서 (OpenAPI)** — Backend API 착수 시
-- **데이터 모델 / ERD** — 스키마 확정 시
+- **폴리글랏 경계 계약 (IDL — Kafka 토픽/OpenAPI)** — Judge Kafka 연결 시
 - **보안 노트 (샌드박스 격리)** — Judge 착수 시
-- **테스트 전략** — 첫 서비스 구현 시
-- **배포/인프라 런북** — 배포 파이프라인 구축 시
+- **테스트 전략** — hub 테스트 스위트 도입 시
+- **배포/인프라 런북** — K8s 이관 시
+
+(데이터 모델은 [architecture/data-model.md](architecture/data-model.md)로 생성됨 — 2026-07-25)

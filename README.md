@@ -30,9 +30,10 @@
                                 v
 
           +--------------------------------+
-          | AI Problem Generation Service  |
+          | setter — 생성 모듈             |
           | Python + FastAPI               |
           | LLM API + LangChain            |
+          | (파이프라인 지휘자)             |
           +--------------------------------+
 
                                 |
@@ -41,9 +42,9 @@
                 v                               v
 
     +--------------------------+    +--------------------------+
-    | Similarity Validator     |    | Problem Validator        |
-    | Python + FastAPI         |    | Python + FastAPI         |
-    | Sentence Transformer     |    | LLM + Docker Execution   |
+    | scout (독립 서비스)       |    | setter — 검증 모듈        |
+    | Python + FastAPI         |    | (구 tester, ADR-0006 병합)|
+    | Sentence Transformer     |    | LLM + judge batch 레인    |
     | (자체 임베딩 모델)        |    | 정답 교차검증(N-풀이 일치)|
     | pgvector                 |    | Test Case Validation     |
     +--------------------------+    +--------------------------+
@@ -118,9 +119,19 @@
                      | C++ / Java / Python     |
                      | Code Execution          |
                      +-------------------------+
+
+                                  |
+                                  v
+
+                     결과 → Kafka(결과 토픽) → hub 소비
+                          → DB 저장 + SSE로 arena 실시간 푸시
 ```
 
+> **서비스 이음새 규칙([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md))**: ① judge는 DB 접근 금지 — 결과는 Kafka 이벤트로만, hub가 소비해 저장·SSE 푸시 ② DB 스키마당 단일 작성자(hub=코어 / scout=임베딩 / setter=파이프라인) ③ 실행 QoS 3레인 — `run`(예제 실행, 저지연)/`submit`(정식 제출)/`batch`(setter 검증, 최저 우선) 분리로 배치가 유저 제출을 굶기지 않음 ④ 오프라인 파이프라인 지휘자 = setter ⑤ 사람 검수 UI = arena admin 라우트 + hub admin API ⑥ Redis = 제출 rate limit·랭킹 sorted set·SSE 팬아웃 pub/sub.
+
 # 3. AI Problem Generation Service
+
+> **서비스 매핑**: `setter`의 **생성 모듈**. setter는 이 장(생성)과 5장(품질 검증)을 내부 모듈로 갖는 단일 서비스이며, 오프라인 파이프라인의 지휘자다([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
 
 ## 목적
 
@@ -153,6 +164,8 @@
 
 
 # 4. Problem Similarity Validator
+
+> **서비스 매핑**: `scout` (독립 서비스). 임베딩 모델을 메모리에 상주시키는 서빙 워크로드라 자원 특성이 달라 유일하게 분리를 유지한다([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
 
 ## 목적
 
@@ -203,6 +216,8 @@ Similarity Score 계산
 
 
 # 5. Problem Validator
+
+> **서비스 매핑**: `setter`의 **검증 모듈**(구 `tester` — 독립 서비스에서 병합, [ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)). 대량 실행은 judge의 `batch` 레인을 재사용한다(샌드박스 이중 구현 금지).
 
 ## 목적
 
@@ -359,31 +374,22 @@ Human Review Gate (승인 시에만 공개)
 
 ```
 User Submission
-
     ↓
-
-Backend API
-
+hub (rate limit — Redis)
     ↓
-
-Message Queue (Kafka)
-
+Kafka 제출 토픽 (QoS 3레인: run / submit / batch)
     ↓
-
 Judge Worker (Go)
-
     ↓
-
-Docker Sandbox
-
+Docker Sandbox 실행 → 판정
     ↓
-
-Execution Result
-
+Kafka 결과 토픽                ← judge는 DB에 쓰지 않는다
     ↓
-
-Database 저장
+hub 소비 → DB 저장 → SSE로 arena 실시간 푸시
 ```
+
+- **QoS 3레인**: `run`(예제 실행, 인터랙티브 저지연) / `submit`(정식 제출) / `batch`(setter의 교차검증 대량 실행, 최저 우선순위). 배치가 유저 제출을 굶기지 않는다.
+- **결과는 이벤트로만**: judge가 DB에 직접 쓰면 Go와 Prisma가 스키마를 이중 소유하게 되므로 금지([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
 
 ## 기술 스택
 
@@ -395,6 +401,8 @@ Database 저장
 
 
 # 10. Database
+
+> **단일 작성자 원칙([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md))**: 스키마당 주인 하나 — 코어=hub(Prisma), 임베딩=scout, 출제 파이프라인=setter, **judge=DB 접근 금지(이벤트만)**. 교차 접근은 API/이벤트로. Redis 용도는 ① 제출 rate limit ② 랭킹 sorted set ③ SSE 팬아웃 pub/sub.
 
 ## Main Database (PostgreSQL)
 
@@ -459,6 +467,9 @@ Database 저장
 | LLM 프레임워크 | LangChain | LlamaIndex | 생성 파이프라인 오케스트레이션에 적합 |
 | 메인 DB | PostgreSQL | MySQL | AI 서비스와 통일, pgvector 활용 |
 | 배포 | Docker Compose (초기) | Kubernetes (후속) | 초기 완주율 우선, 트래픽 발생 후 이관 |
+| AI 서비스 분해 | setter/scout 2분할 | 3분할(tester 독립) | 생성·검증은 한 파이프라인(경계는 스케일 특성에만) — scout만 모델 서빙이라 독립 |
+| 채점 결과 경로 | Kafka 결과토픽 → hub → SSE | judge 직접 DB 쓰기, WebSocket | 폴리글랏 스키마 이중 소유 방지, 단방향 알림엔 SSE로 충분 |
+| 파이프라인 오케스트레이션 | setter 내 상태머신 | Airflow 등 워크플로 엔진 | 파이프라인 1개 규모에 엔진은 과설계 |
 
 
 # 14. 리스크 및 주의사항

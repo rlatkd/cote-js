@@ -34,6 +34,6 @@
 - **arena**: 참가자가 문제를 풀고 제출하는 경기장 = 프론트엔드(Next.js).
 - **hub**: 유저·문제·제출·랭킹을 잇는 중심 = 백엔드 API(NestJS).
 - **judge**: 제출을 채점 = 채점 엔진(Go).
-- **setter**: 문제를 출제("problem setter") = AI 생성(Python).
-- **scout**: 기존 문제와 중복을 정찰 = 유사도 검증(Python).
-- **tester**: 출제 전 정답·조건을 검증 = 문제 검증(Python).
+- **setter**: 문제를 출제("problem setter") = AI 생성 + 품질 검증 + 파이프라인 지휘(Python). 실제 CP처럼 출제자가 문제와 테스트 검증을 함께 담당.
+- **scout**: 기존 문제와 중복을 정찰 = 유사도 검증(Python, 임베딩 서빙이라 독립 서비스).
+- **tester**: ~~독립 서비스~~ → setter 내부의 **검증 모듈** 이름으로 강등([ADR-0006](decisions/0006-service-seams-and-ai-consolidation.md)). 출제 전 정답 교차검증·TC 변별력 확인 단계.

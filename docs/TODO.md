@@ -39,11 +39,18 @@
 - [x] 엔드투엔드 검증 — install→contracts 빌드→docker→migrate/seed→hub 기동→curl(GET·POST·404·400) + arena `next build` + 실런타임 렌더(hub 데이터가 HTML에 반영, 5라우트 200)
 - [x] 실행법 루트 README Quick Start + [architecture/hub.md](architecture/hub.md)
 
+## 설계 매듭: 서비스 이음새 + AI 병합 (2026-07-25) ✅
+
+- [x] **[ADR-0006](decisions/0006-service-seams-and-ai-consolidation.md)** — ① AI 3→2 병합(tester→setter 내부 모듈, scout만 독립) ② 채점 결과 경로(judge→Kafka 결과토픽→hub→SSE, judge DB 금지) ③ DB 스키마 단일 작성자 ④ 실행 QoS 3레인(run/submit/batch) ⑤ 파이프라인 지휘자=setter ⑥ 검수 UI=arena admin+hub admin ⑦ Redis 역할 명시(rate limit·리더보드·pub/sub). system-overview·ADR-0003·glossary·CLAUDE.md·README 반영
+- [x] **살아있는 문서 4종 도입** (2026-07-25) — [worklog](worklog.md)(세션 연속성)·[learning-notes](learning-notes.md)(학습 축적)·[guides/verification](guides/verification.md)(검증 체크리스트)·[architecture/data-model](architecture/data-model.md)(ERD·소유권·부채). 갱신 트리거·타임스탬프 규칙을 CLAUDE.md에 고정
+
 ## 보류 / 추후 재논의 (Deferred)
 
-- [ ] hub 후속: 인증/인가, 랭킹·통계, 페이지네이션, 제출→judge(Kafka) 연결(= Judge 마일스톤)
+- [ ] hub 후속: 인증/인가, 랭킹·통계(Redis sorted set), 페이지네이션, 제출 rate limiting(Redis)
+- [ ] Judge 마일스톤: 제출→judge Kafka 연결 — 제출·결과 토픽 IDL 확정, QoS 3레인, hub 결과 소비→SSE 푸시([ADR-0006](decisions/0006-service-seams-and-ai-consolidation.md))
+- [ ] M3 범위: 사람 검수 게이트 UI — arena admin 라우트(검수 큐) + hub admin API
 - [ ] 데이터 모델 refine: `timeLimit`/`memoryLimit` 문자열 → 수치(ms·MB)
-- [ ] AI/Judge 아키텍처 확정 시 [architecture/](architecture/) 상세화 (judge.md/setter.md/scout.md/tester.md)
+- [ ] AI/Judge 아키텍처 확정 시 [architecture/](architecture/) 상세화 (judge.md/setter.md/scout.md)
 - [ ] 폴리글랏 경계 계약: hub↔judge, hub↔AI를 IDL(Protobuf/Avro·OpenAPI)로 정의
 - [ ] 데이터 라이선스 문제 결론 (공개 데이터셋 vs 자체 시드 문제)
-- [ ] 향후 문서 생성: 데이터 모델/ERD, 보안 노트, 테스트 전략, 배포 런북
+- [ ] 향후 문서 생성: 보안 노트(Judge 착수 시), 테스트 전략(테스트 도입 시), 배포 런북(K8s 시) — 데이터 모델은 [architecture/data-model.md](architecture/data-model.md)로 완료
