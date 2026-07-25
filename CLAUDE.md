@@ -45,7 +45,7 @@
 
 - 어떤 결정·변경이 기존 규칙·구조·문서의 **전제를 무효화**하면, 그 모순을 **그 자리에서 사용자에게 명시적으로 보고**한다. "규칙의 문자를 따랐으니 문제없다"로 넘어가지 않는다 — **전제가 죽은 규칙은 더 이상 규칙이 아니다.**
 - 파급의 처리는 사용자가 보이는 곳에서 정한다: **① 즉시 정합**시키거나 **② "임시 상태임 + 언제 정리할지"를 선언**하거나. 속으로만 보류하는 것 금지. 임시 상태로 두면 TODO·worklog에 기록해 추적한다.
-- 사례(2026-07-25, 재발 금지): 백엔드를 Kotlin으로 전환하면서 "platform/=TS 그룹"이라는 전제가 소멸했는데, 규칙 문자대로 hub를 루트에 조용히 배치하고 모순(멤버 하나 남은 그룹 폴더)을 보고하지 않음 → 사용자가 직접 발견. 이런 비대칭·모순은 발생 즉시 표면화했어야 한다.
+- 사례(2026-07-25, 재발 금지): 백엔드를 Kotlin으로 전환하면서 "platform/=TS 그룹"(당시 명칭)이라는 전제가 소멸했는데, 규칙 문자대로 백엔드를 루트에 조용히 배치하고 모순(멤버 하나 남은 그룹 폴더)을 보고하지 않음 → 사용자가 직접 발견. 이런 비대칭·모순은 발생 즉시 표면화했어야 한다.
 
 ### 5. 대화와 구현을 구분할 것
 
@@ -64,7 +64,7 @@
 |---|---|---|
 | Frontend | Next.js + TypeScript + Tailwind(직접) + Monaco Editor | — |
 | Backend API | **Kotlin + Spring Boot** — WebFlux+코루틴, R2DBC, Flyway, Hexagonal, Gradle(Kotlin DSL). **실무 재탕 금지 조항**: MVC·JPA·블로킹 스타일 금지 ([ADR-0007](docs/decisions/0007-backend-kotlin-return.md)) | NestJS(0005, 대체됨), Java, Go, MVC/JPA |
-| arena↔hub 계약 | **OpenAPI codegen** — hub springdoc → `pnpm gen:api` → `schema.d.ts`(커밋) + `contract-check.ts` 컴파일타임 검사. 폴리글랏 경계(judge/AI)는 IDL | contracts 패키지(폐기) |
+| web↔api 계약 | **OpenAPI codegen** — api springdoc → `pnpm gen:api` → `schema.d.ts`(커밋) + `contract-check.ts` 컴파일타임 검사. 폴리글랏 경계(judge/AI)는 IDL | contracts 패키지(폐기) |
 | 버전 정책 | **LTS/안정판 기준** — JDK 21 LTS, Boot 4.0.x(성숙 마이너), Node 22 LTS, Postgres 16. 최신 첫 릴리스 회피 | 최신 우선주의 |
 | Docker 사용 | **개발 = 인프라만** compose(postgres→redis·kafka). 앱은 호스트 네이티브(핫리로드·디버거). 앱 컨테이너화는 배포 마일스톤(M5)에서 | 개발용 앱 컨테이너 |
 | 문제 생성 | LLM API + LangChain | 자체 모델 파인튜닝, LlamaIndex |
@@ -84,13 +84,14 @@
 
 ### 아키텍처 (일부 진행 중)
 
-- **프론트엔드**: **확정** — 자체 정의 도메인 레이어드(`app` 라우팅 → `views` 화면 → `entities` 도메인 → `shared` 공용, 단방향 의존) + MVVM(entities의 훅=ViewModel) + Server Actions. RSC는 정적 화면만 부분 적용(인터랙션은 client island). 배민·Money Forward 실무 사례 기반. 상세: [ADR-0004](docs/decisions/0004-frontend-architecture.md), [architecture/frontend.md](docs/architecture/frontend.md).
-- **백엔드(hub / Kotlin)**: **확정** — Hexagonal(`domain`(모델+port) → `application`(유스케이스) → `adapter`(inbound web / outbound persistence)), suspend 핸들러, R2DBC, Flyway 마이그레이션. 상세: [ADR-0007](docs/decisions/0007-backend-kotlin-return.md), [architecture/hub.md](docs/architecture/hub.md).
-- **AI(Python/FastAPI)**: **setter/scout 2서비스**([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md) — tester는 setter 내부 검증 모듈로 병합). 내부는 (잠정) Layered + LangChain 체인 모듈 분리.
+- **프론트엔드**: **확정** — 자체 정의 도메인 레이어드(`app` 라우팅 → `views` 화면 → `entities` 도메인 → `shared` 공용, 단방향 의존) + MVVM(entities의 훅=ViewModel) + Server Actions. RSC는 정적 화면만 부분 적용(인터랙션은 client island). 배민·Money Forward 실무 사례 기반. 상세: [ADR-0004](docs/decisions/0004-frontend-architecture.md), [architecture/web.md](docs/architecture/web.md).
+- **백엔드(api / Kotlin)**: **확정** — Hexagonal(`domain`(모델+port) → `application`(유스케이스) → `adapter`(inbound web / outbound persistence)), suspend 핸들러, R2DBC, Flyway 마이그레이션. 상세: [ADR-0007](docs/decisions/0007-backend-kotlin-return.md), [architecture/api.md](docs/architecture/api.md).
+- **AI(Python/FastAPI)**: **problem/plagiarism 2서비스**([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md) — tester는 problem 내부 검증 모듈로 병합). 내부는 (잠정) Layered + LangChain 체인 모듈 분리.
 - **Judge(Go)**: (잠정) 경량 클린 (`cmd/` + `internal/`: consumer·executor·sandbox 어댑터).
-- **서비스 이음새(확정 — [ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md))**: ① 채점 결과 = judge→Kafka 결과토픽→hub 소비→DB 저장+SSE 푸시(judge는 DB 접근 금지) ② DB 스키마당 단일 작성자(hub=코어, scout=임베딩, setter=파이프라인) ③ 실행 QoS 3레인(run/submit/batch — 배치가 유저 제출을 굶기지 않게) ④ 오프라인 파이프라인 지휘자=setter(워크플로 엔진 미도입) ⑤ 검수 UI=arena admin+hub admin API(신규 서비스 아님) ⑥ Redis=rate limit·리더보드·SSE pub/sub("캐시"라는 모호한 용도 금지).
+- **서비스 이음새(확정 — [ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md))**: ① 채점 결과 = judge→Kafka 결과토픽→api 소비→DB 저장+SSE 푸시(judge는 DB 접근 금지) ② DB 스키마당 단일 작성자(api=코어, plagiarism=임베딩, problem=파이프라인) ③ 실행 QoS 3레인(run/submit/batch — 배치가 유저 제출을 굶기지 않게) ④ 오프라인 파이프라인 지휘자=problem(워크플로 엔진 미도입) ⑤ 검수 UI=web admin+api admin API(신규 서비스 아님) ⑥ Redis=rate limit·리더보드·SSE pub/sub("캐시"라는 모호한 용도 금지).
 
-### 모노레포 구조 (확정 — [ADR-0003](docs/decisions/0003-monorepo-structure.md) 2026-07-25 재개정)
+### 모노레포 구조 (확정 — [ADR-0008](docs/decisions/0008-service-naming-and-group.md))
 
-- **`platform/` = 제품 서비스 전체의 그룹** (순수 그룹 폴더, 자체 도구 설정 없음). 현재 `arena`(Next/pnpm)·`hub`(Kotlin/Gradle), 추후 `judge`(Go)·`setter`·`scout`(Python)도 여기에. **각 서비스가 자기 빌드 도구를 자기 안에 소유.** 루트는 `platform / infra / docs` 3개념.
-- **서비스명 = 역할 도메인 용어**: `arena`(프론트)·`hub`(백엔드)·`judge`(채점, Go)·`setter`(출제=생성+품질검증+파이프라인 지휘)·`scout`(유사도). "frontend/backend" 같은 계층명 배제. `tester`는 setter 내부 모듈([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
+- **`services/` = 제품 서비스 전체의 그룹** (순수 그룹 폴더, 자체 도구 설정 없음). 현재 `web`(Next/pnpm)·`api`(Kotlin/Gradle), 추후 `judge`(Go)·`problem`·`plagiarism`(Python)도 여기에. **각 서비스가 자기 빌드 도구를 자기 안에 소유.** 루트는 `services / infra / docs` 3개념.
+- **네이밍 = 2층 체계**: 상위 = **책임 영역**(`web` 화면 · `api` 비즈로직/서빙 · `judge` 채점 · `problem` 문제 제작 공정 · `plagiarism` 표절 탐지), 하위 = **처리 단계**(judge: executor·sandbox·verdict / problem: generation·validation·workflow / plagiarism: embedding·retrieval·scoring). 은유(구 arena·hub·setter·scout) 금지 — 경위는 [ADR-0008](docs/decisions/0008-service-naming-and-group.md).
+- **api = 문제 서빙, problem = 문제 제작** — 이름 겹침 주의. 구 tester는 problem의 `validation` 단계([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).

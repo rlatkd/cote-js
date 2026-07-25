@@ -41,5 +41,5 @@
 ## 결과
 
 - `frontend/` 내부를 `app`(얇게) + `views` + `entities` + `shared`로 재배치.
-- 상세 구조는 [architecture/frontend.md](../architecture/frontend.md).
+- 상세 구조는 [architecture/web.md](../architecture/web.md).
 - 의존성 규칙은 **ESLint(`import/no-restricted-paths`)로 강제 — 구현 완료** (`frontend/.eslintrc.json`, lint 통과). 도메인 전용 UI(뱃지)는 `shared`가 아니라 해당 `entities/*/ui`에 둔다(역방향 참조 방지).

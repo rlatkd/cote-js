@@ -1,6 +1,6 @@
 # 0003. 모노레포 폴더 구조
 
-- **상태**: Accepted (2026-07-25 2차 개정 — **platform/ = 전 서비스 그룹**으로 재정의, [0007](0007-backend-kotlin-return.md)과 연동. 같은 날 1차: AI 3→2 병합 [0006](0006-service-seams-and-ai-consolidation.md))
+- **상태**: **Superseded by [0008](0008-service-naming-and-group.md)** (2026-07-25 — 그룹명 `platform`→`services`, 서비스 네이밍을 2층 체계(web·api·judge·problem·plagiarism)로 전면 개편. 본문은 당시 원문 그대로 동결)
 - **일자**: 2026-07-09 (개정 2026-07-11, 2026-07-25 ×2)
 
 ## 맥락

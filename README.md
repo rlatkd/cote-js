@@ -30,7 +30,7 @@
                                 v
 
           +--------------------------------+
-          | setter — 생성 모듈             |
+          | problem — 생성 모듈             |
           | Python + FastAPI               |
           | LLM API + LangChain            |
           | (파이프라인 지휘자)             |
@@ -42,7 +42,7 @@
                 v                               v
 
     +--------------------------+    +--------------------------+
-    | scout (독립 서비스)       |    | setter — 검증 모듈        |
+    | plagiarism (독립 서비스)       |    | problem — 검증 모듈        |
     | Python + FastAPI         |    | (구 tester, ADR-0006 병합)|
     | Sentence Transformer     |    | LLM + judge batch 레인    |
     | (자체 임베딩 모델)        |    | 정답 교차검증(N-풀이 일치)|
@@ -79,7 +79,7 @@
       |                   |
       v                   v
 +----------------------+    +---------------------------+
-| Frontend (arena)     |    | Backend API (hub)         |
+| Frontend (web)     |    | Backend API (api)         |
 | Next.js              |    | Kotlin + Spring Boot      |
 | TypeScript           |    | WebFlux·코루틴·R2DBC      |
 | Monaco Editor        |    | 계약: OpenAPI codegen     |
@@ -123,15 +123,15 @@
                                   |
                                   v
 
-                     결과 → Kafka(결과 토픽) → hub 소비
-                          → DB 저장 + SSE로 arena 실시간 푸시
+                     결과 → Kafka(결과 토픽) → api 소비
+                          → DB 저장 + SSE로 web 실시간 푸시
 ```
 
-> **서비스 이음새 규칙([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md))**: ① judge는 DB 접근 금지 — 결과는 Kafka 이벤트로만, hub가 소비해 저장·SSE 푸시 ② DB 스키마당 단일 작성자(hub=코어 / scout=임베딩 / setter=파이프라인) ③ 실행 QoS 3레인 — `run`(예제 실행, 저지연)/`submit`(정식 제출)/`batch`(setter 검증, 최저 우선) 분리로 배치가 유저 제출을 굶기지 않음 ④ 오프라인 파이프라인 지휘자 = setter ⑤ 사람 검수 UI = arena admin 라우트 + hub admin API ⑥ Redis = 제출 rate limit·랭킹 sorted set·SSE 팬아웃 pub/sub.
+> **서비스 이음새 규칙([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md))**: ① judge는 DB 접근 금지 — 결과는 Kafka 이벤트로만, api가 소비해 저장·SSE 푸시 ② DB 스키마당 단일 작성자(api=코어 / plagiarism=임베딩 / problem=파이프라인) ③ 실행 QoS 3레인 — `run`(예제 실행, 저지연)/`submit`(정식 제출)/`batch`(problem 검증, 최저 우선) 분리로 배치가 유저 제출을 굶기지 않음 ④ 오프라인 파이프라인 지휘자 = problem ⑤ 사람 검수 UI = web admin 라우트 + api admin API ⑥ Redis = 제출 rate limit·랭킹 sorted set·SSE 팬아웃 pub/sub.
 
 # 3. AI Problem Generation Service
 
-> **서비스 매핑**: `setter`의 **생성 모듈**. setter는 이 장(생성)과 5장(품질 검증)을 내부 모듈로 갖는 단일 서비스이며, 오프라인 파이프라인의 지휘자다([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
+> **서비스 매핑**: `problem`의 **생성 모듈**. problem는 이 장(생성)과 5장(품질 검증)을 내부 모듈로 갖는 단일 서비스이며, 오프라인 파이프라인의 지휘자다([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
 
 ## 목적
 
@@ -165,7 +165,7 @@
 
 # 4. Problem Similarity Validator
 
-> **서비스 매핑**: `scout` (독립 서비스). 임베딩 모델을 메모리에 상주시키는 서빙 워크로드라 자원 특성이 달라 유일하게 분리를 유지한다([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
+> **서비스 매핑**: `plagiarism` (독립 서비스). 임베딩 모델을 메모리에 상주시키는 서빙 워크로드라 자원 특성이 달라 유일하게 분리를 유지한다([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
 
 ## 목적
 
@@ -217,7 +217,7 @@ Similarity Score 계산
 
 # 5. Problem Validator
 
-> **서비스 매핑**: `setter`의 **검증 모듈**(구 `tester` — 독립 서비스에서 병합, [ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)). 대량 실행은 judge의 `batch` 레인을 재사용한다(샌드박스 이중 구현 금지).
+> **서비스 매핑**: `problem`의 **검증 모듈**(구 `tester` — 독립 서비스에서 병합, [ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)). 대량 실행은 judge의 `batch` 레인을 재사용한다(샌드박스 이중 구현 금지).
 
 ## 목적
 
@@ -310,7 +310,7 @@ Human Review Gate (승인 시에만 공개)
 
 ## 아키텍처
 
-자체 정의 도메인 레이어드 (`app → views → entities → shared`, 단방향 의존) + MVVM + Server Actions. RSC는 정적 화면만 부분 적용. 상세: [docs/architecture/frontend.md](docs/architecture/frontend.md), [docs/decisions/0004](docs/decisions/0004-frontend-architecture.md).
+자체 정의 도메인 레이어드 (`app → views → entities → shared`, 단방향 의존) + MVVM + Server Actions. RSC는 정적 화면만 부분 적용. 상세: [docs/architecture/web.md](docs/architecture/web.md), [docs/decisions/0004](docs/decisions/0004-frontend-architecture.md).
 
 
 # 8. Backend API Service
@@ -338,7 +338,7 @@ Human Review Gate (승인 시에만 공개)
 | 데이터 접근 | **R2DBC** (논블로킹 Postgres) |
 | 마이그레이션 | Flyway (스키마+시드, 기동 시 자동) |
 | 아키텍처 | **Hexagonal** (domain/port → application → adapter) |
-| 계약 | springdoc OpenAPI → arena 타입 codegen + 컴파일타임 계약 체크 |
+| 계약 | springdoc OpenAPI → web 타입 codegen + 컴파일타임 계약 체크 |
 | 입력 검증 | jakarta validation + 도메인 enum |
 | Security | (예정) — 인증/인가 후속 |
 | Database | PostgreSQL |
@@ -378,7 +378,7 @@ Human Review Gate (승인 시에만 공개)
 ```
 User Submission
     ↓
-hub (rate limit — Redis)
+api (rate limit — Redis)
     ↓
 Kafka 제출 토픽 (QoS 3레인: run / submit / batch)
     ↓
@@ -388,11 +388,11 @@ Docker Sandbox 실행 → 판정
     ↓
 Kafka 결과 토픽                ← judge는 DB에 쓰지 않는다
     ↓
-hub 소비 → DB 저장 → SSE로 arena 실시간 푸시
+api 소비 → DB 저장 → SSE로 web 실시간 푸시
 ```
 
-- **QoS 3레인**: `run`(예제 실행, 인터랙티브 저지연) / `submit`(정식 제출) / `batch`(setter의 교차검증 대량 실행, 최저 우선순위). 배치가 유저 제출을 굶기지 않는다.
-- **결과는 이벤트로만**: judge가 DB에 직접 쓰면 Go와 Kotlin(hub)이 스키마를 이중 소유하게 되므로 금지([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
+- **QoS 3레인**: `run`(예제 실행, 인터랙티브 저지연) / `submit`(정식 제출) / `batch`(problem의 교차검증 대량 실행, 최저 우선순위). 배치가 유저 제출을 굶기지 않는다.
+- **결과는 이벤트로만**: judge가 DB에 직접 쓰면 Go와 Kotlin(api)이 스키마를 이중 소유하게 되므로 금지([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).
 
 ## 기술 스택
 
@@ -405,7 +405,7 @@ hub 소비 → DB 저장 → SSE로 arena 실시간 푸시
 
 # 10. Database
 
-> **단일 작성자 원칙([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md))**: 스키마당 주인 하나 — 코어=hub(R2DBC+Flyway), 임베딩=scout, 출제 파이프라인=setter, **judge=DB 접근 금지(이벤트만)**. 교차 접근은 API/이벤트로. Redis 용도는 ① 제출 rate limit ② 랭킹 sorted set ③ SSE 팬아웃 pub/sub.
+> **단일 작성자 원칙([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md))**: 스키마당 주인 하나 — 코어=api(R2DBC+Flyway), 임베딩=plagiarism, 출제 파이프라인=problem, **judge=DB 접근 금지(이벤트만)**. 교차 접근은 API/이벤트로. Redis 용도는 ① 제출 rate limit ② 랭킹 sorted set ③ SSE 팬아웃 pub/sub.
 
 ## Main Database (PostgreSQL)
 
@@ -472,9 +472,9 @@ hub 소비 → DB 저장 → SSE로 arena 실시간 푸시
 | LLM 프레임워크 | LangChain | LlamaIndex | 생성 파이프라인 오케스트레이션에 적합 |
 | 메인 DB | PostgreSQL | MySQL | AI 서비스와 통일, pgvector 활용 |
 | 배포 | Docker Compose (초기) | Kubernetes (후속) | 초기 완주율 우선, 트래픽 발생 후 이관 |
-| AI 서비스 분해 | setter/scout 2분할 | 3분할(tester 독립) | 생성·검증은 한 파이프라인(경계는 스케일 특성에만) — scout만 모델 서빙이라 독립 |
-| 채점 결과 경로 | Kafka 결과토픽 → hub → SSE | judge 직접 DB 쓰기, WebSocket | 폴리글랏 스키마 이중 소유 방지, 단방향 알림엔 SSE로 충분 |
-| 파이프라인 오케스트레이션 | setter 내 상태머신 | Airflow 등 워크플로 엔진 | 파이프라인 1개 규모에 엔진은 과설계 |
+| AI 서비스 분해 | problem/plagiarism 2분할 | 3분할(tester 독립) | 생성·검증은 한 파이프라인(경계는 스케일 특성에만) — plagiarism만 모델 서빙이라 독립 |
+| 채점 결과 경로 | Kafka 결과토픽 → api → SSE | judge 직접 DB 쓰기, WebSocket | 폴리글랏 스키마 이중 소유 방지, 단방향 알림엔 SSE로 충분 |
+| 파이프라인 오케스트레이션 | problem 내 상태머신 | Airflow 등 워크플로 엔진 | 파이프라인 1개 규모에 엔진은 과설계 |
 
 
 # 14. 리스크 및 주의사항
@@ -500,7 +500,7 @@ hub 소비 → DB 저장 → SSE로 arena 실시간 푸시
 
 | 단계 | 목표 | 범위 |
 |---|---|---|
-| **M1** | 온라인 채점 코어 | Next.js(arena) + Kotlin/Spring(hub) + PostgreSQL, 수기 등록 문제, Go Judge + Docker Sandbox(격리), 동기 채점 |
+| **M1** | 온라인 채점 코어 | Next.js(web) + Kotlin/Spring(api) + PostgreSQL, 수기 등록 문제, Go Judge + Docker Sandbox(격리), 동기 채점 |
 | **M2** | 비동기 채점 | Kafka 도입, Judge Worker 분리, 제출량 처리 |
 | **M3** | AI 생성 파이프라인 | LLM API + LangChain 생성, 사람 검수 게이트 |
 | **M4** | 유사도/품질 검증 | 자체 임베딩 + pgvector 유사도, 정답 교차검증 자동화 |

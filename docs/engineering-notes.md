@@ -7,6 +7,20 @@
 
 ## 진행 중 논의 (Deliberation Log)
 
+### 서비스 네이밍 대장정 — 은유 → 기능명 → 2층 체계 (2026-07-25) → ✅ [ADR-0008](decisions/0008-service-naming-and-group.md)
+
+**계기**: 사용자 "이름들부터 다시 정하자". 경위가 교훈적이라 상세 기록:
+
+1. **은유의 해체**: 사용자 지적 "arena·hub는 그냥 frontend/backend 아닌가?" → 정확. judge·setter는 도메인 동사(전문가)라 역할명이 성립하지만, front/back은 **다역할 범용 표면**이라 역할명을 붙이면 코스프레가 됨. "역할이 드러나는 이름" 원칙을 전문가/범용에 일괄 적용한 게 무리수였음.
+2. **기능명(-er) 통일 시도와 실패**: web/api/grader/generator/matcher → author… 로 가던 중 사용자가 결함 발견 — **상위 이름이 하위 일부만 대표**(generator↛validation, embedding↛search). 행위자 체계의 구조적 한계.
+3. **2층 체계(사용자 제안, 채택)**: 상위=책임 영역(judge·problem·plagiarism), 하위=처리 단계(generation·validation·workflow / embedding·retrieval·scoring). 상위·하위가 다른 질문에 답해서 포괄 문제가 구조적으로 소멸. judge도 이 체계에선 정합(업계 표준어).
+4. **그룹명**: 사용자 질문 "platform도 옳은가?" → 내용물 직설 원칙으로 `services`(루트 = services/infra/docs 평행).
+5. 기각 기록: evaluator(=eval() 연상), producer(Kafka producer 충돌), grader/matcher/author(-er 체계와 함께).
+
+**부수 확정**: ① ADR 운영 규칙 — 개정 시 원문 동결+새 ADR(사용자 지적 "지우면 히스토리를 모른다"에서 옴. 문서 독자는 git log를 안 뒤진다) ② 인프라도 서비스별 Dockerfile(`infra/postgres/`— 사용자 지시를 "관행"으로 덮었던 것 시정, pgvector 확장 자리 겸용) ③ 시드 A안 — V2 시드를 `R__dev_seed`(Repeatable·멱등)로 분리, 프로파일로 운영 차단. "스키마는 api(앱) 소유가 맞나?" 논의 포함 — 앱 소유가 현대 표준(스키마·코드 동시 변경, 서비스별 소유권), DB 소유는 공유 DB+DBA 시대 모델.
+
+**실행**: `git mv` 3건(platform→services, arena→web, hub→api), Kotlin 패키지 개명, web fetch 헬퍼 `client.ts`(apiGet, API_URL). **함정 실증**: 일괄 sed가 적용된 Flyway V1 주석까지 건드려 체크섬 불일치로 기동 실패 → 원복(적용된 마이그레이션은 불변). 전 검증 그린.
+
 ### 전체 서비스 구성 리뷰 — 이음새 6규칙 + AI 3→2 병합 (2026-07-25) → ✅ [ADR-0006](decisions/0006-service-seams-and-ai-consolidation.md)
 
 **계기**: 백엔드 착수 전 "전체 구성에 개선할 부분이 없나" 리뷰. 결론: **서비스 목록은 건강, 구멍은 전부 서비스 "사이"(이음새)에 있었다.**
@@ -41,7 +55,7 @@
 
 **남은 것**: 인증/인가, 데이터 모델 수치화(ms·MB), 페이지네이션, hub→judge Kafka 계약(IDL).
 
-### 디자인 시스템 — LLM median UI 탈출 (2026-07-11) → ✅ 1차 도입 ([architecture/frontend-design-system.md](architecture/frontend-design-system.md))
+### 디자인 시스템 — LLM median UI 탈출 (2026-07-11) → ✅ 1차 도입 ([architecture/web-design-system.md](architecture/web-design-system.md))
 
 **문제 제기**: LLM으로 만든 POC UI는 어떤 모델이든 같은 인상(다크 미니멀, 테두리 둥근 박스 반복, 제네릭 블루, 시스템 폰트)으로 수렴한다. "이게 실제 괜찮은 건가, 아니면 초보 티인가?"
 
@@ -70,7 +84,7 @@
 
 **전환 계기**: 위 1차 도입은 **시각적으로 너무 보수적**이었다. 토큰 팔레트를 기존 zinc와 거의 같은 값으로, 브랜드도 파랑→파랑(#4f7cff→#3d5afe)으로 잡아서 **사용자가 "뭐가 바뀐 거냐"고 못 느낌**. 교훈: 토큰·서체·a11y 같은 *구조* 개선은 median 탈출에 필요조건이지 충분조건이 아니다. **비주얼은 과감한 결정을 안 하면 안 바뀐다.** ("median 탈출엔 취향 결정이 필요하다"고 말해놓고 정작 안 함 = 자기모순이었음.)
 
-**재정의**: 사용자가 "하드해도 좋으니 전문성 있게 재개편" 요청 → **강한 컨셉 우선**으로 전환. 컨셉 = **"Instrument"**(정밀 계기). 4기둥: 모노 구조 언어 / 각진 기하 / 시그널 앰버 / 계기형 배지. 상세는 [architecture/frontend-design-system.md](architecture/frontend-design-system.md).
+**재정의**: 사용자가 "하드해도 좋으니 전문성 있게 재개편" 요청 → **강한 컨셉 우선**으로 전환. 컨셉 = **"Instrument"**(정밀 계기). 4기둥: 모노 구조 언어 / 각진 기하 / 시그널 앰버 / 계기형 배지. 상세는 [architecture/web-design-system.md](architecture/web-design-system.md).
 
 **액센트 색 결정 과정**: 후보를 말로 고르지 않고 **임시 토글 위젯**(`data-accent` 속성 스위칭, `[TEMP]` 마킹으로 격리)을 만들어 **앰버/시안/라임/코발트를 실시간 비교**. 사용자가 직접 눈으로 보고 **앰버 확정**. → 교훈: 색 같은 취향 사안은 논쟁하지 말고 **비교 가능한 도구를 쥐여주는 게 빠르다.** 확정 후 토글 3지점(컴포넌트·CSS 블록·layout 마운트) 제거.
 

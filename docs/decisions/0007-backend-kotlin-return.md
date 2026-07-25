@@ -3,6 +3,7 @@
 - **상태**: Accepted
 - **일자**: 2026-07-25
 - **대체**: [ADR-0005](0005-backend-language-and-type-sharing.md) (Superseded)
+> **명칭 노트(2026-07-25)**: 이후 [ADR-0008](0008-service-naming-and-group.md)로 서비스명이 개편됨 — arena→web, hub→api, setter→problem, scout→plagiarism, tester→problem의 validation 단계, judge 유지. 본문은 당시 명칭 그대로다(원문 동결 원칙).
 
 ## 맥락
 

@@ -1,0 +1,5 @@
+# 운영 프로파일 오버라이드 (--spring.profiles.active=prod)
+# 더미데이터(db/seed) 차단 — 스키마 마이그레이션만 적용한다.
+spring:
+  flyway:
+    locations: classpath:db/migration

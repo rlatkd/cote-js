@@ -1,11 +1,12 @@
 # CoteJS 로컬 인프라 — 도커는 인프라 서비스만 담는다(개발용 세팅).
-# 앱(hub·arena)은 호스트에서 네이티브 실행: platform/hub → ./gradlew bootRun, platform/arena → pnpm dev.
+# 앱(api·web)은 호스트에서 네이티브 실행: services/api → ./gradlew bootRun, services/web → pnpm dev.
 # 사용: infra/ 에서  docker compose up -d          (후속: redis, kafka 추가 예정)
 # 이미지 버전은 LTS/안정판 기준.
 
 services:
   postgres:
-    image: postgres:16-alpine
+    build: ./postgres
+    image: cotejs-postgres:16
     container_name: cotejs-postgres
     restart: unless-stopped
     environment:

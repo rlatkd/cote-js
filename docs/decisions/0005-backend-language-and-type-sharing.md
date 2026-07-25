@@ -46,4 +46,4 @@
 - `@cotejs/contracts`가 `Problem·Submission` 타입 + zod 스키마 + 순수 도메인 함수(`acceptanceRate` 등)를 소유. arena의 `entities/*/model.ts`는 여기서 재수출만.
 - hub는 GET `/api/problems`·`/api/problems/:id`·`/api/submissions`, POST `/api/submissions`(zod 검증) 제공. arena의 Repository(`entities/*/api.ts`)가 mock → hub fetch로 교체됨(views·viewmodel 무변경).
 - 실제 채점은 여전히 **Judge(Go) 마일스톤**의 몫. hub는 제출을 영속화하고 "채점 중"으로 반환(POC stub).
-- 아키텍처 상세: [architecture/hub.md](../architecture/hub.md).
+- 아키텍처 상세: [architecture/api.md](../architecture/api.md).

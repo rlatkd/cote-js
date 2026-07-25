@@ -23,17 +23,19 @@
 - **ADR (Architecture Decision Record)**: 아키텍처 결정 1건당 1문서로 남기는 기록.
 - **샌드박스 (Sandbox)**: 신뢰할 수 없는 코드를 격리 실행하는 환경.
 - **자체 채점 엔진 (from-scratch judge)**: 오픈소스(Judge0 등)를 쓰지 않고 직접 구현한 채점 엔진.
-- **contracts / 짝 A**: (폐기 — [ADR-0007](decisions/0007-backend-kotlin-return.md)) 한때 arena·hub가 TS 타입을 공유하던 전략(ADR-0005). hub의 Kotlin 전환으로 폐기되고 **OpenAPI codegen 계약**으로 대체됨.
-- **OpenAPI codegen 계약**: hub(springdoc)가 생성한 `/v3/api-docs` 스펙을 arena가 `pnpm gen:api`로 타입 생성(`schema.d.ts`) + `contract-check.ts`가 컴파일 타임에 도메인 모델과 대조. 계약이 어긋나면 `next build` 실패.
+- **contracts (`@cotejs/contracts`)** *(폐기 — [ADR-0007](decisions/0007-backend-kotlin-return.md))*: 프론트·백이 함께 import하던 공유 타입 패키지. 도메인 타입 + zod 스키마의 단일 진실원이었다. 백엔드의 Kotlin 전환으로 폐기 → OpenAPI codegen 계약으로 대체.
+- **짝 A (pairing A)** *(폐기 — [ADR-0007](decisions/0007-backend-kotlin-return.md))*: 프론트·백엔드를 같은 TS로 두고 `contracts`로 타입을 공유하는 전략([ADR-0005](decisions/0005-backend-language-and-type-sharing.md)). 폴리글랏 경계는 IDL로 계약한다는 부분은 존치.
+- **OpenAPI codegen 계약**: api(springdoc)가 생성한 `/v3/api-docs` 스펙을 web이 `pnpm gen:api`로 타입 생성(`schema.d.ts`) + `contract-check.ts`가 컴파일 타임에 도메인 모델과 대조. 계약이 어긋나면 `next build` 실패.
 - **IDL (Interface Definition Language)**: 언어 중립 계약 정의(Protobuf/Avro·OpenAPI). 서로 다른 언어 서비스 간 메시지·API 계약에 사용.
 
-## 서비스 네이밍
+## 서비스 네이밍 — 2층 체계 ([ADR-0008](decisions/0008-service-naming-and-group.md))
 
-폴더명이 곧 역할이다(경쟁 프로그래밍 도메인 용어). 상세: [ADR-0003](decisions/0003-monorepo-structure.md).
+**상위 = 책임 영역**(무엇을 담당), **하위 = 처리 단계**(어떤 순서로). 그룹 폴더는 `services/`.
 
-- **arena**: 참가자가 문제를 풀고 제출하는 경기장 = 프론트엔드(Next.js).
-- **hub**: 유저·문제·제출·랭킹을 잇는 중심 = 백엔드 API(Kotlin + Spring Boot, [ADR-0007](decisions/0007-backend-kotlin-return.md)).
-- **judge**: 제출을 채점 = 채점 엔진(Go).
-- **setter**: 문제를 출제("problem setter") = AI 생성 + 품질 검증 + 파이프라인 지휘(Python). 실제 CP처럼 출제자가 문제와 테스트 검증을 함께 담당.
-- **scout**: 기존 문제와 중복을 정찰 = 유사도 검증(Python, 임베딩 서빙이라 독립 서비스).
-- **tester**: ~~독립 서비스~~ → setter 내부의 **검증 모듈** 이름으로 강등([ADR-0006](decisions/0006-service-seams-and-ai-consolidation.md)). 출제 전 정답 교차검증·TC 변별력 확인 단계.
+- **web** *(구 arena)*: 프론트엔드(Next.js + TS) — 사용자 화면.
+- **api** *(구 hub)*: 백엔드(Kotlin + Spring, [ADR-0007](decisions/0007-backend-kotlin-return.md)) — 비즈니스 로직·데이터·오케스트레이션. 문제 **서빙** 담당(제작은 problem).
+- **judge**: 코드 채점(Go) — executor → sandbox → verdict (+consumer, M2). online judge는 업계 표준어라 유지.
+- **problem** *(구 setter)*: 문제 **제작 공정**(Python) — generation → validation → workflow. validation이 구 tester([ADR-0006](decisions/0006-service-seams-and-ai-consolidation.md) 병합) 단계.
+- **plagiarism** *(구 scout)*: 표절 탐지(Python) — embedding → retrieval → scoring. 임베딩 모델 상주라 독립 서비스.
+
+> 구명(arena·hub·setter·scout·tester)은 2026-07-25 이전 문서·커밋에 등장한다 — 경위는 [ADR-0008](decisions/0008-service-naming-and-group.md), 원문은 [ADR-0003](decisions/0003-monorepo-structure.md)(동결).
