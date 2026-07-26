@@ -1,0 +1,49 @@
+// 판정 결과 — judge → api. api가 소비해 DB 저장 + SSE 푸시(judge는 DB 접근 금지, ADR-0006).
+// 토픽: submission.result
+// 초안(Draft): judge 구현 착수 시 실코드로 검증하며 확정한다.
+syntax = "proto3";
+
+package judge.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "com.cotejs.contracts.judge.v1";
+option java_multiple_files = true;
+option go_package = "github.com/rlatkd/cotejs/contracts/judge/v1;judgev1";
+
+enum Verdict {
+  VERDICT_UNSPECIFIED = 0;
+  VERDICT_ACCEPTED = 1;
+  VERDICT_WRONG_ANSWER = 2;
+  VERDICT_COMPILE_ERROR = 3;
+  VERDICT_RUNTIME_ERROR = 4;
+  VERDICT_TIME_LIMIT_EXCEEDED = 5;
+  VERDICT_MEMORY_LIMIT_EXCEEDED = 6;
+  // 채점 시스템 자체 장애(샌드박스 기동 실패 등) — 유저 귀책이 아니므로 구분.
+  VERDICT_INTERNAL_ERROR = 7;
+}
+
+message CaseResult {
+  uint32 no = 1;
+  Verdict verdict = 2;
+  uint32 exec_time_ms = 3;
+  uint32 memory_used_kb = 4;
+}
+
+message JudgeResult {
+  int64 submission_id = 1;
+
+  // 종합 판정 — 첫 실패 케이스의 판정(모두 통과 시 ACCEPTED).
+  Verdict verdict = 2;
+
+  // 종합 수치 — 케이스 최대값.
+  uint32 exec_time_ms = 3;
+  uint32 memory_used_kb = 4;
+
+  repeated CaseResult cases = 5;
+
+  // COMPILE_ERROR·INTERNAL_ERROR 상세(컴파일러 출력 등). 그 외엔 빈 문자열.
+  string error_message = 6;
+
+  google.protobuf.Timestamp judged_at = 7;
+}

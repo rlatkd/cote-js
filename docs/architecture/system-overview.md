@@ -24,7 +24,8 @@
 | PostgreSQL + pgvector | 임베딩 | plagiarism |
 | PostgreSQL | 출제 파이프라인(초안·검증·검수 상태) | problem |
 | Redis | ① 제출 rate limiting ② 랭킹 리더보드(sorted set) ③ SSE 팬아웃 pub/sub | api |
-| Kafka | 제출·결과 토픽 (QoS 3레인) | — |
+| Kafka | 제출 토픽 `submission.{run,submit,batch}`(QoS 3레인) + 결과 토픽 `submission.result` ([ADR-0009](../decisions/0009-judge-kickoff-async-and-contracts.md)) | — (계약은 [`contracts/`](../../contracts/) Protobuf) |
+| MinIO (S3 호환) | 테스트케이스 번들 — claim-check([ADR-0009](../decisions/0009-judge-kickoff-async-and-contracts.md)): 메시지엔 키+해시만, judge는 해시 기준 로컬 캐시 | api (업로드; M3~ problem 번들 합류) |
 
 ## 두 갈래 데이터 흐름
 
@@ -41,15 +42,16 @@
 ### 2) 사용자 제출·채점 (온라인) — 결과는 이벤트로 회귀
 
 ```
-web 제출 → api(rate limit) → Kafka 제출 토픽 → judge
-judge: Docker Sandbox 실행 → 판정 → Kafka 결과 토픽
+web 제출 → api(rate limit) → Kafka 제출 토픽(submission.run|submit|batch) → judge
+judge: MinIO에서 테스트 번들 확보(해시 캐시) → Sandbox 실행 → 판정 → Kafka 결과 토픽(submission.result)
 api: 결과 소비 → DB 저장 → SSE로 web 실시간 푸시
 ```
 
-- **judge는 DB에 쓰지 않는다** — 결과 이벤트만 발행(폴리글랏 스키마 공유 금지).
+- **judge는 DB에 쓰지 않는다** — 결과 이벤트만 발행(폴리글랏 스키마 공유 금지). 테스트케이스도 DB가 아닌 MinIO 번들 참조로 받는다(claim-check, [ADR-0009](../decisions/0009-judge-kickoff-async-and-contracts.md)).
 - 실행 요청은 **QoS 3레인**: `run`(예제 실행, 인터랙티브 저지연) / `submit`(정식 제출) / `batch`(problem 검증, 최저 우선순위). 배치가 유저 제출을 굶기지 않는다.
-- 샌드박스 격리(seccomp/cgroups/네트워크 차단)는 필수 — Judge 착수 시 보안 노트로 상세화.
+- 처음부터 비동기(Kafka) — 동기 채점 중간 단계는 폐지([ADR-0009](../decisions/0009-judge-kickoff-async-and-contracts.md) — 구 M1/M2 통합).
+- 샌드박스 격리(seccomp/cgroups/네트워크 차단)는 필수 — Judge 착수 시 보안 노트로 상세화. 첫 슬라이스의 격리 수준·언어 범위·SSE 포함 여부는 착수 시 결정(보류 3건, [ADR-0009](../decisions/0009-judge-kickoff-async-and-contracts.md)).
 
 ## 마일스톤과의 관계
 
-전체를 한 번에 만들지 않고 M1~M5로 세로 슬라이스 구현([TODO](../TODO.md)). 현재: web(Next) + api(Kotlin/Spring) + Postgres가 연결돼 문제·제출을 실제 DB에서 서빙(채점은 stub, Judge 마일스톤 예정). 사람 검수 UI(web admin + api admin API)는 M3 범위.
+전체를 한 번에 만들지 않고 M1~M5로 세로 슬라이스 구현([TODO](../TODO.md)). M1은 비동기 채점 코어(구 M1 동기+M2 Kafka를 통합 — [ADR-0009](../decisions/0009-judge-kickoff-async-and-contracts.md)), M2는 채점 스케일아웃. 현재: web(Next) + api(Kotlin/Spring) + Postgres가 연결돼 문제·제출을 실제 DB에서 서빙(채점은 stub), **Kafka(KRaft)·MinIO 인프라와 Protobuf 계약 초안까지 구축** — judge 구현이 다음. 사람 검수 UI(web admin + api admin API)는 M3 범위.

@@ -26,7 +26,10 @@
 - **contracts (`@cotejs/contracts`)** *(폐기 — [ADR-0007](decisions/0007-backend-kotlin-return.md))*: 프론트·백이 함께 import하던 공유 타입 패키지. 도메인 타입 + zod 스키마의 단일 진실원이었다. 백엔드의 Kotlin 전환으로 폐기 → OpenAPI codegen 계약으로 대체.
 - **짝 A (pairing A)** *(폐기 — [ADR-0007](decisions/0007-backend-kotlin-return.md))*: 프론트·백엔드를 같은 TS로 두고 `contracts`로 타입을 공유하는 전략([ADR-0005](decisions/0005-backend-language-and-type-sharing.md)). 폴리글랏 경계는 IDL로 계약한다는 부분은 존치.
 - **OpenAPI codegen 계약**: api(springdoc)가 생성한 `/v3/api-docs` 스펙을 web이 `pnpm gen:api`로 타입 생성(`schema.d.ts`) + `contract-check.ts`가 컴파일 타임에 도메인 모델과 대조. 계약이 어긋나면 `next build` 실패.
-- **IDL (Interface Definition Language)**: 언어 중립 계약 정의(Protobuf/Avro·OpenAPI). 서로 다른 언어 서비스 간 메시지·API 계약에 사용.
+- **IDL (Interface Definition Language)**: 언어 중립 계약 정의(Protobuf/Avro·OpenAPI). 서로 다른 언어 서비스 간 메시지·API 계약에 사용. 이 프로젝트의 채택은 **Protobuf**([ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md)), 스키마 거처는 루트 [`contracts/`](../contracts/)([ADR-0010](decisions/0010-contracts-root-group.md)) — 구 `@cotejs/contracts` 패키지와 이름만 같고 다른 것(그건 동일 언어 타입 공유, 이건 폴리글랏 IDL 저장소).
+- **claim-check 패턴**: 대형 페이로드를 메시지에 싣지 않고 외부 저장소(오브젝트 스토리지)에 두고 **참조(키+해시)만 메시지에 싣는** 패턴. 테스트케이스 번들에 적용 — Kafka 메시지 상한(기본 ~1MB)·반복 운반 문제를 해소([ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md)).
+- **KRaft**: ZooKeeper 없이 Kafka 자체 Raft 쿼럼으로 메타데이터를 관리하는 모드. Kafka 4.0부터 ZooKeeper 완전 제거 — 신규 구축의 표준. 개발 환경은 broker+controller 겸직 단일 노드.
+- **MinIO**: S3 호환 오브젝트 스토리지. 로컬 개발에서 테스트케이스 번들 저장소(버킷 `testdata`)로 사용, 배포 시 실제 S3로 교체 가능한 자리.
 
 ## 서비스 네이밍 — 2층 체계 ([ADR-0008](decisions/0008-service-naming-and-group.md))
 

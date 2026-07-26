@@ -7,6 +7,22 @@
 
 ## 진행 중 논의 (Deliberation Log)
 
+### Judge 착수 논의 — Kafka 직행·claim-check·Protobuf (2026-07-26) → ✅ [ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md)·[0010](decisions/0010-contracts-root-group.md)
+
+**계기**: 커밋 완료 후 다음 작업 = Judge 착수. 논의 어젠다 6개를 의존 순서로 정리(① 착수 범위 ② 테스트케이스 전달 ③ IDL ④ 샌드박스·개발환경 ⑤ 언어 범위 ⑥ SSE) — **①~③ 확정, ④~⑥은 사용자 지정으로 착수 시 결정 보류**(추천안은 ADR-0009에 기록).
+
+- **① Kafka 직행**: 구 로드맵 M1(동기)/M2(Kafka) 분할이 ADR-0006(이음새=Kafka 확정) 이전의 계획이라는 모순 발견 → 동기 채점은 "대체가 결정된 구조물"로 판정, 폐지. 점진성은 개발 순서(judge 코어 전송 무관 선검증 → Kafka 어댑터 부착)로 확보. "동기→비동기 전환" 포트폴리오 서사는 사용자 타 프로젝트와 중복이라 가치 없음.
+- **② claim-check**: judge DB 금지 상태에서 테스트케이스 조달 문제. 인라인(Kafka 1MB 상한·batch 레인 반복 운반 폭발)·api HTTP 조회(동기 결합 뒷문 재도입) 배제 → MinIO 번들 + 메시지엔 키+sha256, judge 해시 캐시(무효화 내장). 히든 테스트케이스 소유자=api(단일 작성자 유지).
+- **③ Protobuf**: Avro+Schema Registry(Kafka 정석이나 Registry 인프라·Confluent 와이어 포맷 무게 + Go 코드젠 열세)와 비교 — **폴리글랏 경계가 judge 하나가 아니라 M3 AI(Python)까지라 단일 IDL의 정합성이 결정타**. Registry는 Protobuf도 지원 → 배타 선택 아님, 보류로.
+- **③-부속 → ADR-0010**: `.proto` 거처 문제 — 계약은 서비스 소유물이 아닌데 루트가 3개념(0008)이라 자리가 없음 → 루트 `contracts/` 신설(4개념, 0008 개정). api 안에 두기 배제(결과 스키마는 judge 발행이라 api가 주인일 근거 약함 + Go 빌드가 남의 서비스 폴더 참조). 구 contracts 패키지와의 혼동 주의를 ADR에 명시.
+- **Kafka 구성 문답**: KRaft 단일노드(ZK는 4.0에서 제거), apache/kafka 4.1.2(안정판 정책 — 최신 4.3.1 회피), 이중 리스너(호스트 네이티브 앱 localhost:9092 / 내부 kafka:29092 — advertised.listeners 함정), 토픽 명시 생성(자동 생성 비활성).
+
+**Kafka Streams 적용 후보 (사용자 발제 "Streams 필요없나?" → 현 범위 미적용 확정, 후보 브레인스토밍)**:
+- 현 범위 미적용 근거: 전 구간이 단순 produce/consume(이벤트 운반) — 스트림 변환·조인·집계 없음. judge는 Go라 Streams(JVM 전용) 불가. 리더보드는 Redis로 기확정.
+- **유력 후보**: ① **채점 SLA 모니터링** — 제출↔결과 토픽 stream-stream join으로 채점 소요시간 산출 + "N초 내 결과 없음" 감지(가장 Streams다운 조인 사례, QoS 레인별 지연 증명 시너지) ② **실시간 플랫폼 통계** — 윈도우 집계(분당 제출량·언어 분포·정답률 추이) → admin 대시보드 SSE ③ **콘테스트 실시간 스코어보드**(M5 콘테스트 전제) ④ **이상 패턴 탐지**(답 유출 시그널 등 — Redis rate limit 너머의 윈도우 패턴).
+- **탈락 후보**: 정답 필터→plagiarism 전달(필터+라우팅뿐, 일반 컨슈머로 충분), problem 파이프라인 진행 집계(워크플로 상태 주인=problem — 소유권 분열).
+- **구조 파급 메모**: 도입 시 api 내장이 아닌 별도 경량 서비스(가칭 `analytics` — 상태 저장 스트림 연산은 다르게 스케일하는 워크로드)가 맞음. 진입점 추천 = ①+②, 시점 = 결과토픽에 실데이터가 흐른 뒤. 재검토 트리거는 TODO 보류란.
+
 ### 서비스 네이밍 대장정 — 은유 → 기능명 → 2층 체계 (2026-07-25) → ✅ [ADR-0008](decisions/0008-service-naming-and-group.md)
 
 **계기**: 사용자 "이름들부터 다시 정하자". 경위가 교훈적이라 상세 기록:

@@ -128,6 +128,8 @@
 ```
 
 > **서비스 이음새 규칙([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md))**: ① judge는 DB 접근 금지 — 결과는 Kafka 이벤트로만, api가 소비해 저장·SSE 푸시 ② DB 스키마당 단일 작성자(api=코어 / plagiarism=임베딩 / problem=파이프라인) ③ 실행 QoS 3레인 — `run`(예제 실행, 저지연)/`submit`(정식 제출)/`batch`(problem 검증, 최저 우선) 분리로 배치가 유저 제출을 굶기지 않음 ④ 오프라인 파이프라인 지휘자 = problem ⑤ 사람 검수 UI = web admin 라우트 + api admin API ⑥ Redis = 제출 rate limit·랭킹 sorted set·SSE 팬아웃 pub/sub.
+>
+> **채점 이음새 구현 방식([ADR-0009](docs/decisions/0009-judge-kickoff-async-and-contracts.md))**: 테스트케이스는 **claim-check** — MinIO 번들에 두고 메시지에는 참조(키+해시)만, judge는 해시 기준 로컬 캐시. 계약은 **Protobuf**(루트 [`contracts/`](contracts/), [ADR-0010](docs/decisions/0010-contracts-root-group.md)). 토픽: `submission.{run,submit,batch}` + `submission.result`.
 
 # 3. AI Problem Generation Service
 
@@ -455,6 +457,8 @@ api 소비 → DB 저장 → SSE로 web 실시간 푸시
 | Message Queue | Kafka |
 | Judge Server | Go |
 | Sandbox | Docker (격리 강화) |
+| Object Storage | MinIO (S3 호환) — 테스트케이스 번들(claim-check) |
+| IDL | Protobuf (루트 `contracts/`) — api↔judge, (M3~) api↔AI |
 | Deployment | Docker Compose (초기) → Kubernetes (후속) |
 | Cloud | AWS |
 
@@ -474,6 +478,9 @@ api 소비 → DB 저장 → SSE로 web 실시간 푸시
 | 배포 | Docker Compose (초기) | Kubernetes (후속) | 초기 완주율 우선, 트래픽 발생 후 이관 |
 | AI 서비스 분해 | problem/plagiarism 2분할 | 3분할(tester 독립) | 생성·검증은 한 파이프라인(경계는 스케일 특성에만) — plagiarism만 모델 서빙이라 독립 |
 | 채점 결과 경로 | Kafka 결과토픽 → api → SSE | judge 직접 DB 쓰기, WebSocket | 폴리글랏 스키마 이중 소유 방지, 단방향 알림엔 SSE로 충분 |
+| 채점 착수 경로 | Kafka 직행 (구 M1/M2 통합) | 동기 HTTP 채점 선행 | 이음새가 이미 Kafka로 확정([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)) — 대체가 결정된 동기 단계는 폐기 코드([ADR-0009](docs/decisions/0009-judge-kickoff-async-and-contracts.md)) |
+| 테스트케이스 전달 | claim-check (MinIO 번들 + 메시지엔 키·해시) | 메시지 인라인, judge→api HTTP 조회 | Kafka 1MB 상한·반복 운반 / 동기 결합 재도입 — 참조+로컬 캐시가 표준([ADR-0009](docs/decisions/0009-judge-kickoff-async-and-contracts.md)) |
+| api↔judge IDL | Protobuf (루트 `contracts/`) | Avro+Schema Registry(보류), JSON Schema | Go 코드젠 1급 + AI 경계(M3~)까지 단일 IDL. Registry는 추후 추가 가능([ADR-0009](docs/decisions/0009-judge-kickoff-async-and-contracts.md), [0010](docs/decisions/0010-contracts-root-group.md)) |
 | 파이프라인 오케스트레이션 | problem 내 상태머신 | Airflow 등 워크플로 엔진 | 파이프라인 1개 규모에 엔진은 과설계 |
 
 
@@ -500,8 +507,8 @@ api 소비 → DB 저장 → SSE로 web 실시간 푸시
 
 | 단계 | 목표 | 범위 |
 |---|---|---|
-| **M1** | 온라인 채점 코어 | Next.js(web) + Kotlin/Spring(api) + PostgreSQL, 수기 등록 문제, Go Judge + Docker Sandbox(격리), 동기 채점 |
-| **M2** | 비동기 채점 | Kafka 도입, Judge Worker 분리, 제출량 처리 |
+| **M1** | 온라인 채점 코어(비동기) | Next.js(web) + Kotlin/Spring(api) + PostgreSQL, 수기 등록 문제, Go Judge + Sandbox, **Kafka 제출·결과 토픽(QoS 3레인) + MinIO claim-check** — 구 M1(동기)+M2(Kafka)를 통합, 동기 채점 단계 폐지([ADR-0009](docs/decisions/0009-judge-kickoff-async-and-contracts.md)) |
+| **M2** | 채점 스케일아웃 | Judge Worker 수평 확장, SSE Redis pub/sub 전환, 제출량 처리 |
 | **M3** | AI 생성 파이프라인 | LLM API + LangChain 생성, 사람 검수 게이트 |
 | **M4** | 유사도/품질 검증 | 자체 임베딩 + pgvector 유사도, 정답 교차검증 자동화 |
 | **M5** | 운영 고도화 | Kubernetes 이관, 모니터링/로깅, 랭킹·통계·콘테스트 |

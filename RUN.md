@@ -1,6 +1,6 @@
 # 로컬 실행
 
-현재 구현된 것: **Postgres(도커) · api(Kotlin + Spring Boot) · web(Next 프론트)**
+현재 구현된 것: **인프라(도커: Postgres·Kafka·MinIO) · api(Kotlin + Spring Boot) · web(Next 프론트)**
 
 > 도커는 **인프라만** 담는다(개발용 세팅). 앱은 호스트에서 네이티브 실행 — 핫리로드·디버거를 위해.
 
@@ -13,7 +13,7 @@
 ## 서버 켜기 (순서대로)
 
 ```bash
-# 1) 인프라 (Postgres :5432)
+# 1) 인프라 — Postgres :5432, Kafka :9092(토픽 자동 init), MinIO :9000(API)/:9001(콘솔, cotejs/cotejs-dev)
 cd infra && docker compose up -d
 
 # 2) api (:4000) — 기동 시 Flyway가 스키마(V1)+dev 시드(R__) 자동 적용
@@ -37,6 +37,8 @@ cd infra && docker compose down    # DB 중지 (데이터 유지. 초기화하�
 ```bash
 curl http://localhost:4000/api/problems       # 문제 목록(JSON, 시드 7문제)
 curl http://localhost:4000/api/submissions    # 제출 목록(JSON)
+docker exec cotejs-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list   # 토픽 4종
+curl -s http://localhost:9000/minio/health/live -o /dev/null -w "%{http_code}\n"                   # MinIO 200
 ```
 
 ## API 계약 타입 재생성 (api 응답 계약이 바뀌었을 때)

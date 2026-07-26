@@ -1,12 +1,12 @@
 # 시작하기
 
-현재 실행 가능한 것: **web(Next 프론트) · api(Kotlin + Spring Boot API) · Postgres(도커)**. 문제·제출을 실제 DB에서 서빙한다(채점은 stub — Judge 마일스톤 예정).
+현재 실행 가능한 것: **web(Next 프론트) · api(Kotlin + Spring Boot API) · 인프라(도커: Postgres·Kafka·MinIO)**. 문제·제출을 실제 DB에서 서빙한다(채점은 stub — judge 구현이 다음. Kafka 토픽·MinIO 버킷은 기동 시 자동 생성됨).
 
 ## 사전 요구
 
 - Node.js 22 LTS + pnpm 10+ (개발 환경 11) — web
 - JDK 21 LTS — api (Gradle은 래퍼 `./gradlew` 사용, 별도 설치 불필요)
-- Docker + Docker Compose — Postgres 구동 (도커는 인프라 전용, 개발용 세팅)
+- Docker + Docker Compose — 인프라(Postgres·Kafka·MinIO) 구동 (도커는 인프라 전용, 개발용 세팅)
 
 ## 실행
 

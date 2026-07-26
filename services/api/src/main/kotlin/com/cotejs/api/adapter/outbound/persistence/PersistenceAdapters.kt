@@ -51,7 +51,9 @@ class ProblemPersistenceAdapter(
             inputDesc = inputDesc,
             outputDesc = outputDesc,
             examples = examples.sortedBy { it.ord }.map { Example(it.input, it.output) },
-            starterCode = json.readValue(starterCode.asString()),
+            // JSONB는 asArray()로 받아 Jackson이 UTF-8로 해석하게 한다.
+            // asString()은 JVM 기본 문자셋 디코딩이라 Windows(MS949)에서 한글이 깨진다.
+            starterCode = json.readValue(starterCode.asArray()),
         )
 }
 

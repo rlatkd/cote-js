@@ -4,8 +4,8 @@
 
 ## 로드맵 (마일스톤)
 
-- [ ] **M1 온라인 채점 코어** — web(Next) + api(Kotlin/Spring) + PostgreSQL, 수기 등록 문제, Go Judge + Docker 샌드박스(격리), 동기 채점 *(web·api·DB 연결 ✅ / Judge·실채점 남음)*
-- [ ] **M2 비동기 채점** — Kafka 도입, Judge Worker 분리
+- [ ] **M1 온라인 채점 코어(비동기)** — web(Next) + api(Kotlin/Spring) + PostgreSQL *(연결 ✅)*, 수기 등록 문제, Go Judge + 샌드박스, **Kafka 제출·결과 토픽(QoS 3레인) + MinIO claim-check** *(구 M1+M2 통합 — 동기 채점 단계 폐지, [ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md))*
+- [ ] **M2 채점 스케일아웃** — Judge Worker 수평 확장, SSE Redis pub/sub 전환, 제출량 처리 *(구 M2에서 Kafka 도입이 M1로 이동한 잔여)*
 - [ ] **M3 AI 생성 파이프라인** — LLM API + LangChain 생성, 사람 검수 게이트
 - [ ] **M4 유사도/품질 검증** — 자체 임베딩 + pgvector 유사도, 정답 교차검증 자동화
 - [ ] **M5 운영 고도화** — Kubernetes 이관, 모니터링/로깅, 랭킹·통계·콘테스트
@@ -62,13 +62,25 @@
 - [x] **시드 분리(A안)** — `V2__seed.sql` → `db/seed/R__dev_seed.sql`(Repeatable·멱등), `spring.flyway.locations` 프로파일 제어(prod는 스키마만). 빈 DB에서 기동 한 방 재현 검증(7문제·10제출)
 - [x] 검증 — api 리네임 후 컴파일·기동·curl 그린, web 빌드·4라우트 그린. 함정 재확인: 적용된 V 마이그레이션은 주석도 불변(체크섬)
 
+## 현재 스프린트: Judge 착수 — 설계 확정 + 기반 구축 (2026-07-26) 🔄
+
+- [x] **착수 설계 확정** — ① Kafka 직행(구 M1/M2 통합 — 동기 채점 단계 폐지) ② 테스트케이스 = claim-check(MinIO 번들, 메시지엔 키+해시) ③ IDL = Protobuf(Schema Registry 보류). [ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md)
+- [x] **루트 `contracts/` 신설** — 언어 중립 IDL 거처, 루트 3→4개념(ADR-0008 개정). [ADR-0010](decisions/0010-contracts-root-group.md)
+- [x] `contracts/proto/judge/v1` 초안(submission·result) — **확정은 judge 구현 시**(코드젠 도구 포함)
+- [x] infra 확장 — kafka(KRaft 단일노드, apache/kafka 4.1.2, 이중 리스너)·minio Dockerfile + compose, 토픽 4종(`submission.run/submit/batch/result`)·`testdata` 버킷 명시 생성. 기동·init 검증 그린
+- [ ] **착수 시 결정 3건 (보류 — 사용자 지정, 추천안은 [ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md) '보류' 절)**: ① 샌드박스 수준(Docker 격리 → 커널 직접 제어 시점) ② 첫 슬라이스 언어 범위 ③ SSE 포함 여부
+- [ ] judge 코어 구현(executor·sandbox — 전송 무관, 테스트/CLI 검증) → Kafka 어댑터 → api 프로듀서·결과 컨슈머 → web 결과 표시
+- [ ] 시드에 히든 테스트케이스 추가 + api 번들 업로드(MinIO) + [data-model](architecture/data-model.md)·`timeLimit/memoryLimit` 수치화(proto는 수치 — ms·MB) 함께
+- [ ] Judge 착수 시 함께: 보안 노트 신설, `architecture/judge.md` 작성
+
 ## 보류 / 추후 재논의 (Deferred)
 
 - [ ] api 후속: 인증/인가, 랭킹·통계(Redis sorted set), 페이지네이션, 제출 rate limiting(Redis)
-- [ ] Judge 마일스톤: 제출→judge Kafka 연결 — 제출·결과 토픽 IDL 확정, QoS 3레인, api 결과 소비→SSE 푸시([ADR-0006](decisions/0006-service-seams-and-ai-consolidation.md))
 - [ ] M3 범위: 사람 검수 게이트 UI — web admin 라우트(검수 큐) + api admin API
-- [ ] 데이터 모델 refine: `timeLimit`/`memoryLimit` 문자열 → 수치(ms·MB)
-- [ ] AI/Judge 아키텍처 확정 시 [architecture/](architecture/) 상세화 (judge.md/problem.md/plagiarism.md)
-- [ ] 폴리글랏 경계 계약: api↔judge, api↔AI를 IDL(Protobuf/Avro·OpenAPI)로 정의
+- [ ] AI 아키텍처 확정 시 [architecture/](architecture/) 상세화 (problem.md/plagiarism.md)
+- [ ] api↔AI(problem·plagiarism) 경계 계약 — M3 착수 시 정의(방침: Protobuf 단일 IDL, [ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md))
+- [ ] **Kafka Streams 재검토** — 실시간 통계·채점 SLA 모니터링 등 스트림 집계 요구가 기능으로 들어올 때. 적용 후보·탈락 후보는 [engineering-notes](engineering-notes.md)
+- [ ] **Avro + Schema Registry 재검토** — 스키마 거버넌스(호환성 강제) 필요 시. Registry는 Protobuf도 지원하므로 IDL 교체 없이 추가 가능
+- [ ] SSE 팬아웃 Redis pub/sub 전환 — api 다중 인스턴스(M2) 시점
 - [ ] 데이터 라이선스 문제 결론 (공개 데이터셋 vs 자체 시드 문제)
-- [ ] 향후 문서 생성: 보안 노트(Judge 착수 시), 테스트 전략(테스트 도입 시), 배포 런북(K8s 시) — 데이터 모델은 [architecture/data-model.md](architecture/data-model.md)로 완료
+- [ ] 향후 문서 생성: 테스트 전략(테스트 도입 시), 배포 런북(K8s 시) — 데이터 모델은 [architecture/data-model.md](architecture/data-model.md)로 완료

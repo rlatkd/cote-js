@@ -52,3 +52,9 @@ kotlin {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
+
+// Gradle이 포크 JVM에 데몬의 네이티브 인코딩(-Dfile.encoding)을 넘겨
+// Windows(MS949)에서 JEP 400의 UTF-8 기본값이 덮이는 것을 차단
+tasks.withType<JavaExec> {
+	defaultCharacterEncoding = "UTF-8"
+}

@@ -1,7 +1,7 @@
 # CoteJS 로컬 인프라 — 도커는 인프라 서비스만 담는다(개발용 세팅).
-# 앱(api·web)은 호스트에서 네이티브 실행: services/api → ./gradlew bootRun, services/web → pnpm dev.
-# 사용: infra/ 에서  docker compose up -d          (후속: redis, kafka 추가 예정)
-# 이미지 버전은 LTS/안정판 기준.
+# 앱(api·web·judge)은 호스트에서 네이티브 실행: services/api → ./gradlew bootRun, services/web → pnpm dev.
+# 사용: infra/ 에서  docker compose up -d          (후속: redis 추가 예정 — SSE Redis 전환·rate limit 시)
+# 이미지 버전은 LTS/안정판 기준, 각 서비스 Dockerfile에서 고정.
 
 services:
   postgres:
@@ -23,5 +23,93 @@ services:
       timeout: 5s
       retries: 10
 
+  # KRaft 단일 노드(broker+controller 겸직) — ADR-0009 결정 4.
+  # 리스너 2개: HOST(호스트 네이티브 앱용 localhost:9092) / DOCKER(compose 내부용 kafka:29092).
+  # advertised.listeners가 접속 경로별로 맞아야 한다 — 브로커가 메타데이터로 "다음부터 이 주소로 와라"를
+  # 알려주기 때문에, 내부 클라이언트에 localhost를 advertise하면 자기 자신에게 접속하게 된다(대표 함정).
+  kafka:
+    build: ./kafka
+    image: cotejs-kafka:4.1
+    container_name: cotejs-kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_LISTENERS: HOST://0.0.0.0:9092,DOCKER://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: HOST://localhost:9092,DOCKER://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: HOST:PLAINTEXT,DOCKER:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # 토픽은 kafka-init에서 명시 생성 — 암묵 생성은 파티션·보존 설정이 기본값으로 굳는다.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      # 단일 노드라 내부 토픽 복제 계수 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes:
+      - cotejs-kafkadata:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  # 토픽 명시 생성(one-shot) — submission.{run,submit,batch}(QoS 3레인) + submission.result. ADR-0006·0009.
+  kafka-init:
+    image: cotejs-kafka:4.1
+    container_name: cotejs-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        for t in submission.run submission.submit submission.batch submission.result; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 \
+            --create --if-not-exists --topic "$$t" --partitions 1 --replication-factor 1
+        done
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list
+
+  # 테스트케이스 번들 저장소(claim-check) — ADR-0009 결정 2. S3 API :9000, 웹 콘솔 :9001.
+  minio:
+    build: ./minio
+    image: cotejs-minio:2025-09
+    container_name: cotejs-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: cotejs
+      MINIO_ROOT_PASSWORD: cotejs-dev
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - cotejs-miniodata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # 버킷 명시 생성(one-shot) — testdata(테스트케이스 번들)
+  minio-init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    container_name: cotejs-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mc alias set local http://minio:9000 cotejs cotejs-dev
+        mc mb --ignore-existing local/testdata
+        mc ls local
+
 volumes:
   cotejs-pgdata:
+  cotejs-kafkadata:
+  cotejs-miniodata:

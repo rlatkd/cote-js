@@ -21,4 +21,6 @@
 | [0005](0005-backend-language-and-type-sharing.md) | 백엔드 언어 재선정 + 프론트·백 타입 공유(짝 A) | Superseded by 0007 |
 | [0006](0006-service-seams-and-ai-consolidation.md) | 서비스 이음새 규칙 + AI 서비스 병합(3→2) | Accepted |
 | [0007](0007-backend-kotlin-return.md) | 백엔드 Kotlin+Spring 복귀 — 모던 스택 제약 + OpenAPI 계약 | Accepted |
-| [0008](0008-service-naming-and-group.md) | 서비스 네이밍·그룹 개편 — `services/` + 2층 체계 | Accepted |
+| [0008](0008-service-naming-and-group.md) | 서비스 네이밍·그룹 개편 — `services/` + 2층 체계 | Accepted (루트 구성 항목 0010으로 개정) |
+| [0009](0009-judge-kickoff-async-and-contracts.md) | Judge 착수 설계 — Kafka 직행(M1/M2 통합) + claim-check + Protobuf | Accepted |
+| [0010](0010-contracts-root-group.md) | 루트 `contracts/` 신설 — 언어 중립 IDL 거처 (0008 개정) | Accepted |

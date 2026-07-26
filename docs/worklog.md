@@ -6,6 +6,21 @@
 
 ---
 
+## 2026-07-26 19:38 — Judge 착수 설계 확정(ADR-0009·0010) + contracts/·Kafka·MinIO 기반 구축
+
+- **한 일**: ① Judge 착수 논의(어젠다 6개) — **①Kafka 직행(구 M1/M2 통합, 동기 채점 폐지) ②테스트케이스=claim-check(MinIO) ③IDL=Protobuf 확정**, ④샌드박스 수준 ⑤언어 범위 ⑥SSE는 **사용자 지정으로 착수 시 결정 보류**(추천안은 ADR에). Kafka Streams는 현 범위 미적용(적용 후보는 engineering-notes에 기록) ② [ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md)(착수 설계)·[ADR-0010](decisions/0010-contracts-root-group.md)(루트 `contracts/` 신설 — 0008 개정, 루트 4개념) 발행 ③ `contracts/proto/judge/v1` 초안(submission·result) ④ infra 확장 — kafka(KRaft 단일노드, apache/kafka 4.1.2, 이중 리스너, 토픽 명시 생성 init)·minio(2025-09 고정, `testdata` 버킷 init) ⑤ 문서 정합 — TODO(M1=비동기 코어/M2=스케일아웃 재편+Judge 스프린트 신설), CLAUDE.md 확정 사항, 루트 README(마일스톤·결정 요약·스택 표·이음새), system-overview, glossary(claim-check·KRaft·MinIO), engineering-notes(논의 경위+Streams 후보), RUN·getting-started.
+- **검증**: `docker compose config` OK → 기동: postgres·kafka·minio 전부 healthy, kafka-init 토픽 4종(`submission.run/submit/batch/result`) 생성 확인, minio-init `testdata` 버킷 생성 확인, 호스트에서 kafka :9092 TCP·minio health 200 확인. 이미지 버전은 Docker Hub 실측(최신 4.3.1 → 안정판 4.1.2 선택).
+- **중단점**: 전체 미커밋(커밋은 사용자 담당). proto는 초안 상태 — judge 구현 시 확정(코드젠 도구 포함).
+- **다음**: 보류 3건(샌드박스·언어 범위·SSE) 결정 → judge 코어(executor·sandbox) 구현 착수. 시드 히든 테스트케이스+번들 업로드는 그 흐름에서.
+
+## 2026-07-26 18:59 — Windows 인코딩 버그 수정 (JSONB 한글 모지바케)
+
+- **한 일**: ① Docker Desktop WSL 기동 실패(`0x800705aa`, 메모리 부족) 재부팅으로 해소 → 인프라·api·web 기동 ② **Windows에서 에디터 starterCode 한글 주석 깨짐 수정** — 원인: Gradle `bootRun`이 데몬 네이티브 인코딩(MS949)을 `-Dfile.encoding`으로 포크 JVM에 전달(JEP 400 기본값 덮음) + `Json.asString()`이 기본문자셋 디코딩. 수정: [PersistenceAdapters.kt](../services/api/src/main/kotlin/com/cotejs/api/adapter/outbound/persistence/PersistenceAdapters.kt) `asString()`→`asArray()`(근본) + [build.gradle.kts](../services/api/build.gradle.kts) `JavaExec.defaultCharacterEncoding="UTF-8"`(방어) ③ learning-notes에 인코딩 3층 해부 기록.
+- **검증**: 진단 체인 실측(시드 SQL=UTF-8 정상 → DB psql 정상 → api 응답만 깨짐 → jcmd로 `file.encoding=x-windows-949` 확증). 수정 후 4개 언어 starterCode 주석 전부 정상 + JVM `file.encoding=UTF-8` 확인.
+- **함정(실증)**: TaskStop/Ctrl+C로 Gradle 래퍼를 죽여도 **포크된 Spring Boot JVM이 고아로 살아남아 :4000 점유** → 새 bootRun이 포트 충돌로 죽고 구 버전이 계속 응답(수정이 반영 안 된 것처럼 보임). 재기동 검증 시 `jps`로 구 프로세스 생존 확인 필수.
+- **중단점**: 수정 미커밋(커밋은 사용자 담당). 서버 3종 기동 중.
+- **다음**: Judge(Go) 착수 논의 — 제출·결과 토픽 IDL 확정부터([ADR-0006](decisions/0006-service-seams-and-ai-consolidation.md)).
+
 ## 2026-07-25 16:17 — 네이밍 2층 체계(ADR-0008) + 시드 A안 + ADR 동결 규칙
 
 - **한 일**: ① 서비스 네이밍 전면 개편 — `platform→services`, `arena→web`, `hub→api`(Kotlin 패키지 `com.cotejs.api`, `ApiApplication`), 미착수 서비스 `setter→problem`·`scout→plagiarism`·`judge` 유지. [ADR-0008](decisions/0008-service-naming-and-group.md) 신설, 0003 원문 동결 ② **ADR 운영 규칙 확정**(개정=원문 동결+새 ADR — 사용자 지적 반영) ③ `infra/postgres/Dockerfile` 신설(compose는 build 사용) ④ **시드 A안**: `V2__seed.sql`→`db/seed/R__dev_seed.sql`(Repeatable·멱등), locations 프로파일 제어(+`application-prod.yml`) ⑤ web fetch 헬퍼 `hub.ts→client.ts`(apiGet/API_URL) ⑥ 현행 문서 전체 신명 스윕(동결 ADR·역사 기록 제외), architecture 파일명 `hub.md→api.md`·`frontend.md→web.md`·`frontend-design-system.md→web-design-system.md`.
