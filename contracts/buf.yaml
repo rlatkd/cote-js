@@ -1,0 +1,18 @@
+# buf 모듈 설정 — 이 폴더가 IDL의 단일 원본(ADR-0010).
+# buf CLI는 오픈소스(Apache 2.0)이고, BSR(호스팅 SaaS)은 사용하지 않는다 —
+# 플러그인은 로컬 설치본을 쓴다(buf.gen.yaml 참조). 외부 서비스 의존 없음.
+version: v2
+
+modules:
+  - path: proto
+
+lint:
+  use:
+    - STANDARD
+
+# 스키마 진화 강제 — Schema Registry를 보류(ADR-0009)한 대신 이것으로 메꾼다.
+# 와이어 호환성을 깨는 변경(필드 번호 변경·타입 변경·필드 제거)을 검출한다.
+#   buf breaking --against '../.git#branch=main,subdir=contracts'
+breaking:
+  use:
+    - WIRE_JSON

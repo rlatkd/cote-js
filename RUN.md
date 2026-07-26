@@ -9,6 +9,7 @@
 - Docker + Docker Compose
 - JDK 21 (LTS) — api
 - Node 22 LTS + pnpm — web
+- Go 1.25 — judge (계약 코드젠은 `buf` + `protoc-gen-go`, 아래 참조)
 
 ## 서버 켜기 (순서대로)
 
@@ -41,12 +42,28 @@ docker exec cotejs-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server local
 curl -s http://localhost:9000/minio/health/live -o /dev/null -w "%{http_code}\n"                   # MinIO 200
 ```
 
-## judge 채점 (코어 — Kafka·MinIO 배선 전, 로컬 CLI)
+## judge 채점
+
+사전: 러너 이미지 빌드(최초 1회) — `cd services/judge/runners/python && docker build -t cotejs-judge-python:3.12 .`
 
 ```bash
-cd services/judge/runners/python && docker build -t cotejs-judge-python:3.12 .   # 최초 1회
-cd services/judge && go run ./cmd/judgecli -bundle <번들dir> -source <풀이.py> -time-ms 1000 -mem-mb 256
-# 번들 레이아웃: <번들dir>/cases/01.in, 01.out, 02.in, ...
+# A) 워커 — Kafka 3레인 소비 → 채점 → 결과 토픽 발행 (api 배선 전까지는 이게 소비자)
+cd services/judge && go run ./cmd/judged
+
+# B) 제출 주입(개발용) — 번들을 MinIO에 올리고 제출 발행 후 결과 대기
+go run ./cmd/judgeprobe -bundle <번들dir> -source <풀이.py> -lane submit -submission 9001
+
+# C) 채점 코어만 — Kafka·MinIO 없이 로컬에서 1건
+go run ./cmd/judgecli -bundle <번들dir> -source <풀이.py> -time-ms 1000 -mem-mb 256
+```
+
+번들 레이아웃: `<번들dir>/cases/01.in, 01.out, 02.in, ...`
+
+## 계약(Protobuf) 코드 재생성 (`contracts/*.proto`를 바꿨을 때)
+
+```bash
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest   # 최초 1회 (buf도: go install github.com/bufbuild/buf/cmd/buf@latest)
+cd contracts && buf lint && buf generate    # → services/judge/gen 재생성 → 커밋
 ```
 
 ## API 계약 타입 재생성 (api 응답 계약이 바뀌었을 때)

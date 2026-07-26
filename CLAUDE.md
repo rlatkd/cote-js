@@ -66,7 +66,10 @@
 | Frontend | Next.js + TypeScript + Tailwind(직접) + Monaco Editor | — |
 | Backend API | **Kotlin + Spring Boot** — WebFlux+코루틴, R2DBC, Flyway, Hexagonal, Gradle(Kotlin DSL). **실무 재탕 금지 조항**: MVC·JPA·블로킹 스타일 금지 ([ADR-0007](docs/decisions/0007-backend-kotlin-return.md)) | NestJS(0005, 대체됨), Java, Go, MVC/JPA |
 | web↔api 계약 | **OpenAPI codegen** — api springdoc → `pnpm gen:api` → `schema.d.ts`(커밋) + `contract-check.ts` 컴파일타임 검사 | contracts 패키지(폐기) |
-| api↔judge 계약 | **Protobuf** — 루트 `contracts/proto/judge/v1`(초안, 구현 시 확정). Kafka 토픽 `submission.{run,submit,batch}`+`submission.result` ([ADR-0009](docs/decisions/0009-judge-kickoff-async-and-contracts.md)). api↔AI(M3~)도 Protobuf 방침 | Avro+Schema Registry(보류·재검토 가능), JSON Schema |
+| api↔judge 계약 | **Protobuf** — 루트 `contracts/proto/judge/v1`. Kafka 토픽 `submission.{run,submit,batch}`+`submission.result` ([ADR-0009](docs/decisions/0009-judge-kickoff-async-and-contracts.md)). api↔AI(M3~)도 Protobuf 방침 | Avro+Schema Registry(보류·재검토 가능), JSON Schema |
+| 코드젠 | **buf CLI + 로컬 플러그인**(`buf generate`), 생성물 커밋. **BSR(호스팅 SaaS) 미사용 — 외부 솔루션 의존 금지(오픈소스는 무방, 사용자 방침)**. `buf breaking`으로 스키마 호환성 검사 ([ADR-0011](docs/decisions/0011-codegen-and-kafka-client.md)) | BSR 원격 플러그인, protoc 직접 |
+| judge 라이브러리 | **franz-go**(Kafka, 순수 Go — cgo 회피)·**minio-go**(S3 호환) ([ADR-0011](docs/decisions/0011-codegen-and-kafka-client.md)) | confluent-kafka-go(cgo), sarama, kafka-go |
+| 메시지 전달 보장 | **at-least-once** — 채점 후 수동 오프셋 커밋(유실 방지 우선). 중복은 api가 `submission_id` 멱등 저장으로 흡수 ([ADR-0011](docs/decisions/0011-codegen-and-kafka-client.md)) | 자동 커밋, exactly-once(외부 부수효과라 무의미) |
 | 테스트케이스 전달 | **claim-check** — MinIO 번들(버킷 `testdata`) + 메시지엔 키·sha256만, judge는 해시 기준 로컬 캐시 | 메시지 인라인(1MB 상한·반복 운반), judge→api HTTP 조회(동기 결합 재도입) |
 | 버전 정책 | **LTS/안정판 기준** — JDK 21 LTS, Boot 4.0.x(성숙 마이너), Node 22 LTS, Postgres 16. 최신 첫 릴리스 회피 | 최신 우선주의 |
 | Docker 사용 | **개발 = 인프라만** compose(postgres·kafka(KRaft 단일노드)·minio → redis 예정). 앱은 호스트 네이티브(핫리로드·디버거). 앱 컨테이너화는 배포 마일스톤(M5)에서 | 개발용 앱 컨테이너 |

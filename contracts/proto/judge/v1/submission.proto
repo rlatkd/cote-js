@@ -9,7 +9,9 @@ import "google/protobuf/timestamp.proto";
 
 option java_package = "com.cotejs.contracts.judge.v1";
 option java_multiple_files = true;
-option go_package = "github.com/rlatkd/cotejs/contracts/judge/v1;judgev1";
+// go_package은 "생성물이 놓이는 곳"을 가리킨다(계약 원본 위치가 아니라).
+// 생성 경로는 contracts/buf.gen.yaml이 정한다.
+option go_package = "github.com/rlatkd/cotejs/services/judge/gen/judge/v1;judgev1";
 
 message Submission {
   // 코어 DB(submission.id)의 식별자. 결과 매칭 키.

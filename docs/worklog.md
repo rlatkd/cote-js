@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-07-26 20:21 — judge 파이프라인 관통(Kafka·MinIO) + ADR-0011
+
+- **한 일**: ① **코드젠 확정** — buf CLI + **로컬 플러그인**(BSR 미사용). 최초엔 원격 플러그인을 추천했으나 사용자가 "외부 솔루션 의존"을 지적 → buf가 CLI(오픈소스)/BSR(SaaS) 두 층임을 확인하고 수정. `contracts/buf.yaml`·`buf.gen.yaml` 신설, Go 생성물(`services/judge/gen`) 커밋 ② **Kafka 어댑터**(franz-go) — 3레인 소비·결과 발행, **at-least-once**(수동 커밋), 폴 배치 내 레인 우선순위 정렬, poison message 스킵, 장애 시에도 INTERNAL_ERROR 결과 발행 ③ **MinIO 번들 어댑터** — claim-check 완성(콘텐츠 해시 캐시·`.complete` 마커·staging→rename·해시 불일치 거부·zip slip 방어) ④ `cmd/judged`(워커)·`cmd/judgeprobe`(개발용 제출 주입기) ⑤ [ADR-0011](decisions/0011-codegen-and-kafka-client.md) 발행 + 문서 정합(judge.md 8~10장 추가, learning-notes 8건, engineering-notes 판단 로그, verification 절차 6, RUN, TODO, CLAUDE.md 확정 사항 3행).
+- **검증(실측)**: `buf lint`·`buf generate`·`go build` 그린. **왕복** — 번들 업로드(MinIO)→제출 발행→judged 채점→결과 수신(AC/WA, 케이스별 포함). **캐시** — 동일 번들 2회차 다운로드 생략(851ms→653ms), 캐시 키=sha256. **QoS** — batch·batch·submit·run 순 적재 후 워커 기동 → **run→submit→batch→batch** 순 처리 + 같은 레인 내 도착 순서 보존.
+- **함정(실증)**: 백그라운드 워커를 `| head -8`로 파이프하면 **head 버퍼가 로그를 삼켜** 메시지를 소비했는데도 조용하다 — 순서 검증을 오판할 뻔했다(파이프 없이 재실행해 확인). verification에 명시.
+- **중단점**: 전체 미커밋. **at-least-once의 짝인 api 멱등 저장이 아직 없다**(중복 결과가 오면 그대로 중복 저장됨) — 다음 슬라이스 필수. JVM Protobuf 생성기도 미결.
+- **다음**: api 배선 — JVM 생성기 확보 → 제출 프로듀스 → 결과 컨슈머(멱등) → SSE → web 표시.
+
 ## 2026-07-26 20:05 — judge 코어 구현(Go) + 실채점 검증 + 판단 근거 문서화 규칙 신설
 
 - **한 일**: ① 보류 3건 확정(샌드박스=Docker 컨테이너 격리 / 언어=Python 단독 / SSE 포함 — 추천안대로) → ADR-0009 '보류' 절을 확정 기록으로 갱신 ② **`services/judge` 코어 구현** — domain(Task·Verdict·Runner 포트)·executor(번들 로드→작업공간→컴파일 자리→실행→출력 비교→판정 집계)·Docker 샌드박스 어댑터·Python 러너 이미지(harness.py)·judgecli(전송 무관 검증 CLI) ③ **[architecture/judge.md](architecture/judge.md) 신설** — 구조 + 설계 판단(경계 위치·컨테이너 수명·메모리 이중 한도·판정 책임 분리·출력 비교 규칙)·격리 요건 표·알려진 한계(별도 보안 노트 대신 여기 통합) ④ **사용자 지시 반영**: 기술 트레이드오프를 결론이 아니라 고민 과정까지 상세 기록 — CLAUDE.md 작업 원칙에 규칙 고정(문제정의·선택지·배제이유·뒤집히는 조건·한계 6요소), learning-notes에 심화 11건(SSE↔WebSocket 비교표 재작성, Protobuf↔Avro, 채점 도메인 9건), engineering-notes에 구현 판단 로그 ⑤ verification.md에 judge 절차(판정 5종+격리 2종) 신설, architecture/README·TODO 갱신.

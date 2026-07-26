@@ -75,15 +75,39 @@ go run ./cmd/judgecli -bundle <dir> -source <풀이.py> -time-ms 1000 -mem-mb 25
 | `urllib.request.urlopen("http://example.com")` | 외부 통신 실패(현상은 DNS 대기 → `TIME_LIMIT_EXCEEDED`), "escaped" 출력 없음 |
 | fork bomb(`while True: os.fork()`) | `--pids-limit`에 막혀 `RUNTIME_ERROR`, 호스트 영향 없음 |
 
+### 6. judge — 파이프라인 관통 (Kafka + MinIO)
+
+```bash
+# 계약 정합 (proto를 바꿨을 때)
+cd contracts && buf lint && buf breaking --against '../.git#branch=main,subdir=contracts' && buf generate
+#   → services/judge/gen/* 재생성 → git diff 확인 → 커밋
+
+cd services/judge && go vet ./... && go build ./...
+go run ./cmd/judged                     # 워커 기동 (다른 터미널)
+go run ./cmd/judgeprobe -bundle <dir> -source <풀이.py> -lane submit -submission 9001
+```
+
+확인 항목:
+
+| 항목 | 기대 |
+|---|---|
+| 왕복 | probe가 결과 JSON 수신 — verdict·케이스별 결과 포함 |
+| 번들 캐시 | 같은 번들 2회차에 다운로드 생략(로그의 소요시간 감소), 캐시 디렉토리명 = sha256, `.complete` 존재 |
+| QoS 레인 | 워커를 멈춘 채 `-no-wait`로 batch·batch·submit·run 순 적재 → 워커 기동 시 **run → submit → batch → batch** 순 처리 |
+| 장애 내성 | 워커를 채점 도중 죽였다 재기동 → 해당 제출이 **재채점**됨(at-least-once, 유실 없음) |
+
+> **함정**: 워커 로그를 `| head -N`으로 파이프하면 버퍼링 때문에 로그가 보이지 않는다(메시지는 이미 소비됨). 순서 검증은 파이프 없이.
+
 ## 추가 예정 (해당 마일스톤 착수 시 이 문서에 절차 추가)
 
 - **api 테스트 스위트**: Kotest + Testcontainers 도입 시 `./gradlew test`를 게이트에 추가
-- **judge 어댑터**: Kafka 제출→채점→결과토픽 왕복, QoS 3레인 격리, MinIO 번들 캐시(해시 변경 시 재다운로드)
+- **api 배선**: 제출 API → Kafka 프로듀스, 결과 소비 → DB 멱등 저장(중복 결과 1건으로), JVM proto 생성물 정합
 - **SSE**: 제출 후 web가 폴링 없이 결과 수신
 - **problem/plagiarism**: 파이프라인 상태 전이, 유사도 질의 왕복
 
 ## 갱신 이력
 
+- 2026-07-26 20:21 — judge 파이프라인 절차(6) 신설: buf 계약 검사(lint·breaking·generate) + judged/judgeprobe 왕복·캐시·QoS·at-least-once 확인. `head` 파이프 함정 명시.
 - 2026-07-26 20:05 — judge 코어 절차(5) 신설: judgecli 판정 5종 + 샌드박스 격리 2종. 인프라 사전 단계에 Kafka·MinIO 추가.
 
 - 2026-07-25 14:07 — api Kotlin 전환([ADR-0007](../decisions/0007-backend-kotlin-return.md)) 반영: contracts 빌드 단계 삭제 → gradle 컴파일·기동 + OpenAPI/계약 정합(gen:api) 단계로 교체.

@@ -24,3 +24,4 @@
 | [0008](0008-service-naming-and-group.md) | 서비스 네이밍·그룹 개편 — `services/` + 2층 체계 | Accepted (루트 구성 항목 0010으로 개정) |
 | [0009](0009-judge-kickoff-async-and-contracts.md) | Judge 착수 설계 — Kafka 직행(M1/M2 통합) + claim-check + Protobuf | Accepted |
 | [0010](0010-contracts-root-group.md) | 루트 `contracts/` 신설 — 언어 중립 IDL 거처 (0008 개정) | Accepted |
+| [0011](0011-codegen-and-kafka-client.md) | 코드젠(buf, BSR 미사용)·Kafka 클라이언트(franz-go)·전달 보장(at-least-once) | Accepted |

@@ -1,7 +1,7 @@
 # judge — 채점 서비스 (Go)
 
-> 상태: **1차 슬라이스 구현 완료(코어)** — executor·Docker 샌드박스·Python 러너·검증 CLI. Kafka/MinIO 어댑터·api 배선은 다음 단계.
-> 결정 근거는 [ADR-0009](../decisions/0009-judge-kickoff-async-and-contracts.md), 이음새 규칙은 [ADR-0006](../decisions/0006-service-seams-and-ai-consolidation.md). 여기서는 **구조와 그 구조를 택한 판단**을 적는다.
+> 상태: **파이프라인 관통 완료** — executor·Docker 샌드박스·Python 러너 + Kafka 3레인 소비/결과 발행 + MinIO 번들(claim-check). api 배선·SSE는 다음 단계.
+> 결정 근거는 [ADR-0009](../decisions/0009-judge-kickoff-async-and-contracts.md)·[ADR-0011](../decisions/0011-codegen-and-kafka-client.md), 이음새 규칙은 [ADR-0006](../decisions/0006-service-seams-and-ai-consolidation.md). 여기서는 **구조와 그 구조를 택한 판단**을 적는다.
 
 ## 1. 책임과 경계
 
@@ -15,15 +15,21 @@ judge는 **제출된 코드를 격리 실행해 판정한다.** 그 외의 것�
 
 ```
 services/judge/
-├─ cmd/judgecli/          검증용 CLI (전송·저장소 없이 채점 1건 관통)
+├─ cmd/
+│  ├─ judged/             워커 데몬 — Kafka 3레인 소비 → 채점 → 결과 발행
+│  ├─ judgecli/           검증용 CLI (전송·저장소 없이 채점 1건 관통)
+│  └─ judgeprobe/         개발용 제출 주입기 (번들 업로드 + 제출 발행 + 결과 대기)
 ├─ internal/
 │  ├─ domain/             Task·JudgeResult·Verdict + 포트(Runner)
 │  ├─ executor/           채점 오케스트레이션(번들 로드→작업공간→실행→비교→집계)
-│  └─ sandbox/docker/     Runner 포트의 Docker 격리 어댑터
+│  ├─ sandbox/docker/     Runner 포트의 Docker 격리 어댑터
+│  ├─ messaging/          Kafka 어댑터(franz-go) — 레인 소비·결과 발행
+│  └─ bundle/             MinIO 어댑터 — claim-check 다운로드 + 해시 캐시
+├─ gen/judge/v1/          Protobuf 생성 코드(커밋 — 원본은 /contracts)
 └─ runners/python/        Python 러너 이미지(Dockerfile + harness.py)
 ```
 
-**의존 방향**: `cmd → executor → domain ← sandbox/docker`. domain은 아무것도 의존하지 않고, 어댑터가 domain의 포트를 구현한다(경량 클린).
+**의존 방향**: `cmd → executor → domain ← sandbox/docker`, 그리고 `messaging → domain`(어댑터가 executor를 최소 인터페이스 `Judger`로만 참조). domain은 아무것도 의존하지 않는다(경량 클린).
 
 ### 왜 이 구조인가 — 어댑터 경계를 샌드박스에 그은 이유
 
@@ -108,9 +114,43 @@ go run ./cmd/judgecli -bundle <dir> -source <file.py> -time-ms 1000 -mem-mb 256
 
 검증 결과는 [guides/verification.md](../guides/verification.md) 참조 — AC/WA/TLE/MLE/RE 5종 + 보안 2종(네트워크·fork bomb).
 
-## 8. 다음 단계
+## 8. 메시징 — Kafka 어댑터 ([internal/messaging](../../services/judge/internal/messaging/kafka.go))
 
-1. **Kafka 어댑터** — 제출 3레인 소비 + 결과 발행(Protobuf, [contracts/](../../contracts/)). 컨슈머 그룹·오프셋 커밋 시점(채점 완료 후 커밋 = at-least-once) 설계.
-2. **MinIO 어댑터** — 번들 다운로드 + 해시 기준 로컬 캐시(claim-check 완성).
-3. **api 배선** — 제출 시 프로듀스, 결과 소비 → DB 저장 → SSE 푸시.
-4. **QoS 3레인** — 레인별 소비 정책(batch가 submit을 굶기지 않게).
+```
+submission.run|submit|batch  ──▶ judged ──▶ (번들 확보) ──▶ 채점 ──▶ submission.result
+```
+
+계약은 Protobuf([contracts/](../../contracts/)), 클라이언트는 franz-go, 생성 코드는 `gen/`에 커밋([ADR-0011](../decisions/0011-codegen-and-kafka-client.md)).
+
+### 판단 기록 — 오프셋을 채점 뒤에 커밋하는 이유 (at-least-once)
+
+자동 커밋이면 "커밋 → 채점 중 워커 사망" 순서에서 **제출이 통째로 유실**되고, 사용자 화면은 영원히 "채점 중"에 머문다. 수동 커밋이면 같은 상황에서 다시 채점한다(중복). 즉 **유실 대신 중복을 택했다** — 채점은 순수 함수에 가까워(같은 코드·같은 케이스 → 같은 판정) 중복의 해가 작고, 유실은 사용자에게 직접 보이는 실패다. 중복 제거는 api가 `submission_id` 기준 멱등 저장으로 처리한다.
+
+exactly-once(Kafka 트랜잭션)는 배제했다 — 채점의 부수효과가 외부(Docker 실행)에 있어 트랜잭션이 되돌리지 못한다. 비용만 크고 보장은 불완전.
+
+### 판단 기록 — 레인 우선순위를 폴 배치 내 정렬로 구현
+
+세 레인을 함께 구독하고, 한 번의 폴에서 받은 레코드를 `run < submit < batch`로 **안정 정렬**해 처리한다(같은 레인 내 도착 순서 보존). 대안인 "레인별 전용 워커 풀"은 워커를 3배로 만들고 레인별 유휴 자원이 생긴다.
+
+**한계(명시)**: 이건 *한 폴 안에서의* 우선순위다. batch를 이미 집어 든 뒤 도착한 run은 그 batch가 끝나야 실행된다. 엄밀한 선점이 필요하면 레인별 동시성 슬롯 분리로 확장한다(M2).
+
+### 그 밖의 규칙
+
+- **poison message**: 역직렬화 실패는 재시도해도 같으므로 로그만 남기고 건너뛴다(레인을 막지 않는다). DLQ는 운영 단계 재검토.
+- **장애 시에도 결과를 보낸다**: 시스템 장애면 `INTERNAL_ERROR` 결과를 발행한다. **침묵이 최악의 실패 모드** — 결과를 안 보내면 화면이 영구히 "채점 중"이다.
+- **결과 토픽 키 = `submission_id`**: 같은 제출의 결과가 같은 파티션으로 가 순서가 보장된다(순서가 필요한 단위는 제출).
+
+## 9. 번들 — claim-check 소비자 ([internal/bundle](../../services/judge/internal/bundle/minio.go))
+
+메시지에 실려 온 참조(오브젝트 키 + sha256)로 MinIO에서 번들을 받아 로컬에 푼다.
+
+- **캐시 키가 경로가 아니라 콘텐츠 해시**다 — 문제를 수정해 번들이 바뀌면 해시가 달라져 자동 재다운로드. 무효화 로직이 필요 없다.
+- **`.complete` 마커로 캐시 유효성 판단**: 디렉토리 존재만 보면 다운로드 중 죽은 **반쪽 캐시를 유효로 오인**한다. 해제는 `.staging`에 하고 완료 후 rename(원자적 게시).
+- **해시 불일치는 채점 거부**: 발행자가 알린 해시와 실제 내용이 다르면 계약 위반이다. 조용히 채점하면 잘못된 테스트로 판정하게 된다.
+- **zip slip 방어**: 아카이브 내부 경로(`../`)를 신뢰하지 않고, 심볼릭 링크는 무시한다 — 테스트 데이터에 필요 없고 캐시 밖으로 쓰는 탈출 경로가 된다.
+
+## 10. 다음 단계
+
+1. **api 배선** — 제출 시 프로듀스(3레인 선택), 결과 소비 → DB 저장(멱등) → SSE 푸시. JVM Protobuf 생성기 확보 방식도 이때 결정([ADR-0011](../decisions/0011-codegen-and-kafka-client.md) 미결).
+2. **테스트케이스 발행 경로** — 지금은 judgeprobe가 번들을 올린다. 실제로는 api가 문제 등록 시 번들을 올리고 키·해시를 DB에 보관해야 한다(시드에 히든 케이스 추가 포함).
+3. **워커 수평 확장**(M2) — 컨슈머 그룹은 이미 준비됨. 레인별 동시성 슬롯·SSE Redis 전환이 함께.

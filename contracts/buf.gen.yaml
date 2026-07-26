@@ -1,0 +1,18 @@
+# 코드 생성 설정 — `cd contracts && buf generate`
+#
+# 플러그인은 전부 local(로컬 설치본): BSR 원격 플러그인을 쓰지 않는다 —
+# 편의를 위해 외부 SaaS에 의존하지 않기 위함(사용자 방침, ADR-0011).
+#   설치: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+#
+# 생성물은 커밋한다(web의 schema.d.ts와 같은 관행) — 빌드에 도구가 필요 없고
+# 계약 변경이 PR diff에 드러난다.
+version: v2
+
+plugins:
+  - local: protoc-gen-go
+    out: ../services/judge/gen
+    opt: paths=source_relative
+
+# (예정) JVM 생성기 — api 배선 슬라이스에서 추가. Kotlin/Java 생성은 protoc 내장
+# 생성기를 요구하므로 도구 확보 방식(Gradle protobuf 플러그인 vs protoc 바이너리)을
+# 그때 함께 결정한다.
