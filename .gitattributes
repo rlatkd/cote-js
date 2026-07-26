@@ -1,0 +1,18 @@
+# GitHub 언어 통계(Linguist) — Go·Kotlin·Python만 집계한다.
+# 기본을 전부 끄고 대상 언어만 켠다
+# (TypeScript·JavaScript·CSS·SQL·Dockerfile·Shell·proto 등 전부 제외).
+* linguist-detectable=false
+
+*.go  linguist-detectable=true
+*.kt  linguist-detectable=true
+*.kts linguist-detectable=true
+*.py  linguist-detectable=true
+
+# 내가 쓴 코드가 아닌 것은 위 3종이어도 제외한다.
+# 생성물(코드젠 산출물 — 원본은 contracts/*.proto)
+services/judge/gen/** linguist-generated=true
+
+# 벤더(Gradle 래퍼 — 도구가 배포하는 파일)
+services/api/gradle/wrapper/** linguist-vendored=true
+services/api/gradlew           linguist-vendored=true
+services/api/gradlew.bat       linguist-vendored=true
