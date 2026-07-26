@@ -53,13 +53,13 @@ api↔judge Kafka 메시지 계약은 **Protobuf**로 정의한다. 스키마는
   - `submission.result` (judge → api)
 - 오브젝트 스토리지: MinIO `RELEASE.2025-09-07T16-13-09Z` 고정, 버킷 `testdata`. 인프라 배치는 기존 패턴(`infra/<서비스>/Dockerfile` + compose build).
 
-## 보류 (착수 시 결정 — 사용자 지정)
+## 보류였던 3건 — 착수 시점에 확정 (2026-07-26, 추천안대로 채택)
 
-다음 3건은 논의에서 추천안까지 나왔으나 **결정은 judge 구현 착수 시점으로 보류**한다(TODO에 추적):
+작성 시점에는 사용자 지정으로 보류했다가, judge 구현 착수 시점(같은 날 후속 논의)에 추천안 그대로 확정:
 
-1. **샌드박스 수준**: 추천안 = 1단계 Docker 컨테이너 격리(자원 제한 도커 옵션) 먼저, cgroups/namespaces/seccomp 직접 제어는 별도 마일스톤. 샌드박스는 어댑터로 설계해 교체 가능하게.
-2. **첫 슬라이스 언어 범위**: 추천안 = Python 단독(컴파일 단계 없음), executor 인터페이스에는 컴파일 단계 자리 확보.
-3. **결과 도달(SSE)**: 추천안 = SSE 포함하되 pub/sub은 인프로세스, Redis 전환은 api 스케일아웃 시점.
+1. **샌드박스 수준 = 1단계 Docker 컨테이너 격리** — 자원 제한은 도커 옵션(`--memory`·`--cpus`·`--pids-limit`·`--network none`·read-only·비특권 유저·타임아웃 킬). cgroups/namespaces/seccomp 직접 제어(2단계)는 별도 마일스톤(리눅스 기준 머신 결정도 그때). 샌드박스는 포트 뒤 어댑터 — 2단계 전환 = 어댑터 교체. 언어 러너 이미지는 infra가 아닌 **judge 소유**(어떤 컴파일러로 채점하느냐는 채점의 일부 — 단일 작성자 정합).
+2. **첫 슬라이스 언어 범위 = Python 단독** — 컴파일 단계 없음. 단 executor 인터페이스에 컴파일 단계 자리를 처음부터 확보(Python은 no-op) → 언어 추가 = 러너 추가, 인터페이스 불변.
+3. **결과 도달 = SSE 포함** — 확정 이음새의 마지막 조각. pub/sub은 인프로세스(단일 인스턴스), Redis 전환은 M2 스케일아웃 시점(TODO 추적).
 
 Kafka Streams는 현 범위 미적용(모든 구간이 단순 produce/consume — 스트림 변환·조인·집계 없음). 적용 후보(SLA 조인·실시간 통계 등)는 [engineering-notes](../engineering-notes.md)에 기록, 재검토 트리거는 TODO 보류란 참조.
 

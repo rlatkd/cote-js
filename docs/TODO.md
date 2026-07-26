@@ -68,10 +68,13 @@
 - [x] **루트 `contracts/` 신설** — 언어 중립 IDL 거처, 루트 3→4개념(ADR-0008 개정). [ADR-0010](decisions/0010-contracts-root-group.md)
 - [x] `contracts/proto/judge/v1` 초안(submission·result) — **확정은 judge 구현 시**(코드젠 도구 포함)
 - [x] infra 확장 — kafka(KRaft 단일노드, apache/kafka 4.1.2, 이중 리스너)·minio Dockerfile + compose, 토픽 4종(`submission.run/submit/batch/result`)·`testdata` 버킷 명시 생성. 기동·init 검증 그린
-- [ ] **착수 시 결정 3건 (보류 — 사용자 지정, 추천안은 [ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md) '보류' 절)**: ① 샌드박스 수준(Docker 격리 → 커널 직접 제어 시점) ② 첫 슬라이스 언어 범위 ③ SSE 포함 여부
-- [ ] judge 코어 구현(executor·sandbox — 전송 무관, 테스트/CLI 검증) → Kafka 어댑터 → api 프로듀서·결과 컨슈머 → web 결과 표시
+- [x] **착수 시 결정 3건 확정 (2026-07-26)** — ① 샌드박스 = Docker 컨테이너 격리(커널 직접 제어는 별도 마일스톤, 러너 이미지는 judge 소유) ② 언어 = Python 단독(executor에 컴파일 단계 자리) ③ SSE 포함(인프로세스 pub/sub). [ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md)
+- [x] **judge 코어 구현** (2026-07-26) — `services/judge`: domain(Task·Verdict·Runner 포트)·executor(번들→작업공간→실행→비교→집계)·Docker 샌드박스 어댑터·Python 러너 이미지(harness)·judgecli. 판정 5종(AC/WA/TLE/MLE/RE)+격리 2종(네트워크·fork bomb) 실채점 검증 그린. 상세: [architecture/judge.md](architecture/judge.md)
+- [ ] judge Kafka 어댑터(3레인 소비·결과 발행, Protobuf 코드젠 도구 확정) → MinIO 번들 어댑터(해시 캐시) → api 프로듀서·결과 컨슈머 → SSE → web 결과 표시
 - [ ] 시드에 히든 테스트케이스 추가 + api 번들 업로드(MinIO) + [data-model](architecture/data-model.md)·`timeLimit/memoryLimit` 수치화(proto는 수치 — ms·MB) 함께
-- [ ] Judge 착수 시 함께: 보안 노트 신설, `architecture/judge.md` 작성
+- [x] [`architecture/judge.md`](architecture/judge.md) 작성 (샌드박스 격리 요건·실증·한계를 포함 — 별도 보안 노트 대신 judge 문서 5장에 통합)
+- [ ] **샌드박스 2단계** (별도 마일스톤): cgroups/namespaces/seccomp 직접 제어 — 케이스별 메모리 피크 정밀 측정(cgroup `memory.peak`), 언어 중립 MLE 판정, seccomp 화이트리스트. 리눅스 기준 개발 머신 결정 필요
+- [ ] judge 언어 확장: C++·Java·JavaScript 러너 추가(executor 인터페이스 불변 — 컴파일 단계 자리 이미 확보)
 
 ## 보류 / 추후 재논의 (Deferred)
 

@@ -41,6 +41,14 @@ docker exec cotejs-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server local
 curl -s http://localhost:9000/minio/health/live -o /dev/null -w "%{http_code}\n"                   # MinIO 200
 ```
 
+## judge 채점 (코어 — Kafka·MinIO 배선 전, 로컬 CLI)
+
+```bash
+cd services/judge/runners/python && docker build -t cotejs-judge-python:3.12 .   # 최초 1회
+cd services/judge && go run ./cmd/judgecli -bundle <번들dir> -source <풀이.py> -time-ms 1000 -mem-mb 256
+# 번들 레이아웃: <번들dir>/cases/01.in, 01.out, 02.in, ...
+```
+
 ## API 계약 타입 재생성 (api 응답 계약이 바뀌었을 때)
 
 ```bash

@@ -6,7 +6,8 @@
 
 ### 0. 사전
 ```bash
-cd infra && docker compose up -d          # Postgres :5432 (healthy 대기)
+cd infra && docker compose up -d          # Postgres :5432 · Kafka :9092 · MinIO :9000 (healthy 대기)
+docker exec cotejs-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list  # 토픽 4종
 ```
 
 ### 1. api — 빌드·기동·API 스모크 (:4000)
@@ -47,14 +48,43 @@ for p in / /problems /problems/1000 /status; do
 cd services/web && pnpm lint             # ESLint(레이어 의존 규칙 포함)
 ```
 
+### 5. judge — 채점 코어 (Kafka·MinIO 없이 관통, [judgecli](../../services/judge/cmd/judgecli))
+
+```bash
+cd services/judge && go vet ./... && go build ./...        # 컴파일·정적검사 그린
+cd runners/python && docker build -t cotejs-judge-python:3.12 .   # 러너 이미지(러너 변경 시)
+
+# 번들 준비: <dir>/cases/01.in, 01.out, ... (A+B 3케이스 등)
+go run ./cmd/judgecli -bundle <dir> -source <풀이.py> -time-ms 1000 -mem-mb 256
+```
+
+판정 시나리오 — 5종이 각각 의도한 Verdict로 나와야 한다:
+
+| 제출 코드 | 기대 판정 |
+|---|---|
+| 정답 풀이 | `ACCEPTED` |
+| 틀린 연산(`a-b`) | `WRONG_ANSWER` |
+| `while True: pass` | `TIME_LIMIT_EXCEEDED` |
+| 대용량 할당(`[0]*300MB`) | `MEMORY_LIMIT_EXCEEDED` |
+| `1 // 0` | `RUNTIME_ERROR` |
+
+샌드박스 격리 — 탈출하지 못해야 한다:
+
+| 제출 코드 | 기대 결과 |
+|---|---|
+| `urllib.request.urlopen("http://example.com")` | 외부 통신 실패(현상은 DNS 대기 → `TIME_LIMIT_EXCEEDED`), "escaped" 출력 없음 |
+| fork bomb(`while True: os.fork()`) | `--pids-limit`에 막혀 `RUNTIME_ERROR`, 호스트 영향 없음 |
+
 ## 추가 예정 (해당 마일스톤 착수 시 이 문서에 절차 추가)
 
 - **api 테스트 스위트**: Kotest + Testcontainers 도입 시 `./gradlew test`를 게이트에 추가
-- **Judge**: Kafka 제출→채점→결과토픽 왕복, QoS 3레인 격리, 샌드박스 제한(시간/메모리 초과·네트워크 차단) 케이스
+- **judge 어댑터**: Kafka 제출→채점→결과토픽 왕복, QoS 3레인 격리, MinIO 번들 캐시(해시 변경 시 재다운로드)
 - **SSE**: 제출 후 web가 폴링 없이 결과 수신
 - **problem/plagiarism**: 파이프라인 상태 전이, 유사도 질의 왕복
 
 ## 갱신 이력
+
+- 2026-07-26 20:05 — judge 코어 절차(5) 신설: judgecli 판정 5종 + 샌드박스 격리 2종. 인프라 사전 단계에 Kafka·MinIO 추가.
 
 - 2026-07-25 14:07 — api Kotlin 전환([ADR-0007](../decisions/0007-backend-kotlin-return.md)) 반영: contracts 빌드 단계 삭제 → gradle 컴파일·기동 + OpenAPI/계약 정합(gen:api) 단계로 교체.
 - 2026-07-25 12:48 — 문서 신설. M1 슬라이스(contracts/api/web) 절차 정리.

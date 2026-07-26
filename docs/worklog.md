@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-07-26 20:05 — judge 코어 구현(Go) + 실채점 검증 + 판단 근거 문서화 규칙 신설
+
+- **한 일**: ① 보류 3건 확정(샌드박스=Docker 컨테이너 격리 / 언어=Python 단독 / SSE 포함 — 추천안대로) → ADR-0009 '보류' 절을 확정 기록으로 갱신 ② **`services/judge` 코어 구현** — domain(Task·Verdict·Runner 포트)·executor(번들 로드→작업공간→컴파일 자리→실행→출력 비교→판정 집계)·Docker 샌드박스 어댑터·Python 러너 이미지(harness.py)·judgecli(전송 무관 검증 CLI) ③ **[architecture/judge.md](architecture/judge.md) 신설** — 구조 + 설계 판단(경계 위치·컨테이너 수명·메모리 이중 한도·판정 책임 분리·출력 비교 규칙)·격리 요건 표·알려진 한계(별도 보안 노트 대신 여기 통합) ④ **사용자 지시 반영**: 기술 트레이드오프를 결론이 아니라 고민 과정까지 상세 기록 — CLAUDE.md 작업 원칙에 규칙 고정(문제정의·선택지·배제이유·뒤집히는 조건·한계 6요소), learning-notes에 심화 11건(SSE↔WebSocket 비교표 재작성, Protobuf↔Avro, 채점 도메인 9건), engineering-notes에 구현 판단 로그 ⑤ verification.md에 judge 절차(판정 5종+격리 2종) 신설, architecture/README·TODO 갱신.
+- **검증(실채점)**: `go vet`·`go build` 그린, 러너 이미지 빌드 성공. A+B 3케이스 번들로 **AC**(24ms/9.3MB) **WA** **TLE**(1000ms 컷) **MLE**(RLIMIT_AS) **RE**(0으로 나누기) 전부 의도대로. 격리: `urlopen` 외부 통신 실패(DNS 대기→TLE, "escaped" 미출력) / fork bomb은 `--pids-limit`에 막혀 RE, 호스트 영향 없음.
+- **함정(실증)**: `exec.CommandContext`는 docker CLI만 죽이고 **컨테이너는 생존** → 이름 붙여 `docker kill` 명시 호출. 컨테이너 `--memory`만 걸면 OOM killer가 harness를 죽여 유저 MLE가 INTERNAL_ERROR로 둔갑 → 정밀 한도는 제출 프로세스에 `RLIMIT_AS`, 컨테이너는 +64MB backstop.
+- **중단점**: 전체 미커밋. judge는 코어만 — Kafka·MinIO 어댑터 미착수(proto 코드젠 도구도 미확정, protoc·buf 미설치 확인됨).
+- **다음**: judge Kafka 어댑터(3레인 소비·결과 발행) → MinIO 번들 어댑터(해시 캐시) → api 프로듀서·결과 컨슈머 → SSE → web 배선.
+
 ## 2026-07-26 19:38 — Judge 착수 설계 확정(ADR-0009·0010) + contracts/·Kafka·MinIO 기반 구축
 
 - **한 일**: ① Judge 착수 논의(어젠다 6개) — **①Kafka 직행(구 M1/M2 통합, 동기 채점 폐지) ②테스트케이스=claim-check(MinIO) ③IDL=Protobuf 확정**, ④샌드박스 수준 ⑤언어 범위 ⑥SSE는 **사용자 지정으로 착수 시 결정 보류**(추천안은 ADR에). Kafka Streams는 현 범위 미적용(적용 후보는 engineering-notes에 기록) ② [ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md)(착수 설계)·[ADR-0010](decisions/0010-contracts-root-group.md)(루트 `contracts/` 신설 — 0008 개정, 루트 4개념) 발행 ③ `contracts/proto/judge/v1` 초안(submission·result) ④ infra 확장 — kafka(KRaft 단일노드, apache/kafka 4.1.2, 이중 리스너, 토픽 명시 생성 init)·minio(2025-09 고정, `testdata` 버킷 init) ⑤ 문서 정합 — TODO(M1=비동기 코어/M2=스케일아웃 재편+Judge 스프린트 신설), CLAUDE.md 확정 사항, 루트 README(마일스톤·결정 요약·스택 표·이음새), system-overview, glossary(claim-check·KRaft·MinIO), engineering-notes(논의 경위+Streams 후보), RUN·getting-started.
