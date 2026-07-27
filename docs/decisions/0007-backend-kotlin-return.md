@@ -4,6 +4,8 @@
 - **일자**: 2026-07-25
 - **대체**: [ADR-0005](0005-backend-language-and-type-sharing.md) (Superseded)
 > **명칭 노트(2026-07-25)**: 이후 [ADR-0008](0008-service-naming-and-group.md)로 서비스명이 개편됨 — arena→web, hub→api, setter→problem, scout→plagiarism, tester→problem의 validation 단계, judge 유지. 본문은 당시 명칭 그대로다(원문 동결 원칙).
+>
+> **강도 보충(2026-07-26, 사용자 확인)**: 본문의 **"실무 재탕 금지 조항"은 Claude가 규칙화한 문구로 사용자 의도보다 경직됐다.** 실제 방침은 *"실무와 겹치는 선택은 학습 가치가 낮아 기본 회피하되, **판단 순위는 기술적 적합성이 위** — 적합성이 명확하면 실무 스택도 채택(근거 명시)"*. **결정 자체는 유지**된다: 이 ADR의 각 선택(WebFlux+코루틴·R2DBC·Hexagonal)은 실무 회피가 아니라 독립적 기술 근거(api = I/O 지배 오케스트레이터 + SSE 푸시 주체, 논블로킹 스택 일관성)로 성립하므로 완화해도 뒤집히지 않는다. 결정 변경이 아니라 근거 강도 조정이므로 새 ADR 없이 이 노트로 갈음한다.
 
 ## 맥락
 

@@ -1,11 +1,14 @@
 package com.cotejs.api.adapter.outbound.persistence
 
+import com.cotejs.api.domain.model.BundleRef
 import com.cotejs.api.domain.model.Difficulty
 import com.cotejs.api.domain.model.Example
 import com.cotejs.api.domain.model.JudgeResult
+import com.cotejs.api.domain.model.JudgedOutcome
 import com.cotejs.api.domain.model.Language
 import com.cotejs.api.domain.model.Problem
 import com.cotejs.api.domain.model.Submission
+import com.cotejs.api.domain.model.TestCase
 import com.cotejs.api.domain.port.outbound.ProblemRepository
 import com.cotejs.api.domain.port.outbound.SubmissionRepository
 import kotlinx.coroutines.flow.toList
@@ -19,6 +22,7 @@ import tools.jackson.module.kotlin.readValue
 class ProblemPersistenceAdapter(
     private val problemRepo: ProblemR2dbcRepository,
     private val exampleRepo: ExampleR2dbcRepository,
+    private val testCaseRepo: TestCaseR2dbcRepository,
     private val json: ObjectMapper,
 ) : ProblemRepository {
     override suspend fun findAll(): List<Problem> {
@@ -35,14 +39,25 @@ class ProblemPersistenceAdapter(
         return row.toDomain(examples)
     }
 
+    override suspend fun findTestCases(problemId: Long): List<TestCase> =
+        testCaseRepo.findByProblemIdOrderByOrd(problemId).toList()
+            .map { TestCase(ord = it.ord, input = it.input, output = it.output) }
+
+    override suspend fun updateTestBundle(problemId: Long, bundle: BundleRef) {
+        problemRepo.updateTestBundle(problemId, bundle.key, bundle.sha256)
+    }
+
     private fun ProblemEntity.toDomain(examples: List<ExampleEntity>): Problem =
         Problem(
             id = id,
             title = title,
             difficulty = Difficulty.fromLabel(difficulty),
             tier = tier,
-            timeLimit = timeLimit,
-            memoryLimit = memoryLimit,
+            timeLimitMs = timeLimitMs,
+            memoryLimitMb = memoryLimitMb,
+            testBundle = testBundleKey?.let { key ->
+                testBundleSha256?.let { sha -> BundleRef(key, sha) }
+            },
             submissionCount = submissionCount,
             acceptedCount = acceptedCount,
             tags = tags,
@@ -67,6 +82,21 @@ class SubmissionPersistenceAdapter(
     override suspend fun save(submission: Submission): Submission =
         submissionRepo.save(submission.toEntity()).toDomain()
 
+    /**
+     * 멱등 반영: 대상 행을 읽어 결과 필드만 덮어쓴다. 같은 결과가 두 번 와도
+     * 두 번째는 같은 값을 다시 쓸 뿐이라 상태가 변하지 않는다(at-least-once 흡수).
+     */
+    override suspend fun applyOutcome(outcome: JudgedOutcome): Submission? {
+        val row = submissionRepo.findById(outcome.submissionId) ?: return null
+        val updated = row.copy(
+            result = outcome.result.label,
+            execTimeMs = outcome.execTimeMs,
+            memoryUsedKb = outcome.memoryUsedKb,
+            judgedAt = outcome.judgedAt,
+        )
+        return submissionRepo.save(updated).toDomain()
+    }
+
     private fun SubmissionEntity.toDomain(): Submission =
         Submission(
             id = requireNotNull(id) { "persisted submission must have id" },
@@ -75,10 +105,12 @@ class SubmissionPersistenceAdapter(
             problemTitle = problemTitle,
             result = JudgeResult.fromLabel(result),
             language = Language.fromLabel(language),
-            time = execTime,
-            memory = execMemory,
+            execTimeMs = execTimeMs,
+            memoryUsedKb = memoryUsedKb,
             length = length,
+            code = code,
             submittedAt = submittedAt,
+            judgedAt = judgedAt,
         )
 
     private fun Submission.toEntity(): SubmissionEntity =
@@ -89,9 +121,11 @@ class SubmissionPersistenceAdapter(
             problemTitle = problemTitle,
             result = result.label,
             language = language.label,
-            execTime = time,
-            execMemory = memory,
+            execTimeMs = execTimeMs,
+            memoryUsedKb = memoryUsedKb,
             length = length,
+            code = code,
             submittedAt = submittedAt,
+            judgedAt = judgedAt,
         )
 }

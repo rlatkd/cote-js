@@ -20,13 +20,31 @@ data class Example(
     val output: String,
 )
 
+/**
+ * 테스트 번들 참조 — claim-check([ADR-0009]). 진실원은 `test_case` 행들이고,
+ * 이건 그것으로 만든 MinIO 오브젝트의 캐시된 참조다(내용이 바뀌면 해시가 바뀐다).
+ */
+data class BundleRef(
+    val key: String,
+    val sha256: String,
+)
+
+data class TestCase(
+    val ord: Int,
+    val input: String,
+    val output: String,
+)
+
 data class Problem(
     val id: Long,
     val title: String,
     val difficulty: Difficulty,
     val tier: String,
-    val timeLimit: String,
-    val memoryLimit: String,
+    // 제한은 수치로 보관한다 — 표시 형식("1초")은 화면의 관심사이고,
+    // judge 계약(proto)도 수치라 경계마다 파싱하지 않기 위해.
+    val timeLimitMs: Int,
+    val memoryLimitMb: Int,
+    val testBundle: BundleRef? = null,
     val submissionCount: Int,
     val acceptedCount: Int,
     val tags: List<String>,

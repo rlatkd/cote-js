@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-07-27 23:13 — api↔judge 배선 완료: web 제출이 실제로 채점된다
+
+- **한 일**: ① **JVM 코드젠**(buf + protoc 내장 java 생성기, `services/api/src/main/proto-gen` 커밋, Gradle sourceSets 연결) ② **데이터 모델 부채 상환**(V2 마이그레이션) — 제한·측정값 수치화(`time_limit_ms`·`memory_limit_mb`·`exec_time_ms`·`memory_used_kb`), `test_case` 테이블 신설(히든 케이스 진실원), `problem.test_bundle_*`(claim-check 캐시), `submission.code`·`judged_at`. 시드 변환 + 문제 1000 히든 케이스 5건 ③ **api 배선** — `KafkaJudgeDispatcher`(제출→레인 토픽), `JudgeResultConsumer`(결과→멱등 반영), `MinioBundleStore`(번들 발행, 결정적 패킹), `SubmissionEventHub`+`/api/submissions/stream`(SSE) ④ **web 배선** — 표시 포맷터(수치→"1초"/"30 ms"), `useSubmissionStream`(EventSource), 채점 현황 client island화, 제출 버튼이 실채점으로 ⑤ [ADR-0012](decisions/0012-api-judge-wiring.md) 발행 + 문서 정합(api.md·data-model·verification 절차7·TODO·CLAUDE.md·learning-notes 4건).
+- **결정 변경(실측으로 뒤집힘)**: 사용자 승인은 **reactor-kafka**였으나 런타임에서 `NoSuchMethodError` — reactor-kafka 최신(1.3.25)도 kafka-clients **3.9** 기준이라 Boot 4의 **4.1**과 바이너리 비호환. 대안 검토(클라이언트 다운그레이드 vs 래퍼 제거) 후 **kafka-clients 직접 사용 + 코루틴**으로 전환(프로듀서=콜백→`suspendCancellableCoroutine`, 컨슈머=`Dispatchers.IO.limitedParallelism(1)`).
+- **검증(실측)**: 전 구간 관통(api 제출→Kafka→judge→결과→DB) 정답·오답 모두 / **SSE 2이벤트**(채점 중→맞았습니다) / **멱등성** — 새 컨슈머 그룹으로 결과 토픽 전량 재소비해도 DB 완전 불변(13건·정답 7건·`judged_at`까지) / web 4라우트 200 + `next build`(계약 체크 포함) 그린.
+- **버그 2건(실측 발견·수정)**: ① 빈 이름 충돌 — `@Bean` 팩토리 메서드명이 컴포넌트 클래스명(`judgeResultConsumer`)과 겹쳐 기동 실패 ② **타임존 9시간 어긋남** — judge의 UTC를 그대로 저장해 `submittedAt`/`judgedAt` 불일치. 로컬존 변환으로 수정하고 **근본 해결(`timestamptz` UTC 통일)은 부채로 기록**.
+- **스택 원칙 완화(사용자 확인)**: "실무 재탕 **금지**"는 Claude가 규칙화한 문구로 의도보다 경직됐음 → *"실무 중복은 기본 회피하되 **기술적 적합성이 우선**"*으로 완화. 기존 결정은 전부 독립적 기술 근거가 있어 유지(CLAUDE.md·ADR-0007 보충 노트·api.md·README 반영).
+- **중단점**: 전체 미커밋. **문제 1000만 채점 가능**(다른 문제는 히든 케이스가 없어 '채점 오류'), **예제 실행은 여전히 목업**(run 레인 미배선 — 화면에 명시).
+- **다음**: run 레인 배선(공개 예제 번들) / 케이스별 결과 저장 / 나머지 문제 히든 케이스 / 타임존 UTC 통일. 또는 api 후속(인증·랭킹·rate limit).
+
 ## 2026-07-26 20:21 — judge 파이프라인 관통(Kafka·MinIO) + ADR-0011
 
 - **한 일**: ① **코드젠 확정** — buf CLI + **로컬 플러그인**(BSR 미사용). 최초엔 원격 플러그인을 추천했으나 사용자가 "외부 솔루션 의존"을 지적 → buf가 CLI(오픈소스)/BSR(SaaS) 두 층임을 확인하고 수정. `contracts/buf.yaml`·`buf.gen.yaml` 신설, Go 생성물(`services/judge/gen`) 커밋 ② **Kafka 어댑터**(franz-go) — 3레인 소비·결과 발행, **at-least-once**(수동 커밋), 폴 배치 내 레인 우선순위 정렬, poison message 스킵, 장애 시에도 INTERNAL_ERROR 결과 발행 ③ **MinIO 번들 어댑터** — claim-check 완성(콘텐츠 해시 캐시·`.complete` 마커·staging→rename·해시 불일치 거부·zip slip 방어) ④ `cmd/judged`(워커)·`cmd/judgeprobe`(개발용 제출 주입기) ⑤ [ADR-0011](decisions/0011-codegen-and-kafka-client.md) 발행 + 문서 정합(judge.md 8~10장 추가, learning-notes 8건, engineering-notes 판단 로그, verification 절차 6, RUN, TODO, CLAUDE.md 확정 사항 3행).

@@ -1,5 +1,6 @@
 package com.cotejs.api.domain.port.inbound
 
+import com.cotejs.api.domain.model.JudgedOutcome
 import com.cotejs.api.domain.model.NewSubmission
 import com.cotejs.api.domain.model.Problem
 import com.cotejs.api.domain.model.Submission
@@ -19,4 +20,9 @@ interface SubmissionQueries {
 
 interface SubmitCode {
     suspend fun submit(command: NewSubmission): Submission
+}
+
+/** 채점 결과 반영 — 인바운드 메시징 어댑터(Kafka 결과 토픽)가 호출한다. */
+interface ApplyJudgeOutcome {
+    suspend fun apply(outcome: JudgedOutcome)
 }

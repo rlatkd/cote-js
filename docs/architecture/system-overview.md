@@ -54,4 +54,4 @@ api: 결과 소비 → DB 저장 → SSE로 web 실시간 푸시
 
 ## 마일스톤과의 관계
 
-전체를 한 번에 만들지 않고 M1~M5로 세로 슬라이스 구현([TODO](../TODO.md)). M1은 비동기 채점 코어(구 M1 동기+M2 Kafka를 통합 — [ADR-0009](../decisions/0009-judge-kickoff-async-and-contracts.md)), M2는 채점 스케일아웃. 현재: web(Next) + api(Kotlin/Spring) + Postgres가 연결돼 문제·제출을 실제 DB에서 서빙(채점은 stub), **Kafka(KRaft)·MinIO 인프라와 Protobuf 계약 초안까지 구축** — judge 구현이 다음. 사람 검수 UI(web admin + api admin API)는 M3 범위.
+전체를 한 번에 만들지 않고 M1~M5로 세로 슬라이스 구현([TODO](../TODO.md)). M1은 비동기 채점 코어(구 M1 동기+M2 Kafka를 통합 — [ADR-0009](../decisions/0009-judge-kickoff-async-and-contracts.md)), M2는 채점 스케일아웃. 현재: **제출→채점→실시간 표시 전 구간이 동작한다** — web 제출 → api가 Kafka 제출 레인 발행 → judge(Go)가 샌드박스 채점 → 결과 토픽 → api 멱등 저장 → SSE로 web 갱신([ADR-0012](../decisions/0012-api-judge-wiring.md)). 단 히든 테스트케이스는 문제 1000에만 있고, `run` 레인(예제 실행)은 미배선. 사람 검수 UI(web admin + api admin API)는 M3 범위.

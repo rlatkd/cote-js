@@ -22,8 +22,9 @@ data class ProblemResponse(
     val title: String,
     val difficulty: String,
     val tier: String,
-    val timeLimit: String,
-    val memoryLimit: String,
+    // 수치로 내보낸다 — 표시 형식("1초"·"256 MB")은 화면의 관심사다.
+    val timeLimitMs: Int,
+    val memoryLimitMb: Int,
     val submissionCount: Int,
     val acceptedCount: Int,
     val tags: List<String>,
@@ -40,8 +41,8 @@ data class ProblemResponse(
             title = p.title,
             difficulty = p.difficulty.label,
             tier = p.tier,
-            timeLimit = p.timeLimit,
-            memoryLimit = p.memoryLimit,
+            timeLimitMs = p.timeLimitMs,
+            memoryLimitMb = p.memoryLimitMb,
             submissionCount = p.submissionCount,
             acceptedCount = p.acceptedCount,
             tags = p.tags,
@@ -64,10 +65,12 @@ data class SubmissionResponse(
     val problemTitle: String,
     val result: String,
     val language: String,
-    val time: String,
-    val memory: String,
+    // 채점 전에는 null — 없음을 '—' 문자열로 흉내내지 않는다(표시는 화면 담당).
+    val execTimeMs: Int?,
+    val memoryUsedKb: Int?,
     val length: Int,
     val submittedAt: String,
+    val judgedAt: String?,
 ) {
     companion object {
         fun from(s: Submission) = SubmissionResponse(
@@ -77,10 +80,11 @@ data class SubmissionResponse(
             problemTitle = s.problemTitle,
             result = s.result.label,
             language = s.language.label,
-            time = s.time,
-            memory = s.memory,
+            execTimeMs = s.execTimeMs,
+            memoryUsedKb = s.memoryUsedKb,
             length = s.length,
             submittedAt = s.submittedAt.format(TIMESTAMP),
+            judgedAt = s.judgedAt?.format(TIMESTAMP),
         )
     }
 }

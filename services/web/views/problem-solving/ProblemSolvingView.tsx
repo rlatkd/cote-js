@@ -5,11 +5,17 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Play, Send, RotateCcw, Clock, MemoryStick } from "lucide-react";
 import {
   LANGUAGES,
+  formatMemoryLimit,
+  formatTimeLimit,
   monacoLangMap,
   type Language,
   type Problem,
 } from "@/entities/problem/model";
 import { useProblemSolving } from "@/entities/problem/use-problem-solving";
+import {
+  formatExecTime,
+  formatMemory,
+} from "@/entities/submission/model";
 import DifficultyBadge from "@/entities/problem/ui/DifficultyBadge";
 import AiBadge from "@/entities/problem/ui/AiBadge";
 
@@ -32,6 +38,8 @@ export default function ProblemSolvingView({ problem }: { problem: Problem }) {
     results,
     mode,
     allPassed,
+    submission,
+    error,
     changeLanguage,
     resetCode,
     judge,
@@ -63,11 +71,11 @@ export default function ProblemSolvingView({ problem }: { problem: Problem }) {
           <div className="mt-3 flex gap-4 border-b border-border pb-4 text-xs text-muted">
             <span className="inline-flex items-center gap-1">
               <Clock size={13} /> 시간 제한{" "}
-              <span className="font-mono tabular-nums">{problem.timeLimit}</span>
+              <span className="font-mono tabular-nums">{formatTimeLimit(problem.timeLimitMs)}</span>
             </span>
             <span className="inline-flex items-center gap-1">
               <MemoryStick size={13} /> 메모리 제한{" "}
-              <span className="font-mono tabular-nums">{problem.memoryLimit}</span>
+              <span className="font-mono tabular-nums">{formatMemoryLimit(problem.memoryLimitMb)}</span>
             </span>
           </div>
 
@@ -169,16 +177,53 @@ export default function ProblemSolvingView({ problem }: { problem: Problem }) {
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-3 text-sm">
-              {runState === "idle" && (
+              {runState === "idle" && !error && (
                 <p className="text-muted">
                   코드를 작성하고 <b>예제 실행</b> 또는 <b>제출</b>을 눌러보세요.
                   <span className="mt-1 block text-xs text-faint">
-                    ※ POC 단계라 실제 채점 대신 목업 결과가 표시됩니다.
+                    ※ <b>제출</b>은 실제 채점(Go judge)으로 갑니다. <b>예제 실행</b>은
+                    아직 목업입니다.
                   </span>
                 </p>
               )}
 
-              {runState !== "idle" && (
+              {error && (
+                <p className="border-l-2 border-rose-500 bg-rose-500/10 py-2 pl-3 font-mono text-[13px] text-rose-600 dark:text-rose-400">
+                  {error}
+                </p>
+              )}
+
+              {/* 정식 제출 — judge의 실제 판정(SSE로 도착) */}
+              {mode === "submit" && runState !== "idle" && (
+                <div className="space-y-3">
+                  {runState === "running" && (
+                    <div className="flex items-center gap-2 py-1 font-mono text-[13px] text-muted">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
+                      채점 중… (제출 #{submission?.id})
+                    </div>
+                  )}
+                  {runState === "done" && submission && (
+                    <>
+                      <div
+                        className={`border-l-2 py-2 pl-3 font-mono text-sm font-semibold ${
+                          submission.result === "맞았습니다"
+                            ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : "border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                        }`}
+                      >
+                        {submission.result}
+                      </div>
+                      <div className="flex items-center gap-4 border border-border bg-surface px-3 py-2 font-mono text-xs tabular-nums text-muted">
+                        <span>{formatExecTime(submission.execTimeMs)}</span>
+                        <span>{formatMemory(submission.memoryUsedKb)}</span>
+                        <span className="text-faint">제출 #{submission.id}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {mode === "run" && runState !== "idle" && (
                 <div className="space-y-2">
                   {runState === "done" && (
                     <div
@@ -189,10 +234,8 @@ export default function ProblemSolvingView({ problem }: { problem: Problem }) {
                       }`}
                     >
                       {allPassed
-                        ? mode === "submit"
-                          ? "맞았습니다!!"
-                          : "예제를 모두 통과했습니다"
-                        : "일부 테스트 케이스에서 실패했습니다"}
+                        ? "예제를 모두 통과했습니다"
+                        : "일부 예제에서 실패했습니다"}
                     </div>
                   )}
                   {results.map((r) => (

@@ -346,7 +346,7 @@ Human Review Gate (승인 시에만 공개)
 | Database | PostgreSQL |
 | Cache | Redis |
 
-> NestJS(ADR-0005)에서 **Kotlin+Spring으로 복귀** — 단, 실무(Java+Spring MVC/JPA) 재탕 금지 조항과 함께 모던 스택을 강제한다. 근거: [ADR-0007](docs/decisions/0007-backend-kotlin-return.md).
+> NestJS(ADR-0005)에서 **Kotlin+Spring으로 복귀** — 모던 스택(코루틴·WebFlux·R2DBC·Hexagonal)을 채택한다. 1차 근거는 도메인 정합(api = I/O 지배 오케스트레이터 + SSE 푸시 주체), 2차 근거는 실무 스택과의 중복 회피(학습 가치). 상세: [ADR-0007](docs/decisions/0007-backend-kotlin-return.md).
 
 
 # 9. Judge System

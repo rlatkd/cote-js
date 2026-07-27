@@ -10,6 +10,8 @@ const dotColor: Record<JudgeResult, string> = {
   "런타임 에러": "bg-violet-400",
   "컴파일 에러": "bg-zinc-500",
   "채점 중": "bg-sky-400",
+  // 채점 시스템 장애 — 유저 귀책 오답류와 구분되게 경고색.
+  "채점 오류": "bg-orange-600",
 };
 
 export default function StatusBadge({ result }: { result: JudgeResult }) {

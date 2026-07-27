@@ -18,6 +18,14 @@ repositories {
 	mavenCentral()
 }
 
+// 계약(Protobuf) 생성물 — 원본은 /contracts, 생성은 `cd contracts && buf generate`(ADR-0011).
+// 생성물은 커밋하므로 빌드 시 코드젠을 돌리지 않는다(빌드에 buf·protoc 불필요).
+sourceSets {
+	main {
+		java.srcDir("src/main/proto-gen")
+	}
+}
+
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
@@ -29,6 +37,14 @@ dependencies {
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 	implementation("org.springframework:spring-jdbc")
 	implementation("tools.jackson.module:jackson-module-kotlin")
+	// judge와의 Kafka 계약 — Protobuf 직렬화 + Kafka 클라이언트를 코루틴으로 직접 사용.
+	// spring-kafka(@KafkaListener)·reactor-kafka를 쓰지 않는 이유는 ADR-0012 참조.
+	implementation("com.google.protobuf:protobuf-java:4.34.1")
+	implementation("org.apache.kafka:kafka-clients")
+	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive")
+	// 테스트 번들(claim-check) 발행 — S3 호환 비동기 클라이언트(로컬 MinIO → 배포 시 S3)
+	implementation("software.amazon.awssdk:s3:2.32.14")
+	implementation("org.apache.commons:commons-compress:1.28.0")
 	// OpenAPI 스펙 자동 생성(/v3/api-docs) — web 타입 codegen의 계약 원본 (ADR-0007)
 	implementation("org.springdoc:springdoc-openapi-starter-webflux-api:3.0.3")
 	runtimeOnly("org.postgresql:postgresql") // Flyway(JDBC)용

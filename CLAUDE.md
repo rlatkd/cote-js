@@ -59,16 +59,24 @@
 
 > 각 항목의 배경·배제 이유·논의 경위는 엔지니어링 노트 참조.
 
+### 스택 선택 원칙 (2026-07-26 사용자 확인으로 완화)
+
+**실무(Java·Spring MVC·JPA·MyBatis·블로킹 스타일)와 겹치는 선택은 학습 가치가 낮으므로 기본적으로 회피한다. 단 판단 순위는 기술적 적합성이 위이며, 적합성이 명확하면 실무 스택도 채택한다**(채택 시 근거를 남길 것).
+
+> 구 표현 "실무 재탕 **금지** 조항"은 Claude가 [ADR-0007](docs/decisions/0007-backend-kotlin-return.md)에서 규칙화한 문구로, 사용자 의도보다 경직됐던 것을 바로잡음. 결정 자체(Kotlin+모던 스택)는 유지 — 각 선택이 실무 회피가 아니라 독립적 기술 근거(I/O 지배 워크로드·논블로킹 스택 일관성)로 서 있기 때문.
+
 ### 기술 스택
 
 | 영역 | 확정 | 배제/보류 |
 |---|---|---|
 | Frontend | Next.js + TypeScript + Tailwind(직접) + Monaco Editor | — |
-| Backend API | **Kotlin + Spring Boot** — WebFlux+코루틴, R2DBC, Flyway, Hexagonal, Gradle(Kotlin DSL). **실무 재탕 금지 조항**: MVC·JPA·블로킹 스타일 금지 ([ADR-0007](docs/decisions/0007-backend-kotlin-return.md)) | NestJS(0005, 대체됨), Java, Go, MVC/JPA |
+| Backend API | **Kotlin + Spring Boot** — WebFlux+코루틴, R2DBC, Flyway, Hexagonal, Gradle(Kotlin DSL) ([ADR-0007](docs/decisions/0007-backend-kotlin-return.md)) | NestJS(0005, 대체됨), Java, Go, MVC/JPA(적합성 근거 없이는 미채택) |
 | web↔api 계약 | **OpenAPI codegen** — api springdoc → `pnpm gen:api` → `schema.d.ts`(커밋) + `contract-check.ts` 컴파일타임 검사 | contracts 패키지(폐기) |
 | api↔judge 계약 | **Protobuf** — 루트 `contracts/proto/judge/v1`. Kafka 토픽 `submission.{run,submit,batch}`+`submission.result` ([ADR-0009](docs/decisions/0009-judge-kickoff-async-and-contracts.md)). api↔AI(M3~)도 Protobuf 방침 | Avro+Schema Registry(보류·재검토 가능), JSON Schema |
 | 코드젠 | **buf CLI + 로컬 플러그인**(`buf generate`), 생성물 커밋. **BSR(호스팅 SaaS) 미사용 — 외부 솔루션 의존 금지(오픈소스는 무방, 사용자 방침)**. `buf breaking`으로 스키마 호환성 검사 ([ADR-0011](docs/decisions/0011-codegen-and-kafka-client.md)) | BSR 원격 플러그인, protoc 직접 |
 | judge 라이브러리 | **franz-go**(Kafka, 순수 Go — cgo 회피)·**minio-go**(S3 호환) ([ADR-0011](docs/decisions/0011-codegen-and-kafka-client.md)) | confluent-kafka-go(cgo), sarama, kafka-go |
+| api 라이브러리 | **kafka-clients 직접 사용 + 코루틴**(프로듀서=콜백→suspend, 컨슈머=단일 병렬도 IO 디스패처)·**AWS SDK v2 S3 async**(MinIO) ([ADR-0012](docs/decisions/0012-api-judge-wiring.md)) | reactor-kafka(Boot 4의 kafka-clients 4.x와 바이너리 비호환), spring-kafka(스레드 점유형) |
+| 실시간 알림 | **SSE** `/api/submissions/stream` — 팬아웃은 인프로세스(단일 인스턴스). 다중 인스턴스 시 Redis pub/sub 전환(M2) | WebSocket(양방향 불필요), 폴링 |
 | 메시지 전달 보장 | **at-least-once** — 채점 후 수동 오프셋 커밋(유실 방지 우선). 중복은 api가 `submission_id` 멱등 저장으로 흡수 ([ADR-0011](docs/decisions/0011-codegen-and-kafka-client.md)) | 자동 커밋, exactly-once(외부 부수효과라 무의미) |
 | 테스트케이스 전달 | **claim-check** — MinIO 번들(버킷 `testdata`) + 메시지엔 키·sha256만, judge는 해시 기준 로컬 캐시 | 메시지 인라인(1MB 상한·반복 운반), judge→api HTTP 조회(동기 결합 재도입) |
 | 버전 정책 | **LTS/안정판 기준** — JDK 21 LTS, Boot 4.0.x(성숙 마이너), Node 22 LTS, Postgres 16. 최신 첫 릴리스 회피 | 최신 우선주의 |

@@ -25,3 +25,4 @@
 | [0009](0009-judge-kickoff-async-and-contracts.md) | Judge 착수 설계 — Kafka 직행(M1/M2 통합) + claim-check + Protobuf | Accepted |
 | [0010](0010-contracts-root-group.md) | 루트 `contracts/` 신설 — 언어 중립 IDL 거처 (0008 개정) | Accepted |
 | [0011](0011-codegen-and-kafka-client.md) | 코드젠(buf, BSR 미사용)·Kafka 클라이언트(franz-go)·전달 보장(at-least-once) | Accepted |
+| [0012](0012-api-judge-wiring.md) | api↔judge 배선 — JVM 코드젠·Kafka 클라이언트 직접 사용·SSE 인프로세스·테스트케이스 진실원 | Accepted |

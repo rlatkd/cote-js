@@ -1,12 +1,23 @@
+"use client";
+
+// 채점이 비동기라 이 화면은 열려 있는 동안 갱신된다 → client island로 두고 SSE를 구독한다.
+// 초기 목록은 서버에서 받아 첫 렌더를 채우고(빈 화면 방지), 이후 변화만 스트림으로 받는다.
+
 import Link from "next/link";
-import type { Submission } from "@/entities/submission/model";
+import {
+  formatExecTime,
+  formatMemory,
+  type Submission,
+} from "@/entities/submission/model";
+import { useSubmissionStream } from "@/entities/submission/use-submission-stream";
 import StatusBadge from "@/entities/submission/ui/StatusBadge";
 
 export default function SubmissionStatusView({
-  submissions,
+  submissions: initial,
 }: {
   submissions: Submission[];
 }) {
+  const submissions = useSubmissionStream(initial);
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
       <header className="mb-8">
@@ -53,10 +64,10 @@ export default function SubmissionStatusView({
                   {s.language}
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-sm tabular-nums text-muted">
-                  {s.time}
+                  {formatExecTime(s.execTimeMs)}
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-sm tabular-nums text-muted">
-                  {s.memory}
+                  {formatMemory(s.memoryUsedKb)}
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-sm tabular-nums text-faint">
                   {s.submittedAt}

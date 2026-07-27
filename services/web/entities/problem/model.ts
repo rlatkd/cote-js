@@ -25,8 +25,9 @@ export interface Problem {
   title: string;
   difficulty: Difficulty;
   tier: string; // 예: "Silver III"
-  timeLimit: string; // 예: "1초"
-  memoryLimit: string; // 예: "256 MB"
+  // api는 수치를 준다 — 표시 형식("1초"·"256 MB")은 화면의 관심사이므로 여기서 만든다.
+  timeLimitMs: number;
+  memoryLimitMb: number;
   submissionCount: number;
   acceptedCount: number;
   tags: string[];
@@ -36,6 +37,17 @@ export interface Problem {
   outputDesc: string;
   examples: Example[];
   starterCode: Record<string, string>;
+}
+
+/** 제한 표시 — "1초" / "1.5초" */
+export function formatTimeLimit(ms: number): string {
+  const seconds = ms / 1000;
+  return `${Number.isInteger(seconds) ? seconds : seconds.toFixed(1)}초`;
+}
+
+/** 제한 표시 — "256 MB" */
+export function formatMemoryLimit(mb: number): string {
+  return `${mb} MB`;
 }
 
 /** 정답률(%) — 소수 첫째 자리까지. */

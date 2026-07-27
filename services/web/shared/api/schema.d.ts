@@ -20,6 +20,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/submissions/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["stream"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/problems": {
         parameters: {
             query?: never;
@@ -77,11 +93,14 @@ export interface components {
             problemTitle?: string;
             result?: string;
             language?: string;
-            time?: string;
-            memory?: string;
+            /** Format: int32 */
+            execTimeMs?: number | null;
+            /** Format: int32 */
+            memoryUsedKb?: number | null;
             /** Format: int32 */
             length?: number;
             submittedAt?: string;
+            judgedAt?: string | null;
         };
         ExampleResponse: {
             input?: string;
@@ -93,8 +112,10 @@ export interface components {
             title?: string;
             difficulty?: string;
             tier?: string;
-            timeLimit?: string;
-            memoryLimit?: string;
+            /** Format: int32 */
+            timeLimitMs?: number;
+            /** Format: int32 */
+            memoryLimitMb?: number;
             /** Format: int32 */
             submissionCount?: number;
             /** Format: int32 */
@@ -176,6 +197,44 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SubmissionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    stream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["SubmissionResponse"][];
                 };
             };
             /** @description Bad Request */

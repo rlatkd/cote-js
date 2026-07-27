@@ -9,10 +9,14 @@
 version: v2
 
 plugins:
+  # Go(judge) — 플러그인이 독립 바이너리로 존재한다.
   - local: protoc-gen-go
     out: ../services/judge/gen
     opt: paths=source_relative
 
-# (예정) JVM 생성기 — api 배선 슬라이스에서 추가. Kotlin/Java 생성은 protoc 내장
-# 생성기를 요구하므로 도구 확보 방식(Gradle protobuf 플러그인 vs protoc 바이너리)을
-# 그때 함께 결정한다.
+  # JVM(api) — Java 생성기는 독립 플러그인이 아니라 protoc에 내장돼 있어
+  # protoc 바이너리를 요구한다(PATH에 필요, RUN.md 참조).
+  # Kotlin DSL(--kotlin_out)은 Java 생성물에 얹는 빌더 설탕일 뿐이고,
+  # 생성된 Java 클래스는 Kotlin에서 그대로 쓸 수 있어 Java만 생성한다.
+  - protoc_builtin: java
+    out: ../services/api/src/main/proto-gen

@@ -98,15 +98,35 @@ go run ./cmd/judgeprobe -bundle <dir> -source <풀이.py> -lane submit -submissi
 
 > **함정**: 워커 로그를 `| head -N`으로 파이프하면 버퍼링 때문에 로그가 보이지 않는다(메시지는 이미 소비됨). 순서 검증은 파이프 없이.
 
+### 7. 전 구간 — web 제출 → 채점 → 실시간 표시
+
+```bash
+# 인프라 + api + judged + web 모두 기동한 상태에서 (문제 1000만 히든 테스트케이스가 있다)
+SOLUTION='a, b = map(int, input().split())
+print(a + b)
+'
+curl -s -X POST localhost:4000/api/submissions -H "content-type: application/json"   -d "{\"problemId\":1000,\"language\":\"Python\",\"code\":\"$SOLUTION\"}"   # 201, result="채점 중"
+curl -s localhost:4000/api/submissions | head -c 300   # 잠시 후 "맞았습니다" + execTimeMs/memoryUsedKb
+```
+
+| 항목 | 확인 방법 | 기대 |
+|---|---|---|
+| SSE | `curl -sN localhost:4000/api/submissions/stream` 를 띄운 채 제출 | `채점 중` → 최종 판정 두 이벤트 수신 |
+| 멱등성(at-least-once의 짝) | `KAFKA_GROUP=idempotency-probe ./gradlew bootRun` 으로 재기동(결과 토픽 전량 재소비) | DB 완전 불변(건수·판정·`judged_at`까지) |
+| 타임존 | 응답의 `submittedAt` vs `judgedAt` | 초 단위 차이(9시간 어긋나면 회귀) |
+| 번들 발행 | `docker exec cotejs-minio mc ls local/testdata/bundles` 또는 콘솔 :9001 | 제출 후 `<sha256>.tgz` 존재 |
+| 화면 | http://localhost:3000/status 를 열어둔 채 제출 | 새로고침 없이 행이 추가되고 판정으로 갱신 |
+| 채점 불가 처리 | 테스트케이스 없는 문제(예: 2231)에 제출 | `채점 오류`(오답류가 아님) |
+
 ## 추가 예정 (해당 마일스톤 착수 시 이 문서에 절차 추가)
 
 - **api 테스트 스위트**: Kotest + Testcontainers 도입 시 `./gradlew test`를 게이트에 추가
-- **api 배선**: 제출 API → Kafka 프로듀스, 결과 소비 → DB 멱등 저장(중복 결과 1건으로), JVM proto 생성물 정합
-- **SSE**: 제출 후 web가 폴링 없이 결과 수신
+- **`run` 레인**: 예제 실행이 실채점으로 바뀌면 절차 추가(현재 목업)
 - **problem/plagiarism**: 파이프라인 상태 전이, 유사도 질의 왕복
 
 ## 갱신 이력
 
+- 2026-07-27 23:13 — 전 구간 절차(7) 신설: api 제출→채점→표시, SSE·멱등성·타임존·번들 발행·채점 불가 확인. api 절차의 필드명을 수치 기준으로 갱신.
 - 2026-07-26 20:21 — judge 파이프라인 절차(6) 신설: buf 계약 검사(lint·breaking·generate) + judged/judgeprobe 왕복·캐시·QoS·at-least-once 확인. `head` 파이프 함정 명시.
 - 2026-07-26 20:05 — judge 코어 절차(5) 신설: judgecli 판정 5종 + 샌드박스 격리 2종. 인프라 사전 단계에 Kafka·MinIO 추가.
 

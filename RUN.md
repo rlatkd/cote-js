@@ -25,6 +25,7 @@ cd services/web && pnpm install && pnpm dev   # 브라우저 자동 오픈
 ```
 
 - api: http://localhost:4000/api · web: http://localhost:3000
+- **실채점을 보려면 judge 워커도 켠다**: `cd services/judge && go run ./cmd/judged` (아래 참조). 워커가 없으면 제출이 "채점 중"에 머문다.
 
 ## 끄기
 

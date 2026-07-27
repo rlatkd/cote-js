@@ -18,6 +18,19 @@ spring:
     # 시드 SQL의 $tag${...} 달러 인용이 ${placeholder}로 오인되는 것 방지(플레이스홀더 미사용)
     placeholder-replacement: false
 
+# judge 파이프라인(ADR-0009·0011) — Kafka 제출/결과 토픽 + 테스트 번들 스토리지
+cotejs:
+  kafka:
+    brokers: ${KAFKA_BROKERS:localhost:9092}
+    result-topic: ${KAFKA_RESULT_TOPIC:submission.result}
+    group: ${KAFKA_GROUP:api-result-consumers}
+  storage:
+    endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
+    access-key: ${STORAGE_ACCESS_KEY:cotejs}
+    secret-key: ${STORAGE_SECRET_KEY:cotejs-dev}
+    bucket: ${STORAGE_BUCKET:testdata}
+    region: ${STORAGE_REGION:us-east-1} # MinIO는 리전 개념이 없지만 S3 SDK가 요구한다
+
 springdoc:
   api-docs:
     path: /v3/api-docs # base-path 적용 → 실제 경로 /api/v3/api-docs

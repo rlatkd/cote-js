@@ -14,8 +14,8 @@ data class ProblemEntity(
     val title: String,
     val difficulty: String,
     val tier: String,
-    val timeLimit: String,
-    val memoryLimit: String,
+    val timeLimitMs: Int,
+    val memoryLimitMb: Int,
     val submissionCount: Int,
     val acceptedCount: Int,
     val tags: List<String>,
@@ -24,10 +24,21 @@ data class ProblemEntity(
     val inputDesc: String,
     val outputDesc: String,
     val starterCode: Json,
+    val testBundleKey: String? = null,
+    val testBundleSha256: String? = null,
 )
 
 @Table("example")
 data class ExampleEntity(
+    @Id val id: Long? = null,
+    val problemId: Long,
+    val ord: Int,
+    val input: String,
+    val output: String,
+)
+
+@Table("test_case")
+data class TestCaseEntity(
     @Id val id: Long? = null,
     val problemId: Long,
     val ord: Int,
@@ -43,8 +54,10 @@ data class SubmissionEntity(
     val problemTitle: String,
     val result: String,
     val language: String,
-    val execTime: String,
-    val execMemory: String,
+    val execTimeMs: Int? = null,
+    val memoryUsedKb: Int? = null,
     val length: Int,
+    val code: String? = null,
     val submittedAt: LocalDateTime,
+    val judgedAt: LocalDateTime? = null,
 )

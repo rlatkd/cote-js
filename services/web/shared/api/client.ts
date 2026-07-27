@@ -3,6 +3,13 @@
 
 const API_URL = process.env.API_URL ?? "http://localhost:4000";
 
+/**
+ * 브라우저가 직접 붙는 base(SSE 등). 서버 전용 `API_URL`과 달리 클라이언트 번들에
+ * 들어가므로 `NEXT_PUBLIC_` 접두사가 필요하다.
+ */
+export const BROWSER_API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}/api${path}`, { cache: "no-store" });
   if (!res.ok) {
