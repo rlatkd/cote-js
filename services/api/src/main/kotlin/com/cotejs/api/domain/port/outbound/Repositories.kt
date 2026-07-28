@@ -5,6 +5,7 @@ import com.cotejs.api.domain.model.JudgedOutcome
 import com.cotejs.api.domain.model.Problem
 import com.cotejs.api.domain.model.Submission
 import com.cotejs.api.domain.model.TestCase
+import com.cotejs.api.domain.model.TraceContext
 
 // 아웃바운드 포트 — 어댑터(R2DBC 영속·Kafka·MinIO)가 구현하는 계약.
 
@@ -17,9 +18,13 @@ interface ProblemRepository {
 
     /** 번들을 새로 만들어 올린 뒤 그 참조를 캐시한다. */
     suspend fun updateTestBundle(problemId: Long, bundle: BundleRef)
+
+    /** run 레인용 예제 번들 참조 캐시. */
+    suspend fun updateExampleBundle(problemId: Long, bundle: BundleRef)
 }
 
 interface SubmissionRepository {
+    /** 정식 제출만 — 예제 실행(run)은 기록에 노출하지 않는다. */
     suspend fun findAllNewestFirst(): List<Submission>
 
     /** [submission].id는 무시되고 저장 후 발급된 id로 반환된다. */
@@ -35,7 +40,14 @@ interface SubmissionRepository {
 
 /** 채점 요청 발행(Kafka 제출 레인). */
 interface JudgeDispatcher {
-    suspend fun dispatch(submission: Submission, problem: Problem, code: String, lane: ExecutionLane)
+    suspend fun dispatch(
+        submission: Submission,
+        problem: Problem,
+        bundle: BundleRef,
+        code: String,
+        lane: ExecutionLane,
+        trace: TraceContext,
+    )
 }
 
 /** 실행 QoS 레인([ADR-0006]) — 같은 채점기라도 대기열을 나눈다. */

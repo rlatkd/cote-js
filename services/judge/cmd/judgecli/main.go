@@ -4,7 +4,7 @@
 //
 // 사용:
 //
-//	judgecli -bundle <dir> -source <file.py> [-time-ms 1000] [-mem-mb 256]
+//	judgecli -bundle <dir> -source <file> [-lang python] [-time-ms 1000] [-mem-mb 256]
 //
 // 번들 레이아웃: <dir>/cases/01.in, 01.out, 02.in, ...
 package main
@@ -23,7 +23,8 @@ import (
 
 func main() {
 	bundle := flag.String("bundle", "", "테스트케이스 번들 디렉토리 (cases/NN.in|out)")
-	source := flag.String("source", "", "제출 소스 파일(.py)")
+	source := flag.String("source", "", "제출 소스 파일")
+	lang := flag.String("lang", "python", "언어: python|java|javascript")
 	timeMS := flag.Uint("time-ms", 1000, "시간 제한(ms)")
 	memMB := flag.Uint("mem-mb", 256, "메모리 제한(MB)")
 	flag.Parse()
@@ -40,7 +41,7 @@ func main() {
 	}
 
 	task := domain.Task{
-		Language:      "python",
+		Language:      *lang,
 		SourceCode:    string(code),
 		TimeLimitMS:   uint32(*timeMS),
 		MemoryLimitMB: uint32(*memMB),

@@ -34,6 +34,11 @@
 - **타임스탬프 규칙.** 살아있는 문서(worklog·learning-notes·verification·data-model 갱신 이력 등)에 기록을 추가·보강할 때는 **항상 날짜+시각(`YYYY-MM-DD HH:MM`)을 기입**한다. 시각은 추정하지 말고 `date` 명령으로 확인한다.
 - **기술 판단은 "결론"이 아니라 "고민"까지 남긴다 (사용자 지시, 2026-07-26).** 설계·구현 중 실제로 갈렸던 트레이드오프(예: "단방향 알림에 WebSocket은 과하다 → SSE")는 **결론만 한 줄로 적지 말고** ① 문제 정의 ② 검토한 선택지와 비교축 ③ 채택 근거 ④ **배제한 이유** ⑤ **이 판단이 뒤집히는 조건** ⑥ 알려진 한계까지 적는다. SSE만이 아니라 **모든 크고 작은 결정**(경계 위치, 자원 한도 방식, 판정 우선순위, 비교 규칙 등)이 대상이다. 흐름: 결정 자체 → ADR, 구조에 반영된 판단 → `architecture/*`, 일반화된 교훈·원리 → learning-notes, 진행 중 고민 → engineering-notes.
 - **매 작업마다 즉시 반영 (미루지 말 것).** 어떤 작업이든 그로 인해 바뀐 문서(코드 구조·결정·진행 상황 등)는 **그 작업과 같은 흐름에서 바로 갱신한다.** "나중에/다음에 반영하겠다"고 미루지 않는다. 문서 반영은 작업의 완료 조건이다.
+- **대화 자체가 산출물이다 — 논의가 끝난 턴 안에서 기록한다 (사용자 지시, 2026-07-28).** 구현뿐 아니라 **사용자와 나눈 기술 논의**(질문에서 촉발된 개념 정리, 트레이드오프 문답, 방향 전환)도 반드시 남긴다. 대화에만 있고 문서에 없으면 **다음 세션에서 소멸**한다.
+  - **트리거**: 사용자가 기술적 질문을 했거나, 대안을 비교했거나, 방향/방침이 정해졌거나, 내 추천이 사용자 지적으로 뒤집혔을 때 → **그 논의가 끝나는 턴 안에서** 기록한다(구현을 이어가더라도 기록을 먼저 끝낸다).
+  - **행선지**: 결정 → ADR / 일반화된 개념·원리 → [`learning-notes`](docs/learning-notes.md) / 논의 경위와 배제 이유 → [`engineering-notes`](docs/engineering-notes.md) / 지켜야 할 제약 → 이 파일의 '확정 사항'.
+  - **결정이 안 난 논의도 기록한다.** "무엇을 왜 아직 안 정했는지"와 선택지가 다음 세션의 출발점이 된다.
+  - 실패 사례(2026-07-28): 언어 확장·실행 모드·테스트 전략·서비스 간 계약 논의를 대화에서만 진행하고 문서화를 스프린트 끝으로 미룸 → 사용자가 "저장되고 있는 것 맞나"로 확인해 발견.
 - **문서를 능동적으로 제안·도입한다.** 진행하면서 필요하다고 판단되는 새 문서(형식·구조·체계 포함)나 기존 문서의 개선점을 Claude가 **스스로 발견해 제안하고, 적절하면 직접 만들어 도입**한다. 사용자의 지시를 기다리지 않는다. 단, 기존 문서 체계를 크게 바꾸는 재구성은 도입 전 간단히 알린다.
 
 ### 3. 문자가 아니라 의도로 판단할 것 (사람처럼 생각하라)
@@ -72,6 +77,11 @@
 | Frontend | Next.js + TypeScript + Tailwind(직접) + Monaco Editor | — |
 | Backend API | **Kotlin + Spring Boot** — WebFlux+코루틴, R2DBC, Flyway, Hexagonal, Gradle(Kotlin DSL) ([ADR-0007](docs/decisions/0007-backend-kotlin-return.md)) | NestJS(0005, 대체됨), Java, Go, MVC/JPA(적합성 근거 없이는 미채택) |
 | web↔api 계약 | **OpenAPI codegen** — api springdoc → `pnpm gen:api` → `schema.d.ts`(커밋) + `contract-check.ts` 컴파일타임 검사 | contracts 패키지(폐기) |
+| 서비스 간 계약 | **`contracts/` = 공표 언어(Published Language)** — 도메인 메시지(`judge/v1`) + **공통 타입(`common/v1`: trace·error)**. 규약을 문서가 아닌 **타입으로 강제**([ADR-0017](docs/decisions/0017-published-language.md)) | 서비스별 개별 번역(ACL만), 언어별 공통 라이브러리(폴리글랏에선 N벌 유지) |
+| 시간 규약 | **UTC 절대시각** — 경계는 proto `Timestamp`, 저장은 `timestamptz`, 도메인은 `Instant`/`time.Time`. **존 없는 타입(LocalDateTime) 금지**, 지역 변환은 표시에서만 ([ADR-0015](docs/decisions/0015-cross-service-time-contract.md)) | 서비스별 컨버터 + 문서 규약(실제로 9시간 어긋남 발생) |
+| 테스트 | **선별적 TDD** — 도메인·정책은 테스트 먼저, 어댑터는 핵심 불변식만, 생성 코드·프레임워크는 0. **커버리지는 목표가 아니다.** 금지: 측정값 assertion·구현 복사 assertion·flaky 방치 ([ADR-0016](docs/decisions/0016-test-strategy.md)) | 전면 TDD, 커버리지 목표, 목으로 인프라 흉내 |
+| judge 지원 언어 | **Python · Java · JavaScript**(프로토타입 3종). 언어 지식은 `internal/language` 레지스트리 단일 진실원, 하니스는 **Go 정적 바이너리 1벌**을 전 러너 이미지에 탑재. 메모리 강제는 언어별(rlimit vs 런타임 힙 옵션) ([ADR-0013](docs/decisions/0013-judge-language-expansion.md)) | C++(제거 — 채점기 미지원 언어를 UI가 약속하면 오판정), 언어별 하니스 |
+| 실행 모드 | **run**(공개 예제·`submission.run` 레인·기록 비노출) / **submit**(히든 케이스·`submission.submit`·기록) ([ADR-0014](docs/decisions/0014-execution-modes-and-case-feedback.md)) | run에 히든 케이스 사용(역추적 위험) |
 | api↔judge 계약 | **Protobuf** — 루트 `contracts/proto/judge/v1`. Kafka 토픽 `submission.{run,submit,batch}`+`submission.result` ([ADR-0009](docs/decisions/0009-judge-kickoff-async-and-contracts.md)). api↔AI(M3~)도 Protobuf 방침 | Avro+Schema Registry(보류·재검토 가능), JSON Schema |
 | 코드젠 | **buf CLI + 로컬 플러그인**(`buf generate`), 생성물 커밋. **BSR(호스팅 SaaS) 미사용 — 외부 솔루션 의존 금지(오픈소스는 무방, 사용자 방침)**. `buf breaking`으로 스키마 호환성 검사 ([ADR-0011](docs/decisions/0011-codegen-and-kafka-client.md)) | BSR 원격 플러그인, protoc 직접 |
 | judge 라이브러리 | **franz-go**(Kafka, 순수 Go — cgo 회피)·**minio-go**(S3 호환) ([ADR-0011](docs/decisions/0011-codegen-and-kafka-client.md)) | confluent-kafka-go(cgo), sarama, kafka-go |

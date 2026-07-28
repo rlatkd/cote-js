@@ -111,17 +111,56 @@ public interface SubmissionOrBuilder extends
       getTestBundleSha256Bytes();
 
   /**
+   * <pre>
+   * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+   * </pre>
+   *
    * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
    * @return Whether the submittedAt field is set.
    */
   boolean hasSubmittedAt();
   /**
+   * <pre>
+   * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+   * </pre>
+   *
    * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
    * @return The submittedAt.
    */
   com.google.protobuf.Timestamp getSubmittedAt();
   /**
+   * <pre>
+   * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+   * </pre>
+   *
    * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
    */
   com.google.protobuf.TimestampOrBuilder getSubmittedAtOrBuilder();
+
+  /**
+   * <pre>
+   * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+   * </pre>
+   *
+   * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+   * @return Whether the trace field is set.
+   */
+  boolean hasTrace();
+  /**
+   * <pre>
+   * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+   * </pre>
+   *
+   * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+   * @return The trace.
+   */
+  com.cotejs.contracts.common.v1.TraceContext getTrace();
+  /**
+   * <pre>
+   * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+   * </pre>
+   *
+   * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+   */
+  com.cotejs.contracts.common.v1.TraceContextOrBuilder getTraceOrBuilder();
 }

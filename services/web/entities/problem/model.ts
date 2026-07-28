@@ -4,13 +4,14 @@
 export const DIFFICULTIES = ["Bronze", "Silver", "Gold", "Platinum"] as const;
 export type Difficulty = (typeof DIFFICULTIES)[number];
 
-export const LANGUAGES = ["Python", "C++", "Java", "JavaScript"] as const;
+// judge가 실제로 채점할 수 있는 언어만 노출한다 — UI가 약속한 언어를 채점기가
+// 지원하지 않으면 오판정(런타임 에러)으로 이어진다.
+export const LANGUAGES = ["Python", "Java", "JavaScript"] as const;
 export type Language = (typeof LANGUAGES)[number];
 
 /** UI 언어명 → Monaco 언어 id */
 export const monacoLangMap: Record<Language, string> = {
   Python: "python",
-  "C++": "cpp",
   Java: "java",
   JavaScript: "javascript",
 };

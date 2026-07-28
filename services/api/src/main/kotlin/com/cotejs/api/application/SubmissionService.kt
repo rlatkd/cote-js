@@ -1,7 +1,11 @@
 package com.cotejs.api.application
 
+import com.cotejs.api.domain.model.BundleRef
+import com.cotejs.api.domain.model.ExecutionMode
 import com.cotejs.api.domain.model.JudgeResult
 import com.cotejs.api.domain.model.JudgedOutcome
+import com.cotejs.api.domain.model.TestCase
+import com.cotejs.api.domain.model.TraceContext
 import com.cotejs.api.domain.model.NewSubmission
 import com.cotejs.api.domain.model.Problem
 import com.cotejs.api.domain.model.ProblemNotFoundException
@@ -16,7 +20,7 @@ import com.cotejs.api.domain.port.outbound.ProblemRepository
 import com.cotejs.api.domain.port.outbound.SubmissionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.time.LocalDateTime
+import java.time.Instant
 
 @Service
 class SubmissionService(
@@ -38,7 +42,14 @@ class SubmissionService(
         val problem = problems.findById(command.problemId)
             ?: throw ProblemNotFoundException(command.problemId)
 
-        val bundle = ensureBundle(problem)
+        // 실행 모드가 "무엇으로 채점하나"를 가른다:
+        //   run    → 공개 예제(사용자가 이미 보는 데이터)
+        //   submit → 히든 테스트케이스
+        // run에 히든 케이스를 쓰면 예제 실행만으로 히든 데이터를 역추적할 수 있다.
+        val bundle = when (command.mode) {
+            ExecutionMode.RUN -> ensureExampleBundle(problem)
+            ExecutionMode.SUBMIT -> ensureTestBundle(problem)
+        }
 
         val pending = submissions.save(
             Submission(
@@ -52,22 +63,38 @@ class SubmissionService(
                 language = command.language,
                 length = command.code.length,
                 code = command.code,
-                submittedAt = LocalDateTime.now(),
-                judgedAt = if (bundle == null) LocalDateTime.now() else null,
+                mode = command.mode,
+                submittedAt = Instant.now(),
+                judgedAt = if (bundle == null) Instant.now() else null,
             ),
         )
         events.publish(pending)
 
         if (bundle == null) {
-            log.warn("문제 {}에 테스트케이스가 없어 채점을 건너뜀 (제출 {})", problem.id, pending.id)
+            log.warn(
+                "문제 {}에 채점 데이터가 없어 실행을 건너뜀 (제출 {}, 모드 {})",
+                problem.id, pending.id, command.mode.label,
+            )
             return pending
         }
 
+        // 흐름의 시작점 — 여기서 만든 id가 judge 로그까지 따라간다(ADR-0017).
+        val trace = TraceContext.start()
+        log.info(
+            "채점 요청 발행: submission={} mode={} trace={}",
+            pending.id, command.mode.label, trace.traceId,
+        )
+
         dispatcher.dispatch(
             submission = pending,
-            problem = problem.copy(testBundle = bundle),
+            problem = problem,
+            bundle = bundle,
+            trace = trace,
             code = command.code,
-            lane = ExecutionLane.SUBMIT,
+            lane = when (command.mode) {
+                ExecutionMode.RUN -> ExecutionLane.RUN
+                ExecutionMode.SUBMIT -> ExecutionLane.SUBMIT
+            },
         )
         return pending
     }
@@ -84,12 +111,27 @@ class SubmissionService(
     }
 
     /**
-     * 번들 확보 — DB의 테스트케이스로 만들어 올리고 참조를 캐시한다(claim-check 발행자).
-     * 이미 참조가 있으면 그대로 쓴다. 테스트케이스가 없는 문제는 null.
+     * 번들 확보 — DB의 채점 데이터로 만들어 올리고 참조를 캐시한다(claim-check 발행자).
+     * 이미 참조가 있으면 그대로 쓴다. 데이터가 없는 문제는 null(채점 불가).
      */
-    private suspend fun ensureBundle(problem: Problem) = problem.testBundle ?: run {
-        val cases = problems.findTestCases(problem.id)
-        if (cases.isEmpty()) return@run null
-        bundles.publish(problem.id, cases).also { problems.updateTestBundle(problem.id, it) }
+    private suspend fun ensureTestBundle(problem: Problem): BundleRef? =
+        problem.testBundle ?: publish(problem.id, problems.findTestCases(problem.id)) {
+            problems.updateTestBundle(problem.id, it)
+        }
+
+    private suspend fun ensureExampleBundle(problem: Problem): BundleRef? =
+        problem.exampleBundle ?: publish(
+            problem.id,
+            // 공개 예제도 채점 입장에선 그냥 케이스다 — 같은 번들 규약으로 변환.
+            problem.examples.mapIndexed { index, ex -> TestCase(index + 1, ex.input, ex.output) },
+        ) { problems.updateExampleBundle(problem.id, it) }
+
+    private suspend fun publish(
+        problemId: Long,
+        cases: List<TestCase>,
+        cache: suspend (BundleRef) -> Unit,
+    ): BundleRef? {
+        if (cases.isEmpty()) return null
+        return bundles.publish(problemId, cases).also { cache(it) }
     }
 }

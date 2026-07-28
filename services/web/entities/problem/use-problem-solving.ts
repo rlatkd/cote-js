@@ -2,34 +2,32 @@
 
 // problem-solving ViewModel — 에디터/채점 상태와 로직을 소유한다(MVVM).
 // view(ProblemSolvingView)는 이 훅을 조합해 렌더링만 담당.
+//
+// 예제 실행(run)과 정식 제출(submit)은 **같은 채점 경로**를 탄다 — 무엇으로 채점하느냐
+// (공개 예제 vs 히든 케이스)와 어느 QoS 레인으로 가느냐만 다르다(api가 결정).
 
 import { useEffect, useRef, useState } from "react";
 import { type Language, type Problem } from "./model";
 import { createSubmission } from "@/entities/submission/api";
-import { isPending, type Submission } from "@/entities/submission/model";
+import {
+  isPending,
+  type ExecutionMode,
+  type Submission,
+} from "@/entities/submission/model";
 import { BROWSER_API_URL } from "@/shared/api/client";
 
-export type TestResult = {
-  no: number;
-  passed: boolean;
-  time: string;
-  memory: string;
-};
-
 export type RunState = "idle" | "running" | "done";
-export type RunMode = "run" | "submit";
+export type RunMode = ExecutionMode;
 
 export function useProblemSolving(problem: Problem) {
   const [language, setLanguage] = useState<Language>("Python");
   const [code, setCode] = useState<string>(problem.starterCode["Python"]);
   const [editorTheme, setEditorTheme] = useState<"vs-dark" | "light">("vs-dark");
   const [runState, setRunState] = useState<RunState>("idle");
-  const [results, setResults] = useState<TestResult[]>([]);
-  const [mode, setMode] = useState<RunMode>("run");
-  // 실제 채점(제출) 결과 — judge가 Kafka로 돌려준 판정이 SSE로 도착한다.
+  const [mode, setMode] = useState<RunMode>("submit");
+  // judge가 Kafka로 돌려준 판정이 SSE로 도착한다.
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const streamRef = useRef<EventSource | null>(null);
 
   // 사이트 테마와 에디터 테마 동기화
@@ -47,13 +45,7 @@ export function useProblemSolving(problem: Problem) {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(
-    () => () => {
-      timers.current.forEach(clearTimeout);
-      streamRef.current?.close();
-    },
-    [],
-  );
+  useEffect(() => () => streamRef.current?.close(), []);
 
   function changeLanguage(lang: Language) {
     setLanguage(lang);
@@ -62,32 +54,19 @@ export function useProblemSolving(problem: Problem) {
 
   function resetCode() {
     setCode(problem.starterCode[language]);
-    setResults([]);
     setSubmission(null);
     setError(null);
     setRunState("idle");
   }
 
-  function judge(kind: RunMode) {
-    if (kind === "submit") {
-      void submitForJudging();
-      return;
-    }
-    runExamples();
-  }
-
   /**
-   * 정식 제출 — api가 Kafka 제출 레인으로 보내고, judge의 판정이 결과 토픽을 거쳐
-   * SSE로 돌아온다. 그래서 응답을 기다리지 않고 스트림에서 내 제출 id를 기다린다.
+   * 채점 요청 — api가 접수만 응답하고(비동기), 최종 판정은 SSE로 돌아온다.
+   * 그래서 응답을 기다리는 대신 스트림에서 **내 제출 id**를 기다린다.
    */
-  async function submitForJudging() {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
+  async function judge(kind: RunMode) {
     streamRef.current?.close();
-
-    setMode("submit");
+    setMode(kind);
     setRunState("running");
-    setResults([]);
     setSubmission(null);
     setError(null);
 
@@ -97,16 +76,17 @@ export function useProblemSolving(problem: Problem) {
         problemId: problem.id,
         language,
         code,
+        mode: kind,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "제출에 실패했습니다");
+      setError(e instanceof Error ? e.message : "요청에 실패했습니다");
       setRunState("idle");
       return;
     }
 
     setSubmission(accepted);
     if (!isPending(accepted)) {
-      // 채점 자체가 불가한 경우(테스트케이스 미비 등)는 즉시 확정 결과가 온다.
+      // 채점 자체가 불가한 경우(데이터 미비 등)는 즉시 확정 결과가 온다.
       setRunState("done");
       return;
     }
@@ -125,36 +105,7 @@ export function useProblemSolving(problem: Problem) {
     };
   }
 
-  // 예제 실행은 아직 목업이다 — 공개 예제용 번들 발행 경로(run 레인)가 미구현(TODO).
-  function runExamples() {
-    const kind: RunMode = "run";
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
-    setMode(kind);
-    setRunState("running");
-    setResults([]);
-
-    const total = problem.examples.length;
-    const collected: TestResult[] = [];
-
-    for (let i = 0; i < total; i++) {
-      const t = setTimeout(() => {
-        const passed = true;
-        collected.push({
-          no: i + 1,
-          passed,
-          time: `${40 + i * 18} ms`,
-          memory: `${20 + i} MB`,
-        });
-        setResults([...collected]);
-        if (collected.length === total) setRunState("done");
-      }, 450 * (i + 1));
-      timers.current.push(t);
-    }
-  }
-
-  const allPassed =
-    runState === "done" && results.length > 0 && results.every((r) => r.passed);
+  const accepted = submission?.result === "맞았습니다";
 
   return {
     language,
@@ -162,10 +113,9 @@ export function useProblemSolving(problem: Problem) {
     setCode,
     editorTheme,
     runState,
-    results,
     mode,
-    allPassed,
     submission,
+    accepted,
     error,
     changeLanguage,
     resetCode,

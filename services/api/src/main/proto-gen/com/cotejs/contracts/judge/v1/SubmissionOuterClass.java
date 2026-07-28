@@ -41,33 +41,37 @@ public final class SubmissionOuterClass extends com.google.protobuf.GeneratedFil
   static {
     java.lang.String[] descriptorData = {
       "\n\031judge/v1/submission.proto\022\010judge.v1\032\037g" +
-      "oogle/protobuf/timestamp.proto\"\356\002\n\nSubmi" +
-      "ssion\022#\n\rsubmission_id\030\001 \001(\003R\014submission" +
-      "Id\022\035\n\nproblem_id\030\002 \001(\003R\tproblemId\022\032\n\010lan" +
-      "guage\030\003 \001(\tR\010language\022\037\n\013source_code\030\004 \001" +
-      "(\tR\nsourceCode\022\"\n\rtime_limit_ms\030\005 \001(\rR\013t" +
-      "imeLimitMs\022&\n\017memory_limit_mb\030\006 \001(\rR\rmem" +
-      "oryLimitMb\022&\n\017test_bundle_key\030\007 \001(\tR\rtes" +
-      "tBundleKey\022,\n\022test_bundle_sha256\030\010 \001(\tR\020" +
-      "testBundleSha256\022=\n\014submitted_at\030\t \001(\0132\032" +
-      ".google.protobuf.TimestampR\013submittedAtB" +
-      "_\n\035com.cotejs.contracts.judge.v1P\001Z<gith" +
-      "ub.com/rlatkd/cotejs/services/judge/gen/" +
-      "judge/v1;judgev1b\006proto3"
+      "oogle/protobuf/timestamp.proto\032\025common/v" +
+      "1/trace.proto\"\235\003\n\nSubmission\022#\n\rsubmissi" +
+      "on_id\030\001 \001(\003R\014submissionId\022\035\n\nproblem_id\030" +
+      "\002 \001(\003R\tproblemId\022\032\n\010language\030\003 \001(\tR\010lang" +
+      "uage\022\037\n\013source_code\030\004 \001(\tR\nsourceCode\022\"\n" +
+      "\rtime_limit_ms\030\005 \001(\rR\013timeLimitMs\022&\n\017mem" +
+      "ory_limit_mb\030\006 \001(\rR\rmemoryLimitMb\022&\n\017tes" +
+      "t_bundle_key\030\007 \001(\tR\rtestBundleKey\022,\n\022tes" +
+      "t_bundle_sha256\030\010 \001(\tR\020testBundleSha256\022" +
+      "=\n\014submitted_at\030\t \001(\0132\032.google.protobuf." +
+      "TimestampR\013submittedAt\022-\n\005trace\030\n \001(\0132\027." +
+      "common.v1.TraceContextR\005traceB_\n\035com.cot" +
+      "ejs.contracts.judge.v1P\001Z<github.com/rla" +
+      "tkd/cotejs/services/judge/gen/judge/v1;j" +
+      "udgev1b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
           com.google.protobuf.TimestampProto.getDescriptor(),
+          com.cotejs.contracts.common.v1.Trace.getDescriptor(),
         });
     internal_static_judge_v1_Submission_descriptor =
       getDescriptor().getMessageType(0);
     internal_static_judge_v1_Submission_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_judge_v1_Submission_descriptor,
-        new java.lang.String[] { "SubmissionId", "ProblemId", "Language", "SourceCode", "TimeLimitMs", "MemoryLimitMb", "TestBundleKey", "TestBundleSha256", "SubmittedAt", });
+        new java.lang.String[] { "SubmissionId", "ProblemId", "Language", "SourceCode", "TimeLimitMs", "MemoryLimitMb", "TestBundleKey", "TestBundleSha256", "SubmittedAt", "Trace", });
     descriptor.resolveAllFeaturesImmutable();
     com.google.protobuf.TimestampProto.getDescriptor();
+    com.cotejs.contracts.common.v1.Trace.getDescriptor();
   }
 
   // @@protoc_insertion_point(outer_class_scope)

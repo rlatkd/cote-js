@@ -45,6 +45,8 @@ data class Problem(
     val timeLimitMs: Int,
     val memoryLimitMb: Int,
     val testBundle: BundleRef? = null,
+    // run 레인용 — 공개 예제로 만든 번들(히든 케이스 노출 방지)
+    val exampleBundle: BundleRef? = null,
     val submissionCount: Int,
     val acceptedCount: Int,
     val tags: List<String>,

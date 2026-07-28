@@ -35,10 +35,9 @@ export default function ProblemSolvingView({ problem }: { problem: Problem }) {
     setCode,
     editorTheme,
     runState,
-    results,
     mode,
-    allPassed,
     submission,
+    accepted,
     error,
     changeLanguage,
     resetCode,
@@ -181,8 +180,8 @@ export default function ProblemSolvingView({ problem }: { problem: Problem }) {
                 <p className="text-muted">
                   코드를 작성하고 <b>예제 실행</b> 또는 <b>제출</b>을 눌러보세요.
                   <span className="mt-1 block text-xs text-faint">
-                    ※ <b>제출</b>은 실제 채점(Go judge)으로 갑니다. <b>예제 실행</b>은
-                    아직 목업입니다.
+                    ※ <b>예제 실행</b>은 위 공개 예제로, <b>제출</b>은 히든 테스트케이스로
+                    실제 채점합니다.
                   </span>
                 </p>
               )}
@@ -193,79 +192,73 @@ export default function ProblemSolvingView({ problem }: { problem: Problem }) {
                 </p>
               )}
 
-              {/* 정식 제출 — judge의 실제 판정(SSE로 도착) */}
-              {mode === "submit" && runState !== "idle" && (
+              {runState !== "idle" && (
                 <div className="space-y-3">
                   {runState === "running" && (
                     <div className="flex items-center gap-2 py-1 font-mono text-[13px] text-muted">
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
-                      채점 중… (제출 #{submission?.id})
+                      {mode === "run" ? "예제 실행 중…" : "채점 중…"}
+                      {submission && (
+                        <span className="text-faint">#{submission.id}</span>
+                      )}
                     </div>
                   )}
+
                   {runState === "done" && submission && (
                     <>
                       <div
                         className={`border-l-2 py-2 pl-3 font-mono text-sm font-semibold ${
-                          submission.result === "맞았습니다"
+                          accepted
                             ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                             : "border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400"
                         }`}
                       >
-                        {submission.result}
+                        {mode === "run" && accepted
+                          ? "예제를 모두 통과했습니다"
+                          : submission.result}
                       </div>
+
                       <div className="flex items-center gap-4 border border-border bg-surface px-3 py-2 font-mono text-xs tabular-nums text-muted">
                         <span>{formatExecTime(submission.execTimeMs)}</span>
                         <span>{formatMemory(submission.memoryUsedKb)}</span>
-                        <span className="text-faint">제출 #{submission.id}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {mode === "run" && runState !== "idle" && (
-                <div className="space-y-2">
-                  {runState === "done" && (
-                    <div
-                      className={`mb-3 border-l-2 py-2 pl-3 font-mono text-sm font-semibold ${
-                        allPassed
-                          ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                          : "border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                      }`}
-                    >
-                      {allPassed
-                        ? "예제를 모두 통과했습니다"
-                        : "일부 예제에서 실패했습니다"}
-                    </div>
-                  )}
-                  {results.map((r) => (
-                    <div
-                      key={r.no}
-                      className="flex items-center justify-between border border-border bg-surface px-3 py-2"
-                    >
-                      <span className="font-mono text-[13px]">
-                        {mode === "run" ? "예제" : "case"} {r.no}
-                      </span>
-                      <div className="flex items-center gap-4 font-mono text-xs tabular-nums text-muted">
-                        <span>{r.time}</span>
-                        <span>{r.memory}</span>
-                        <span
-                          className={`font-semibold uppercase tracking-wide ${
-                            r.passed
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-rose-600 dark:text-rose-400"
-                          }`}
-                        >
-                          {r.passed ? "pass" : "fail"}
+                        <span className="text-faint">
+                          {mode === "run" ? "예제 실행" : "제출"} #{submission.id}
                         </span>
                       </div>
-                    </div>
-                  ))}
-                  {runState === "running" && (
-                    <div className="flex items-center gap-2 py-1 font-mono text-[13px] text-muted">
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
-                      채점 중…
-                    </div>
+
+                      {/* 케이스별 결과 — "몇 번에서 틀렸나"가 학습에 필요한 정보다 */}
+                      {submission.cases.map((c) => (
+                        <div
+                          key={c.no}
+                          className="flex items-center justify-between border border-border bg-surface px-3 py-2"
+                        >
+                          <span className="font-mono text-[13px]">
+                            {mode === "run" ? "예제" : "case"} {c.no}
+                          </span>
+                          <div className="flex items-center gap-4 font-mono text-xs tabular-nums text-muted">
+                            <span>{formatExecTime(c.execTimeMs)}</span>
+                            <span>{formatMemory(c.memoryUsedKb)}</span>
+                            <span
+                              className={`font-semibold uppercase tracking-wide ${
+                                c.result === "맞았습니다"
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-rose-600 dark:text-rose-400"
+                              }`}
+                            >
+                              {c.result === "맞았습니다" ? "pass" : "fail"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* 컴파일 에러 등 상세 로그가 있으면 그대로 보여준다 */}
+                      {submission.cases.length === 0 &&
+                        submission.result !== "맞았습니다" && (
+                          <p className="text-xs text-faint">
+                            케이스별 결과가 없습니다 — 실행 전 단계에서 실패했습니다.
+                          </p>
+                        )}
+                    </>
                   )}
                 </div>
               )}

@@ -26,6 +26,12 @@ sourceSets {
 	}
 }
 
+// Testcontainers 버전은 Boot BOM이 관리하지 않으므로 BOM을 직접 들인다.
+// 안정판 정책: 최신 2.0.x가 아니라 성숙한 1.21.x(메이저 전환 직후 회피).
+dependencyManagement {
+	imports { mavenBom("org.testcontainers:testcontainers-bom:1.21.4") }
+}
+
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
@@ -55,6 +61,12 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webflux-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+	// 통합 테스트는 **진짜 인프라**로 한다 — 목으로 흉내낸 DB는 우리가 상상한 DB일 뿐이라
+	// 실제로 깨지는 지점(타입 매핑·제약·트랜잭션)을 못 잡는다([ADR-0016]).
+	testImplementation("org.springframework.boot:spring-boot-testcontainers")
+	testImplementation("org.testcontainers:postgresql")
+	testImplementation("org.testcontainers:junit-jupiter")
+	testImplementation("org.testcontainers:r2dbc")
 	testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

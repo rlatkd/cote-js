@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
   formatExecTime,
   formatMemory,
+  formatTimestamp,
   type Submission,
 } from "@/entities/submission/model";
 import { useSubmissionStream } from "@/entities/submission/use-submission-stream";
@@ -70,7 +71,7 @@ export default function SubmissionStatusView({
                   {formatMemory(s.memoryUsedKb)}
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-sm tabular-nums text-faint">
-                  {s.submittedAt}
+                  {formatTimestamp(s.submittedAt)}
                 </td>
               </tr>
             ))}

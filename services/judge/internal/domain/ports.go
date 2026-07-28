@@ -2,27 +2,38 @@ package domain
 
 import "context"
 
-// Runner는 언어별 실행기 포트. 샌드박스 어댑터(Docker — 추후 커널 직접 제어로 교체)가 구현한다.
+// Runner는 "격리된 환경에서 제출을 실행한다"는 포트. 샌드박스 어댑터(Docker — 추후
+// 커널 직접 제어로 교체)가 구현한다. 경계를 여기 둔 이유는 **격리 방식은 바뀌지만
+// 채점 절차는 바뀌지 않기** 때문이다.
 //
-// Compile 단계는 언어 추가(C++·Java)를 대비한 자리다 — 컴파일이 없는 언어(Python)는
-// no-op으로 통과시킨다. 언어 추가 시 이 인터페이스는 불변, 러너만 추가한다(ADR-0009).
+// 초기엔 Compile/RunCases 두 메서드였으나 한 메서드로 합쳤다 — 컴파일과 실행을 나누면
+// 컨테이너를 두 번 띄워야 하고(기동 비용 2배), 컴파일 산출물을 전달하려고 바인드 마운트
+// 잔존에 의존하게 된다. 한 번의 실행 안에서 "검증 → 케이스 실행"이 끝나는 게 자연스럽다.
 type Runner interface {
-	// Compile은 실패해도 error를 반환하지 않는다 — 컴파일 실패는 유저 귀책(COMPILE_ERROR 판정)이고,
-	// error는 시스템 장애(INTERNAL_ERROR)에만 쓴다.
-	Compile(ctx context.Context, spec RunSpec) (CompileOutput, error)
-	RunCases(ctx context.Context, spec RunSpec) ([]RawCaseResult, error)
+	Run(ctx context.Context, spec RunSpec) (RunOutcome, error)
 }
 
 // RunSpec은 러너에 넘기는 실행 명세. WorkDir 안에 소스와 케이스 입력이 준비돼 있다.
 type RunSpec struct {
 	// 소스·케이스 입력·출력이 배치된 작업 디렉토리(임시, 채점 후 폐기).
-	//   main.py / cases/NN.in / out/NN.out(러너가 씀) / result.json(러너가 씀)
-	WorkDir       string
-	CaseCount     int
+	//   <소스파일> / cases/NN.in / out/NN.out(러너가 씀) / compile.json · result.json(러너가 씀)
+	WorkDir string
+	// 언어 식별자 — 러너가 이미지·실행 명령을 고르는 키.
+	Language  string
+	CaseCount int
+	// **보정이 적용된** 유효 한도(언어별 배수·여유분 반영. executor가 계산한다).
 	TimeLimitMS   uint32
 	MemoryLimitMB uint32
 }
 
+type RunOutcome struct {
+	Compile CompileOutput
+	// 컴파일 실패 시엔 비어 있다.
+	Cases []RawCaseResult
+}
+
+// CompileOutput — 실행 전 검증(컴파일·문법 검사) 결과.
+// 실패는 error가 아니다: 유저 귀책이므로 COMPILE_ERROR 판정으로 흐른다.
 type CompileOutput struct {
 	OK  bool
 	Log string

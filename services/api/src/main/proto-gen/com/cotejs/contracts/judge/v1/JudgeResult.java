@@ -157,13 +157,19 @@ private static final long serialVersionUID = 0L;
   /**
    * <pre>
    * COMPILE_ERROR·INTERNAL_ERROR 상세(컴파일러 출력 등). 그 외엔 빈 문자열.
+   *
+   * Deprecated: 문자열 하나로는 "재시도해도 되는지·누구 잘못인지"를 담지 못해
+   * 수신자가 추측하게 된다. common.v1.Error(failure)로 대체 중이며,
+   * 소비자 전환이 끝나면 제거한다(그때까지 둘 다 채운다 — ADR-0017).
    * </pre>
    *
-   * <code>string error_message = 6 [json_name = "errorMessage"];</code>
+   * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
+   * @deprecated judge.v1.JudgeResult.error_message is deprecated.
+   *     See judge/v1/result.proto;l=51
    * @return The errorMessage.
    */
   @java.lang.Override
-  public java.lang.String getErrorMessage() {
+  @java.lang.Deprecated public java.lang.String getErrorMessage() {
     java.lang.Object ref = errorMessage_;
     if (ref instanceof java.lang.String) {
       return (java.lang.String) ref;
@@ -178,13 +184,19 @@ private static final long serialVersionUID = 0L;
   /**
    * <pre>
    * COMPILE_ERROR·INTERNAL_ERROR 상세(컴파일러 출력 등). 그 외엔 빈 문자열.
+   *
+   * Deprecated: 문자열 하나로는 "재시도해도 되는지·누구 잘못인지"를 담지 못해
+   * 수신자가 추측하게 된다. common.v1.Error(failure)로 대체 중이며,
+   * 소비자 전환이 끝나면 제거한다(그때까지 둘 다 채운다 — ADR-0017).
    * </pre>
    *
-   * <code>string error_message = 6 [json_name = "errorMessage"];</code>
+   * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
+   * @deprecated judge.v1.JudgeResult.error_message is deprecated.
+   *     See judge/v1/result.proto;l=51
    * @return The bytes for errorMessage.
    */
   @java.lang.Override
-  public com.google.protobuf.ByteString
+  @java.lang.Deprecated public com.google.protobuf.ByteString
       getErrorMessageBytes() {
     java.lang.Object ref = errorMessage_;
     if (ref instanceof java.lang.String) {
@@ -224,6 +236,82 @@ private static final long serialVersionUID = 0L;
     return judgedAt_ == null ? com.google.protobuf.Timestamp.getDefaultInstance() : judgedAt_;
   }
 
+  public static final int FAILURE_FIELD_NUMBER = 8;
+  private com.cotejs.contracts.common.v1.Error failure_;
+  /**
+   * <pre>
+   * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+   * </pre>
+   *
+   * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+   * @return Whether the failure field is set.
+   */
+  @java.lang.Override
+  public boolean hasFailure() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <pre>
+   * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+   * </pre>
+   *
+   * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+   * @return The failure.
+   */
+  @java.lang.Override
+  public com.cotejs.contracts.common.v1.Error getFailure() {
+    return failure_ == null ? com.cotejs.contracts.common.v1.Error.getDefaultInstance() : failure_;
+  }
+  /**
+   * <pre>
+   * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+   * </pre>
+   *
+   * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+   */
+  @java.lang.Override
+  public com.cotejs.contracts.common.v1.ErrorOrBuilder getFailureOrBuilder() {
+    return failure_ == null ? com.cotejs.contracts.common.v1.Error.getDefaultInstance() : failure_;
+  }
+
+  public static final int TRACE_FIELD_NUMBER = 9;
+  private com.cotejs.contracts.common.v1.TraceContext trace_;
+  /**
+   * <pre>
+   * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+   * </pre>
+   *
+   * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+   * @return Whether the trace field is set.
+   */
+  @java.lang.Override
+  public boolean hasTrace() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <pre>
+   * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+   * </pre>
+   *
+   * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+   * @return The trace.
+   */
+  @java.lang.Override
+  public com.cotejs.contracts.common.v1.TraceContext getTrace() {
+    return trace_ == null ? com.cotejs.contracts.common.v1.TraceContext.getDefaultInstance() : trace_;
+  }
+  /**
+   * <pre>
+   * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+   * </pre>
+   *
+   * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+   */
+  @java.lang.Override
+  public com.cotejs.contracts.common.v1.TraceContextOrBuilder getTraceOrBuilder() {
+    return trace_ == null ? com.cotejs.contracts.common.v1.TraceContext.getDefaultInstance() : trace_;
+  }
+
   private byte memoizedIsInitialized = -1;
   @java.lang.Override
   public final boolean isInitialized() {
@@ -258,6 +346,12 @@ private static final long serialVersionUID = 0L;
     }
     if (((bitField0_ & 0x00000001) != 0)) {
       output.writeMessage(7, getJudgedAt());
+    }
+    if (((bitField0_ & 0x00000002) != 0)) {
+      output.writeMessage(8, getFailure());
+    }
+    if (((bitField0_ & 0x00000004) != 0)) {
+      output.writeMessage(9, getTrace());
     }
     getUnknownFields().writeTo(output);
   }
@@ -295,6 +389,14 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(7, getJudgedAt());
     }
+    if (((bitField0_ & 0x00000002) != 0)) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(8, getFailure());
+    }
+    if (((bitField0_ & 0x00000004) != 0)) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(9, getTrace());
+    }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
     return size;
@@ -326,6 +428,16 @@ private static final long serialVersionUID = 0L;
       if (!getJudgedAt()
           .equals(other.getJudgedAt())) return false;
     }
+    if (hasFailure() != other.hasFailure()) return false;
+    if (hasFailure()) {
+      if (!getFailure()
+          .equals(other.getFailure())) return false;
+    }
+    if (hasTrace() != other.hasTrace()) return false;
+    if (hasTrace()) {
+      if (!getTrace()
+          .equals(other.getTrace())) return false;
+    }
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -355,6 +467,14 @@ private static final long serialVersionUID = 0L;
     if (hasJudgedAt()) {
       hash = (37 * hash) + JUDGED_AT_FIELD_NUMBER;
       hash = (53 * hash) + getJudgedAt().hashCode();
+    }
+    if (hasFailure()) {
+      hash = (37 * hash) + FAILURE_FIELD_NUMBER;
+      hash = (53 * hash) + getFailure().hashCode();
+    }
+    if (hasTrace()) {
+      hash = (37 * hash) + TRACE_FIELD_NUMBER;
+      hash = (53 * hash) + getTrace().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -488,6 +608,8 @@ private static final long serialVersionUID = 0L;
               .alwaysUseFieldBuilders) {
         internalGetCasesFieldBuilder();
         internalGetJudgedAtFieldBuilder();
+        internalGetFailureFieldBuilder();
+        internalGetTraceFieldBuilder();
       }
     }
     @java.lang.Override
@@ -510,6 +632,16 @@ private static final long serialVersionUID = 0L;
       if (judgedAtBuilder_ != null) {
         judgedAtBuilder_.dispose();
         judgedAtBuilder_ = null;
+      }
+      failure_ = null;
+      if (failureBuilder_ != null) {
+        failureBuilder_.dispose();
+        failureBuilder_ = null;
+      }
+      trace_ = null;
+      if (traceBuilder_ != null) {
+        traceBuilder_.dispose();
+        traceBuilder_ = null;
       }
       return this;
     }
@@ -579,6 +711,18 @@ private static final long serialVersionUID = 0L;
             : judgedAtBuilder_.build();
         to_bitField0_ |= 0x00000001;
       }
+      if (((from_bitField0_ & 0x00000080) != 0)) {
+        result.failure_ = failureBuilder_ == null
+            ? failure_
+            : failureBuilder_.build();
+        to_bitField0_ |= 0x00000002;
+      }
+      if (((from_bitField0_ & 0x00000100) != 0)) {
+        result.trace_ = traceBuilder_ == null
+            ? trace_
+            : traceBuilder_.build();
+        to_bitField0_ |= 0x00000004;
+      }
       result.bitField0_ |= to_bitField0_;
     }
 
@@ -639,6 +783,12 @@ private static final long serialVersionUID = 0L;
       }
       if (other.hasJudgedAt()) {
         mergeJudgedAt(other.getJudgedAt());
+      }
+      if (other.hasFailure()) {
+        mergeFailure(other.getFailure());
+      }
+      if (other.hasTrace()) {
+        mergeTrace(other.getTrace());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -711,6 +861,20 @@ private static final long serialVersionUID = 0L;
               bitField0_ |= 0x00000040;
               break;
             } // case 58
+            case 66: {
+              input.readMessage(
+                  internalGetFailureFieldBuilder().getBuilder(),
+                  extensionRegistry);
+              bitField0_ |= 0x00000080;
+              break;
+            } // case 66
+            case 74: {
+              input.readMessage(
+                  internalGetTraceFieldBuilder().getBuilder(),
+                  extensionRegistry);
+              bitField0_ |= 0x00000100;
+              break;
+            } // case 74
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -1151,12 +1315,18 @@ private static final long serialVersionUID = 0L;
     /**
      * <pre>
      * COMPILE_ERROR·INTERNAL_ERROR 상세(컴파일러 출력 등). 그 외엔 빈 문자열.
+     *
+     * Deprecated: 문자열 하나로는 "재시도해도 되는지·누구 잘못인지"를 담지 못해
+     * 수신자가 추측하게 된다. common.v1.Error(failure)로 대체 중이며,
+     * 소비자 전환이 끝나면 제거한다(그때까지 둘 다 채운다 — ADR-0017).
      * </pre>
      *
-     * <code>string error_message = 6 [json_name = "errorMessage"];</code>
+     * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
+     * @deprecated judge.v1.JudgeResult.error_message is deprecated.
+     *     See judge/v1/result.proto;l=51
      * @return The errorMessage.
      */
-    public java.lang.String getErrorMessage() {
+    @java.lang.Deprecated public java.lang.String getErrorMessage() {
       java.lang.Object ref = errorMessage_;
       if (!(ref instanceof java.lang.String)) {
         com.google.protobuf.ByteString bs =
@@ -1171,12 +1341,18 @@ private static final long serialVersionUID = 0L;
     /**
      * <pre>
      * COMPILE_ERROR·INTERNAL_ERROR 상세(컴파일러 출력 등). 그 외엔 빈 문자열.
+     *
+     * Deprecated: 문자열 하나로는 "재시도해도 되는지·누구 잘못인지"를 담지 못해
+     * 수신자가 추측하게 된다. common.v1.Error(failure)로 대체 중이며,
+     * 소비자 전환이 끝나면 제거한다(그때까지 둘 다 채운다 — ADR-0017).
      * </pre>
      *
-     * <code>string error_message = 6 [json_name = "errorMessage"];</code>
+     * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
+     * @deprecated judge.v1.JudgeResult.error_message is deprecated.
+     *     See judge/v1/result.proto;l=51
      * @return The bytes for errorMessage.
      */
-    public com.google.protobuf.ByteString
+    @java.lang.Deprecated public com.google.protobuf.ByteString
         getErrorMessageBytes() {
       java.lang.Object ref = errorMessage_;
       if (ref instanceof String) {
@@ -1192,13 +1368,19 @@ private static final long serialVersionUID = 0L;
     /**
      * <pre>
      * COMPILE_ERROR·INTERNAL_ERROR 상세(컴파일러 출력 등). 그 외엔 빈 문자열.
+     *
+     * Deprecated: 문자열 하나로는 "재시도해도 되는지·누구 잘못인지"를 담지 못해
+     * 수신자가 추측하게 된다. common.v1.Error(failure)로 대체 중이며,
+     * 소비자 전환이 끝나면 제거한다(그때까지 둘 다 채운다 — ADR-0017).
      * </pre>
      *
-     * <code>string error_message = 6 [json_name = "errorMessage"];</code>
+     * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
+     * @deprecated judge.v1.JudgeResult.error_message is deprecated.
+     *     See judge/v1/result.proto;l=51
      * @param value The errorMessage to set.
      * @return This builder for chaining.
      */
-    public Builder setErrorMessage(
+    @java.lang.Deprecated public Builder setErrorMessage(
         java.lang.String value) {
       if (value == null) { throw new NullPointerException(); }
       errorMessage_ = value;
@@ -1209,12 +1391,18 @@ private static final long serialVersionUID = 0L;
     /**
      * <pre>
      * COMPILE_ERROR·INTERNAL_ERROR 상세(컴파일러 출력 등). 그 외엔 빈 문자열.
+     *
+     * Deprecated: 문자열 하나로는 "재시도해도 되는지·누구 잘못인지"를 담지 못해
+     * 수신자가 추측하게 된다. common.v1.Error(failure)로 대체 중이며,
+     * 소비자 전환이 끝나면 제거한다(그때까지 둘 다 채운다 — ADR-0017).
      * </pre>
      *
-     * <code>string error_message = 6 [json_name = "errorMessage"];</code>
+     * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
+     * @deprecated judge.v1.JudgeResult.error_message is deprecated.
+     *     See judge/v1/result.proto;l=51
      * @return This builder for chaining.
      */
-    public Builder clearErrorMessage() {
+    @java.lang.Deprecated public Builder clearErrorMessage() {
       errorMessage_ = getDefaultInstance().getErrorMessage();
       bitField0_ = (bitField0_ & ~0x00000020);
       onChanged();
@@ -1223,13 +1411,19 @@ private static final long serialVersionUID = 0L;
     /**
      * <pre>
      * COMPILE_ERROR·INTERNAL_ERROR 상세(컴파일러 출력 등). 그 외엔 빈 문자열.
+     *
+     * Deprecated: 문자열 하나로는 "재시도해도 되는지·누구 잘못인지"를 담지 못해
+     * 수신자가 추측하게 된다. common.v1.Error(failure)로 대체 중이며,
+     * 소비자 전환이 끝나면 제거한다(그때까지 둘 다 채운다 — ADR-0017).
      * </pre>
      *
-     * <code>string error_message = 6 [json_name = "errorMessage"];</code>
+     * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
+     * @deprecated judge.v1.JudgeResult.error_message is deprecated.
+     *     See judge/v1/result.proto;l=51
      * @param value The bytes for errorMessage to set.
      * @return This builder for chaining.
      */
-    public Builder setErrorMessageBytes(
+    @java.lang.Deprecated public Builder setErrorMessageBytes(
         com.google.protobuf.ByteString value) {
       if (value == null) { throw new NullPointerException(); }
       checkByteStringIsUtf8(value);
@@ -1358,6 +1552,320 @@ private static final long serialVersionUID = 0L;
         judgedAt_ = null;
       }
       return judgedAtBuilder_;
+    }
+
+    private com.cotejs.contracts.common.v1.Error failure_;
+    private com.google.protobuf.SingleFieldBuilder<
+        com.cotejs.contracts.common.v1.Error, com.cotejs.contracts.common.v1.Error.Builder, com.cotejs.contracts.common.v1.ErrorOrBuilder> failureBuilder_;
+    /**
+     * <pre>
+     * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+     * </pre>
+     *
+     * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+     * @return Whether the failure field is set.
+     */
+    public boolean hasFailure() {
+      return ((bitField0_ & 0x00000080) != 0);
+    }
+    /**
+     * <pre>
+     * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+     * </pre>
+     *
+     * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+     * @return The failure.
+     */
+    public com.cotejs.contracts.common.v1.Error getFailure() {
+      if (failureBuilder_ == null) {
+        return failure_ == null ? com.cotejs.contracts.common.v1.Error.getDefaultInstance() : failure_;
+      } else {
+        return failureBuilder_.getMessage();
+      }
+    }
+    /**
+     * <pre>
+     * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+     * </pre>
+     *
+     * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+     */
+    public Builder setFailure(com.cotejs.contracts.common.v1.Error value) {
+      if (failureBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        failure_ = value;
+      } else {
+        failureBuilder_.setMessage(value);
+      }
+      bitField0_ |= 0x00000080;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+     * </pre>
+     *
+     * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+     */
+    public Builder setFailure(
+        com.cotejs.contracts.common.v1.Error.Builder builderForValue) {
+      if (failureBuilder_ == null) {
+        failure_ = builderForValue.build();
+      } else {
+        failureBuilder_.setMessage(builderForValue.build());
+      }
+      bitField0_ |= 0x00000080;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+     * </pre>
+     *
+     * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+     */
+    public Builder mergeFailure(com.cotejs.contracts.common.v1.Error value) {
+      if (failureBuilder_ == null) {
+        if (((bitField0_ & 0x00000080) != 0) &&
+          failure_ != null &&
+          failure_ != com.cotejs.contracts.common.v1.Error.getDefaultInstance()) {
+          getFailureBuilder().mergeFrom(value);
+        } else {
+          failure_ = value;
+        }
+      } else {
+        failureBuilder_.mergeFrom(value);
+      }
+      if (failure_ != null) {
+        bitField0_ |= 0x00000080;
+        onChanged();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+     * </pre>
+     *
+     * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+     */
+    public Builder clearFailure() {
+      bitField0_ = (bitField0_ & ~0x00000080);
+      failure_ = null;
+      if (failureBuilder_ != null) {
+        failureBuilder_.dispose();
+        failureBuilder_ = null;
+      }
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+     * </pre>
+     *
+     * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+     */
+    public com.cotejs.contracts.common.v1.Error.Builder getFailureBuilder() {
+      bitField0_ |= 0x00000080;
+      onChanged();
+      return internalGetFailureFieldBuilder().getBuilder();
+    }
+    /**
+     * <pre>
+     * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+     * </pre>
+     *
+     * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+     */
+    public com.cotejs.contracts.common.v1.ErrorOrBuilder getFailureOrBuilder() {
+      if (failureBuilder_ != null) {
+        return failureBuilder_.getMessageOrBuilder();
+      } else {
+        return failure_ == null ?
+            com.cotejs.contracts.common.v1.Error.getDefaultInstance() : failure_;
+      }
+    }
+    /**
+     * <pre>
+     * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+     * </pre>
+     *
+     * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+     */
+    private com.google.protobuf.SingleFieldBuilder<
+        com.cotejs.contracts.common.v1.Error, com.cotejs.contracts.common.v1.Error.Builder, com.cotejs.contracts.common.v1.ErrorOrBuilder> 
+        internalGetFailureFieldBuilder() {
+      if (failureBuilder_ == null) {
+        failureBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+            com.cotejs.contracts.common.v1.Error, com.cotejs.contracts.common.v1.Error.Builder, com.cotejs.contracts.common.v1.ErrorOrBuilder>(
+                getFailure(),
+                getParentForChildren(),
+                isClean());
+        failure_ = null;
+      }
+      return failureBuilder_;
+    }
+
+    private com.cotejs.contracts.common.v1.TraceContext trace_;
+    private com.google.protobuf.SingleFieldBuilder<
+        com.cotejs.contracts.common.v1.TraceContext, com.cotejs.contracts.common.v1.TraceContext.Builder, com.cotejs.contracts.common.v1.TraceContextOrBuilder> traceBuilder_;
+    /**
+     * <pre>
+     * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+     * @return Whether the trace field is set.
+     */
+    public boolean hasTrace() {
+      return ((bitField0_ & 0x00000100) != 0);
+    }
+    /**
+     * <pre>
+     * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+     * @return The trace.
+     */
+    public com.cotejs.contracts.common.v1.TraceContext getTrace() {
+      if (traceBuilder_ == null) {
+        return trace_ == null ? com.cotejs.contracts.common.v1.TraceContext.getDefaultInstance() : trace_;
+      } else {
+        return traceBuilder_.getMessage();
+      }
+    }
+    /**
+     * <pre>
+     * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+     */
+    public Builder setTrace(com.cotejs.contracts.common.v1.TraceContext value) {
+      if (traceBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        trace_ = value;
+      } else {
+        traceBuilder_.setMessage(value);
+      }
+      bitField0_ |= 0x00000100;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+     */
+    public Builder setTrace(
+        com.cotejs.contracts.common.v1.TraceContext.Builder builderForValue) {
+      if (traceBuilder_ == null) {
+        trace_ = builderForValue.build();
+      } else {
+        traceBuilder_.setMessage(builderForValue.build());
+      }
+      bitField0_ |= 0x00000100;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+     */
+    public Builder mergeTrace(com.cotejs.contracts.common.v1.TraceContext value) {
+      if (traceBuilder_ == null) {
+        if (((bitField0_ & 0x00000100) != 0) &&
+          trace_ != null &&
+          trace_ != com.cotejs.contracts.common.v1.TraceContext.getDefaultInstance()) {
+          getTraceBuilder().mergeFrom(value);
+        } else {
+          trace_ = value;
+        }
+      } else {
+        traceBuilder_.mergeFrom(value);
+      }
+      if (trace_ != null) {
+        bitField0_ |= 0x00000100;
+        onChanged();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+     */
+    public Builder clearTrace() {
+      bitField0_ = (bitField0_ & ~0x00000100);
+      trace_ = null;
+      if (traceBuilder_ != null) {
+        traceBuilder_.dispose();
+        traceBuilder_ = null;
+      }
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+     */
+    public com.cotejs.contracts.common.v1.TraceContext.Builder getTraceBuilder() {
+      bitField0_ |= 0x00000100;
+      onChanged();
+      return internalGetTraceFieldBuilder().getBuilder();
+    }
+    /**
+     * <pre>
+     * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+     */
+    public com.cotejs.contracts.common.v1.TraceContextOrBuilder getTraceOrBuilder() {
+      if (traceBuilder_ != null) {
+        return traceBuilder_.getMessageOrBuilder();
+      } else {
+        return trace_ == null ?
+            com.cotejs.contracts.common.v1.TraceContext.getDefaultInstance() : trace_;
+      }
+    }
+    /**
+     * <pre>
+     * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+     */
+    private com.google.protobuf.SingleFieldBuilder<
+        com.cotejs.contracts.common.v1.TraceContext, com.cotejs.contracts.common.v1.TraceContext.Builder, com.cotejs.contracts.common.v1.TraceContextOrBuilder> 
+        internalGetTraceFieldBuilder() {
+      if (traceBuilder_ == null) {
+        traceBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+            com.cotejs.contracts.common.v1.TraceContext, com.cotejs.contracts.common.v1.TraceContext.Builder, com.cotejs.contracts.common.v1.TraceContextOrBuilder>(
+                getTrace(),
+                getParentForChildren(),
+                isClean());
+        trace_ = null;
+      }
+      return traceBuilder_;
     }
 
     // @@protoc_insertion_point(builder_scope:judge.v1.JudgeResult)

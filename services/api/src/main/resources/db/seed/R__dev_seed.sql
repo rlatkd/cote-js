@@ -8,7 +8,7 @@ DELETE FROM test_case;
 DELETE FROM problem;
 
 WITH sc AS (
-    SELECT $starter${"Python":"import sys\ninput = sys.stdin.readline\n\ndef solve():\n    # 여기에 풀이를 작성하세요\n    pass\n\nsolve()\n","C++":"#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios_base::sync_with_stdio(false);\n    cin.tie(nullptr);\n    // 여기에 풀이를 작성하세요\n    return 0;\n}\n","Java":"import java.util.*;\nimport java.io.*;\n\npublic class Main {\n    public static void main(String[] args) throws IOException {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        // 여기에 풀이를 작성하세요\n    }\n}\n","JavaScript":"const input = require('fs').readFileSync(0, 'utf8').trim().split('\\n');\n\n// 여기에 풀이를 작성하세요\n"}$starter$::jsonb AS v
+    SELECT $starter${"Python":"import sys\ninput = sys.stdin.readline\n\ndef solve():\n    # 여기에 풀이를 작성하세요\n    pass\n\nsolve()\n","Java":"import java.util.*;\nimport java.io.*;\n\npublic class Main {\n    public static void main(String[] args) throws IOException {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        // 여기에 풀이를 작성하세요\n    }\n}\n","JavaScript":"const input = require('fs').readFileSync(0, 'utf8').trim().split('\\n');\n\n// 여기에 풀이를 작성하세요\n"}$starter$::jsonb AS v
 )
 INSERT INTO problem (id, title, difficulty, tier, time_limit_ms, memory_limit_mb,
                      submission_count, accepted_count, tags, ai_generated,
@@ -78,13 +78,13 @@ INSERT INTO test_case (problem_id, ord, input, output) VALUES
 
 INSERT INTO submission (username, problem_id, problem_title, result, language,
                         exec_time_ms, memory_used_kb, length, submitted_at) VALUES
-    ('sanghoon', 100001, '정원사의 물결 정렬', '맞았습니다', 'Python', 148, 31744, 612, '2026-07-09 14:22:10'),
-    ('sanghoon', 100001, '정원사의 물결 정렬', '틀렸습니다', 'Python', NULL, NULL, 588, '2026-07-09 14:19:44'),
-    ('devkim', 7576, '토마토', '맞았습니다', 'C++', 92, 18432, 1204, '2026-07-09 14:05:31'),
-    ('algo_master', 9019, 'DSLR', '시간 초과', 'Java', NULL, NULL, 1533, '2026-07-09 13:58:12'),
-    ('novice22', 1000, '두 수의 합', '맞았습니다', 'JavaScript', 76, 24576, 142, '2026-07-09 13:50:03'),
-    ('hayoon', 100002, '캐시된 미로 탈출', '런타임 에러', 'C++', NULL, NULL, 2011, '2026-07-09 13:41:29'),
-    ('devkim', 1932, '정수 삼각형', '맞았습니다', 'Python', 104, 29696, 402, '2026-07-09 13:30:57'),
-    ('sanghoon', 100002, '캐시된 미로 탈출', '메모리 초과', 'Java', NULL, NULL, 1890, '2026-07-09 13:22:41'),
-    ('coder_lee', 2231, '분해합', '맞았습니다', 'C++', 4, 2048, 356, '2026-07-09 13:10:08'),
-    ('novice22', 2231, '분해합', '컴파일 에러', 'Java', NULL, NULL, 401, '2026-07-09 13:02:55');
+    ('sanghoon', 100001, '정원사의 물결 정렬', '맞았습니다', 'Python', 148, 31744, 612, '2026-07-09 14:22:10+09'),
+    ('sanghoon', 100001, '정원사의 물결 정렬', '틀렸습니다', 'Python', NULL, NULL, 588, '2026-07-09 14:19:44+09'),
+    ('devkim', 7576, '토마토', '맞았습니다', 'Java', 92, 18432, 1204, '2026-07-09 14:05:31+09'),
+    ('algo_master', 9019, 'DSLR', '시간 초과', 'Java', NULL, NULL, 1533, '2026-07-09 13:58:12+09'),
+    ('novice22', 1000, '두 수의 합', '맞았습니다', 'JavaScript', 76, 24576, 142, '2026-07-09 13:50:03+09'),
+    ('hayoon', 100002, '캐시된 미로 탈출', '런타임 에러', 'JavaScript', NULL, NULL, 2011, '2026-07-09 13:41:29+09'),
+    ('devkim', 1932, '정수 삼각형', '맞았습니다', 'Python', 104, 29696, 402, '2026-07-09 13:30:57+09'),
+    ('sanghoon', 100002, '캐시된 미로 탈출', '메모리 초과', 'Java', NULL, NULL, 1890, '2026-07-09 13:22:41+09'),
+    ('coder_lee', 2231, '분해합', '맞았습니다', 'Java', 4, 2048, 356, '2026-07-09 13:10:08+09'),
+    ('novice22', 2231, '분해합', '컴파일 에러', 'Java', NULL, NULL, 401, '2026-07-09 13:02:55+09');

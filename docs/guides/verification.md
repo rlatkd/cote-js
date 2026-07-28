@@ -44,21 +44,32 @@ for p in / /problems /problems/1000 /status; do
 - 눈 확인(주요 UI 변경 시): 라이트/다크 토글, split view 리사이즈, Monaco 로딩, 제출 시 stub 결과 표시.
 
 ### 4. 품질 게이트
+
 ```bash
-cd services/web && pnpm lint             # ESLint(레이어 의존 규칙 포함)
+cd services/api  && ./gradlew build      # 컴파일 + 단위(13) + 통합(3, Testcontainers Postgres)
+cd services/judge && go test ./...       # 단위 8종(판정 규칙·언어 명세)
+cd services/web   && pnpm lint           # ESLint(레이어 의존 규칙 포함)
+cd contracts      && buf lint            # 계약 스타일
 ```
+
+> **이 절차는 [CI](../../.github/workflows/ci.yml)가 PR마다 자동 실행한다.** 손으로 도는 건 빠른 확인용이고,
+> 강제는 CI가 한다 — 규약을 사람의 규율에 맡기지 않는 것이 요점([ADR-0016](../decisions/0016-test-strategy.md)).
+> CI가 **하지 않는 것**: 샌드박스 실채점·전 구간 E2E(느리고 flaky) → 아래 5~7의 수동 절차로 남긴다.
 
 ### 5. judge — 채점 코어 (Kafka·MinIO 없이 관통, [judgecli](../../services/judge/cmd/judgecli))
 
 ```bash
-cd services/judge && go vet ./... && go build ./...        # 컴파일·정적검사 그린
-cd runners/python && docker build -t cotejs-judge-python:3.12 .   # 러너 이미지(러너 변경 시)
+cd services/judge && go vet ./... && go build ./... && go test ./...   # 정적검사 + 단위 테스트
+# 러너 이미지(러너·하니스 변경 시) — 빌드 컨텍스트는 services/judge
+docker build -f runners/python/Dockerfile     -t cotejs-judge-python:3.12 .
+docker build -f runners/java/Dockerfile       -t cotejs-judge-java:21     .
+docker build -f runners/javascript/Dockerfile -t cotejs-judge-node:22     .
 
 # 번들 준비: <dir>/cases/01.in, 01.out, ... (A+B 3케이스 등)
 go run ./cmd/judgecli -bundle <dir> -source <풀이.py> -time-ms 1000 -mem-mb 256
 ```
 
-판정 시나리오 — 5종이 각각 의도한 Verdict로 나와야 한다:
+언어별 판정 시나리오 — `-lang python|java|javascript`로 각각 확인한다:
 
 | 제출 코드 | 기대 판정 |
 |---|---|
@@ -67,6 +78,8 @@ go run ./cmd/judgecli -bundle <dir> -source <풀이.py> -time-ms 1000 -mem-mb 25
 | `while True: pass` | `TIME_LIMIT_EXCEEDED` |
 | 대용량 할당(`[0]*300MB`) | `MEMORY_LIMIT_EXCEEDED` |
 | `1 // 0` | `RUNTIME_ERROR` |
+| 문법 오류(닫히지 않은 괄호 등) | `COMPILE_ERROR` + **실제 컴파일러·파서 메시지** |
+| 미지원 언어(`-lang cpp`) | `INTERNAL_ERROR` + "지원하지 않는 언어" (오판정이 아니라 명시적 실패) |
 
 샌드박스 격리 — 탈출하지 못해야 한다:
 
@@ -116,16 +129,20 @@ curl -s localhost:4000/api/submissions | head -c 300   # 잠시 후 "맞았습�
 | 타임존 | 응답의 `submittedAt` vs `judgedAt` | 초 단위 차이(9시간 어긋나면 회귀) |
 | 번들 발행 | `docker exec cotejs-minio mc ls local/testdata/bundles` 또는 콘솔 :9001 | 제출 후 `<sha256>.tgz` 존재 |
 | 화면 | http://localhost:3000/status 를 열어둔 채 제출 | 새로고침 없이 행이 추가되고 판정으로 갱신 |
+| **실행 모드** | `"mode":"run"`으로 제출(히든 케이스 없는 문제도 가능) | 공개 예제로 채점 · judge 로그에 `lane=submission.run` · **채점 현황 목록에는 안 보임** |
+| **케이스별 결과** | 일부 케이스만 틀리는 풀이 제출 | 응답 `cases[]`에 케이스별 판정(예: 3번만 `틀렸습니다`) |
+| **추적 전파** | 제출 후 api 로그의 `trace=` 값을 judge 로그에서 검색 | **같은 `trace_id`**가 양쪽에 존재 |
 | 채점 불가 처리 | 테스트케이스 없는 문제(예: 2231)에 제출 | `채점 오류`(오답류가 아님) |
 
 ## 추가 예정 (해당 마일스톤 착수 시 이 문서에 절차 추가)
 
-- **api 테스트 스위트**: Kotest + Testcontainers 도입 시 `./gradlew test`를 게이트에 추가
-- **`run` 레인**: 예제 실행이 실채점으로 바뀌면 절차 추가(현재 목업)
 - **problem/plagiarism**: 파이프라인 상태 전이, 유사도 질의 왕복
+- **인증 도입 시**: 권한 경계(남의 제출 조회 차단 등)
 
 ## 갱신 이력
 
+- 2026-07-28 21:57 — 품질 게이트에 **자동화 테스트**(api 단위13+통합3, judge 8) 추가하고 **CI가 강제**함을 명시. CI가 의도적으로 제외하는 범위(샌드박스 실채점·E2E)도 기록.
+- 2026-07-28 21:35 — judge 절차에 **언어 3종·컴파일 에러·미지원 언어** 추가, 러너 이미지 빌드 3종·`go test` 반영. 전 구간 절차에 **실행 모드(run)·케이스별 결과·추적 전파** 확인 항목 추가.
 - 2026-07-27 23:13 — 전 구간 절차(7) 신설: api 제출→채점→표시, SSE·멱등성·타임존·번들 발행·채점 불가 확인. api 절차의 필드명을 수치 기준으로 갱신.
 - 2026-07-26 20:21 — judge 파이프라인 절차(6) 신설: buf 계약 검사(lint·breaking·generate) + judged/judgeprobe 왕복·캐시·QoS·at-least-once 확인. `head` 파이프 함정 명시.
 - 2026-07-26 20:05 — judge 코어 절차(5) 신설: judgecli 판정 5종 + 샌드박스 격리 2종. 인프라 사전 단계에 Kafka·MinIO 추가.

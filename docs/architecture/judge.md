@@ -1,6 +1,6 @@
 # judge — 채점 서비스 (Go)
 
-> 상태: **파이프라인 관통 완료** — executor·Docker 샌드박스·Python 러너 + Kafka 3레인 소비/결과 발행 + MinIO 번들(claim-check). api 배선·SSE는 다음 단계.
+> 상태: **다언어 채점 + 실행 모드 완비** — executor·Docker 샌드박스·러너 3종(Python·Java·JavaScript) + Kafka 3레인 + MinIO 번들 + api 배선·SSE까지 관통.
 > 결정 근거는 [ADR-0009](../decisions/0009-judge-kickoff-async-and-contracts.md)·[ADR-0011](../decisions/0011-codegen-and-kafka-client.md), 이음새 규칙은 [ADR-0006](../decisions/0006-service-seams-and-ai-consolidation.md). 여기서는 **구조와 그 구조를 택한 판단**을 적는다.
 
 ## 1. 책임과 경계
@@ -10,6 +10,21 @@ judge는 **제출된 코드를 격리 실행해 판정한다.** 그 외의 것�
 - **DB에 접근하지 않는다** — 결과는 Kafka 이벤트로만 발행([ADR-0006](../decisions/0006-service-seams-and-ai-consolidation.md)). Go와 Kotlin이 같은 스키마를 이중 소유하면 마이그레이션의 주인이 사라지기 때문.
 - **테스트케이스를 DB에서 읽지 않는다** — MinIO 번들을 참조로 받는다(claim-check).
 - **문제를 모른다** — 지문·난이도·태그는 judge의 관심사가 아니다. 아는 것은 "소스·제한·케이스 입출력"뿐.
+- **실행 모드도 모른다** — run(예제)·submit(히든)의 구분은 api가 하고, judge는 어느 토픽에서 왔는지만 안다. 번들 규약이 하나라서 가능하다([ADR-0014](../decisions/0014-execution-modes-and-case-feedback.md)).
+
+## 1-2. 지원 언어 ([ADR-0013](../decisions/0013-judge-language-expansion.md))
+
+| 언어 | 이미지 | 실행 전 검증 | 메모리 강제 | 시간 배수 |
+|---|---|---|---|---|
+| Python | `python:3.12-alpine` | `py_compile`(문법 검사) | `RLIMIT_AS` | ×3 |
+| Java | `eclipse-temurin:21-jdk-alpine` | `javac` | `-Xmx` | ×2 |
+| JavaScript | `node:22-alpine` | `node --check` | `--max-old-space-size` | ×2 |
+
+**메모리 강제 방식이 언어마다 다른 이유**: JVM·V8은 힙과 무관하게 가상주소를 크게 예약해서 `RLIMIT_AS`를 걸면 **정상 코드도 기동조차 못 한다.** 그래서 런타임 자체의 힙 옵션을 쓴다.
+
+**하니스가 Go 단일 바이너리인 이유**: 언어별 하니스는 같은 로직(측정·타임아웃·프로세스 킬)을 복제하고, 파이썬 하니스로 통일하면 Java·Node 이미지에까지 파이썬을 설치해야 한다. 정적 링크된 Go 바이너리는 어느 베이스 이미지에도 그대로 얹힌다.
+
+**미지원 언어는 명시적으로 실패한다** — 이전엔 언어를 무시하고 Python으로 실행해 C++ 제출이 `런타임 에러`로 **오판정**됐다(사용자는 자기 코드를 의심하게 된다).
 
 ## 2. 폴더 구조
 
@@ -21,12 +36,14 @@ services/judge/
 │  └─ judgeprobe/         개발용 제출 주입기 (번들 업로드 + 제출 발행 + 결과 대기)
 ├─ internal/
 │  ├─ domain/             Task·JudgeResult·Verdict + 포트(Runner)
+│  ├─ language/           언어별 실행 명세의 단일 진실원(이미지·소스명·명령·자원 정책)
 │  ├─ executor/           채점 오케스트레이션(번들 로드→작업공간→실행→비교→집계)
 │  ├─ sandbox/docker/     Runner 포트의 Docker 격리 어댑터
 │  ├─ messaging/          Kafka 어댑터(franz-go) — 레인 소비·결과 발행
 │  └─ bundle/             MinIO 어댑터 — claim-check 다운로드 + 해시 캐시
 ├─ gen/judge/v1/          Protobuf 생성 코드(커밋 — 원본은 /contracts)
-└─ runners/python/        Python 러너 이미지(Dockerfile + harness.py)
+├─ cmd/harness/           컨테이너 안에서 도는 실행기(Go 정적 바이너리, 전 러너 공용)
+└─ runners/{python,java,javascript}/   러너 이미지(멀티스테이지 — 하니스 탑재)
 ```
 
 **의존 방향**: `cmd → executor → domain ← sandbox/docker`, 그리고 `messaging → domain`(어댑터가 executor를 최소 인터페이스 `Judger`로만 참조). domain은 아무것도 의존하지 않는다(경량 클린).

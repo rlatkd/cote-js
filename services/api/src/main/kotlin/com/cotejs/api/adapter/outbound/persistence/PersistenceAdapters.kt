@@ -1,7 +1,9 @@
 package com.cotejs.api.adapter.outbound.persistence
 
 import com.cotejs.api.domain.model.BundleRef
+import com.cotejs.api.domain.model.CaseResult
 import com.cotejs.api.domain.model.Difficulty
+import com.cotejs.api.domain.model.ExecutionMode
 import com.cotejs.api.domain.model.Example
 import com.cotejs.api.domain.model.JudgeResult
 import com.cotejs.api.domain.model.JudgedOutcome
@@ -47,6 +49,10 @@ class ProblemPersistenceAdapter(
         problemRepo.updateTestBundle(problemId, bundle.key, bundle.sha256)
     }
 
+    override suspend fun updateExampleBundle(problemId: Long, bundle: BundleRef) {
+        problemRepo.updateExampleBundle(problemId, bundle.key, bundle.sha256)
+    }
+
     private fun ProblemEntity.toDomain(examples: List<ExampleEntity>): Problem =
         Problem(
             id = id,
@@ -57,6 +63,9 @@ class ProblemPersistenceAdapter(
             memoryLimitMb = memoryLimitMb,
             testBundle = testBundleKey?.let { key ->
                 testBundleSha256?.let { sha -> BundleRef(key, sha) }
+            },
+            exampleBundle = exampleBundleKey?.let { key ->
+                exampleBundleSha256?.let { sha -> BundleRef(key, sha) }
             },
             submissionCount = submissionCount,
             acceptedCount = acceptedCount,
@@ -75,9 +84,19 @@ class ProblemPersistenceAdapter(
 @Component
 class SubmissionPersistenceAdapter(
     private val submissionRepo: SubmissionR2dbcRepository,
+    private val caseRepo: SubmissionCaseR2dbcRepository,
 ) : SubmissionRepository {
-    override suspend fun findAllNewestFirst(): List<Submission> =
-        submissionRepo.findAllByOrderBySubmittedAtDesc().toList().map { it.toDomain() }
+    override suspend fun findAllNewestFirst(): List<Submission> {
+        val rows = submissionRepo.findByModeOrderBySubmittedAtDesc(ExecutionMode.SUBMIT.label).toList()
+        if (rows.isEmpty()) return emptyList()
+
+        // 케이스별 결과를 함께 싣는다 — 응답에 필드가 있는데 항상 비어 있으면 계약이 거짓이 된다.
+        val casesBySubmission = caseRepo.findBySubmissionIdIn(rows.mapNotNull { it.id })
+            .toList().groupBy { it.submissionId }
+        return rows.map { row ->
+            row.toDomain(casesBySubmission[row.id].orEmpty().sortedBy { it.no }.map { it.toDomain() })
+        }
+    }
 
     override suspend fun save(submission: Submission): Submission =
         submissionRepo.save(submission.toEntity()).toDomain()
@@ -94,10 +113,36 @@ class SubmissionPersistenceAdapter(
             memoryUsedKb = outcome.memoryUsedKb,
             judgedAt = outcome.judgedAt,
         )
-        return submissionRepo.save(updated).toDomain()
+        val saved = submissionRepo.save(updated)
+
+        // 케이스별 결과는 "전부 지우고 다시 넣는다" — 같은 결과가 두 번 와도(at-least-once)
+        // 행이 늘어나지 않는 가장 단순한 멱등 구현.
+        caseRepo.deleteBySubmissionId(outcome.submissionId)
+        if (outcome.cases.isNotEmpty()) {
+            caseRepo.saveAll(
+                outcome.cases.map {
+                    SubmissionCaseEntity(
+                        submissionId = outcome.submissionId,
+                        no = it.no,
+                        result = it.result.label,
+                        execTimeMs = it.execTimeMs,
+                        memoryUsedKb = it.memoryUsedKb,
+                    )
+                },
+            ).toList()
+        }
+        return saved.toDomain(outcome.cases)
     }
 
-    private fun SubmissionEntity.toDomain(): Submission =
+    private fun SubmissionCaseEntity.toDomain(): CaseResult =
+        CaseResult(
+            no = no,
+            result = JudgeResult.fromLabel(result),
+            execTimeMs = execTimeMs,
+            memoryUsedKb = memoryUsedKb,
+        )
+
+    private fun SubmissionEntity.toDomain(cases: List<CaseResult> = emptyList()): Submission =
         Submission(
             id = requireNotNull(id) { "persisted submission must have id" },
             user = username,
@@ -109,8 +154,10 @@ class SubmissionPersistenceAdapter(
             memoryUsedKb = memoryUsedKb,
             length = length,
             code = code,
+            mode = ExecutionMode.fromLabel(mode),
             submittedAt = submittedAt,
             judgedAt = judgedAt,
+            cases = cases,
         )
 
     private fun Submission.toEntity(): SubmissionEntity =
@@ -125,6 +172,7 @@ class SubmissionPersistenceAdapter(
             memoryUsedKb = memoryUsedKb,
             length = length,
             code = code,
+            mode = mode.label,
             submittedAt = submittedAt,
             judgedAt = judgedAt,
         )

@@ -3,7 +3,7 @@ package com.cotejs.api.adapter.outbound.persistence
 import io.r2dbc.postgresql.codec.Json
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
-import java.time.LocalDateTime
+import java.time.Instant
 
 // R2DBC 영속 엔티티 — 도메인과 분리(hexagonal 아웃바운드 어댑터 내부).
 // 컬럼명은 Spring Data의 camelCase → snake_case 자동 매핑을 따른다.
@@ -26,6 +26,8 @@ data class ProblemEntity(
     val starterCode: Json,
     val testBundleKey: String? = null,
     val testBundleSha256: String? = null,
+    val exampleBundleKey: String? = null,
+    val exampleBundleSha256: String? = null,
 )
 
 @Table("example")
@@ -58,6 +60,17 @@ data class SubmissionEntity(
     val memoryUsedKb: Int? = null,
     val length: Int,
     val code: String? = null,
-    val submittedAt: LocalDateTime,
-    val judgedAt: LocalDateTime? = null,
+    val mode: String,
+    val submittedAt: Instant,
+    val judgedAt: Instant? = null,
+)
+
+@Table("submission_case")
+data class SubmissionCaseEntity(
+    @Id val id: Long? = null,
+    val submissionId: Long,
+    val no: Int,
+    val result: String,
+    val execTimeMs: Int? = null,
+    val memoryUsedKb: Int? = null,
 )

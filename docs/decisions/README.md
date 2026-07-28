@@ -26,3 +26,8 @@
 | [0010](0010-contracts-root-group.md) | 루트 `contracts/` 신설 — 언어 중립 IDL 거처 (0008 개정) | Accepted |
 | [0011](0011-codegen-and-kafka-client.md) | 코드젠(buf, BSR 미사용)·Kafka 클라이언트(franz-go)·전달 보장(at-least-once) | Accepted |
 | [0012](0012-api-judge-wiring.md) | api↔judge 배선 — JVM 코드젠·Kafka 클라이언트 직접 사용·SSE 인프로세스·테스트케이스 진실원 | Accepted |
+| [0013](0013-judge-language-expansion.md) | judge 언어 확장 — 지원 범위(3종)·공용 Go 하니스·언어별 자원 정책 | Accepted |
+| [0014](0014-execution-modes-and-case-feedback.md) | 실행 모드 분리(run/submit)와 케이스별 채점 피드백 | Accepted |
+| [0015](0015-cross-service-time-contract.md) | 서비스 경계의 시간 규약 — UTC 절대시각 통일 | Accepted |
+| [0016](0016-test-strategy.md) | 테스트 전략 — 선별적 TDD·커버리지 비목표·금지 규칙 | Accepted |
+| [0017](0017-published-language.md) | `contracts/`를 서비스 간 공표 언어로 격상 — 공통 타입(trace·error) | Accepted |

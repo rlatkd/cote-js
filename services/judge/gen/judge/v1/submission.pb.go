@@ -11,6 +11,7 @@
 package judgev1
 
 import (
+	v1 "github.com/rlatkd/cotejs/services/judge/gen/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -40,11 +41,14 @@ type Submission struct {
 	MemoryLimitMb uint32 `protobuf:"varint,6,opt,name=memory_limit_mb,json=memoryLimitMb,proto3" json:"memory_limit_mb,omitempty"`
 	// claim-check(ADR-0009 결정 2): 테스트 데이터는 MinIO 번들, 메시지엔 참조만.
 	// judge는 sha256 기준 로컬 캐시 — 해시가 다르면 재다운로드(캐시 무효화 내장).
-	TestBundleKey    string                 `protobuf:"bytes,7,opt,name=test_bundle_key,json=testBundleKey,proto3" json:"test_bundle_key,omitempty"`
-	TestBundleSha256 string                 `protobuf:"bytes,8,opt,name=test_bundle_sha256,json=testBundleSha256,proto3" json:"test_bundle_sha256,omitempty"`
-	SubmittedAt      *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=submitted_at,json=submittedAt,proto3" json:"submitted_at,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	TestBundleKey    string `protobuf:"bytes,7,opt,name=test_bundle_key,json=testBundleKey,proto3" json:"test_bundle_key,omitempty"`
+	TestBundleSha256 string `protobuf:"bytes,8,opt,name=test_bundle_sha256,json=testBundleSha256,proto3" json:"test_bundle_sha256,omitempty"`
+	// UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+	SubmittedAt *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=submitted_at,json=submittedAt,proto3" json:"submitted_at,omitempty"`
+	// 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+	Trace         *v1.TraceContext `protobuf:"bytes,10,opt,name=trace,proto3" json:"trace,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Submission) Reset() {
@@ -140,11 +144,18 @@ func (x *Submission) GetSubmittedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Submission) GetTrace() *v1.TraceContext {
+	if x != nil {
+		return x.Trace
+	}
+	return nil
+}
+
 var File_judge_v1_submission_proto protoreflect.FileDescriptor
 
 const file_judge_v1_submission_proto_rawDesc = "" +
 	"\n" +
-	"\x19judge/v1/submission.proto\x12\bjudge.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xee\x02\n" +
+	"\x19judge/v1/submission.proto\x12\bjudge.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15common/v1/trace.proto\"\x9d\x03\n" +
 	"\n" +
 	"Submission\x12#\n" +
 	"\rsubmission_id\x18\x01 \x01(\x03R\fsubmissionId\x12\x1d\n" +
@@ -157,7 +168,9 @@ const file_judge_v1_submission_proto_rawDesc = "" +
 	"\x0fmemory_limit_mb\x18\x06 \x01(\rR\rmemoryLimitMb\x12&\n" +
 	"\x0ftest_bundle_key\x18\a \x01(\tR\rtestBundleKey\x12,\n" +
 	"\x12test_bundle_sha256\x18\b \x01(\tR\x10testBundleSha256\x12=\n" +
-	"\fsubmitted_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vsubmittedAtB_\n" +
+	"\fsubmitted_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vsubmittedAt\x12-\n" +
+	"\x05trace\x18\n" +
+	" \x01(\v2\x17.common.v1.TraceContextR\x05traceB_\n" +
 	"\x1dcom.cotejs.contracts.judge.v1P\x01Z<github.com/rlatkd/cotejs/services/judge/gen/judge/v1;judgev1b\x06proto3"
 
 var (
@@ -176,14 +189,16 @@ var file_judge_v1_submission_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_judge_v1_submission_proto_goTypes = []any{
 	(*Submission)(nil),            // 0: judge.v1.Submission
 	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
+	(*v1.TraceContext)(nil),       // 2: common.v1.TraceContext
 }
 var file_judge_v1_submission_proto_depIdxs = []int32{
 	1, // 0: judge.v1.Submission.submitted_at:type_name -> google.protobuf.Timestamp
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 1: judge.v1.Submission.trace:type_name -> common.v1.TraceContext
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_judge_v1_submission_proto_init() }

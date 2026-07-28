@@ -279,6 +279,10 @@ private static final long serialVersionUID = 0L;
   public static final int SUBMITTED_AT_FIELD_NUMBER = 9;
   private com.google.protobuf.Timestamp submittedAt_;
   /**
+   * <pre>
+   * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+   * </pre>
+   *
    * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
    * @return Whether the submittedAt field is set.
    */
@@ -287,6 +291,10 @@ private static final long serialVersionUID = 0L;
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
+   * <pre>
+   * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+   * </pre>
+   *
    * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
    * @return The submittedAt.
    */
@@ -295,11 +303,53 @@ private static final long serialVersionUID = 0L;
     return submittedAt_ == null ? com.google.protobuf.Timestamp.getDefaultInstance() : submittedAt_;
   }
   /**
+   * <pre>
+   * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+   * </pre>
+   *
    * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
    */
   @java.lang.Override
   public com.google.protobuf.TimestampOrBuilder getSubmittedAtOrBuilder() {
     return submittedAt_ == null ? com.google.protobuf.Timestamp.getDefaultInstance() : submittedAt_;
+  }
+
+  public static final int TRACE_FIELD_NUMBER = 10;
+  private com.cotejs.contracts.common.v1.TraceContext trace_;
+  /**
+   * <pre>
+   * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+   * </pre>
+   *
+   * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+   * @return Whether the trace field is set.
+   */
+  @java.lang.Override
+  public boolean hasTrace() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <pre>
+   * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+   * </pre>
+   *
+   * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+   * @return The trace.
+   */
+  @java.lang.Override
+  public com.cotejs.contracts.common.v1.TraceContext getTrace() {
+    return trace_ == null ? com.cotejs.contracts.common.v1.TraceContext.getDefaultInstance() : trace_;
+  }
+  /**
+   * <pre>
+   * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+   * </pre>
+   *
+   * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+   */
+  @java.lang.Override
+  public com.cotejs.contracts.common.v1.TraceContextOrBuilder getTraceOrBuilder() {
+    return trace_ == null ? com.cotejs.contracts.common.v1.TraceContext.getDefaultInstance() : trace_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -343,6 +393,9 @@ private static final long serialVersionUID = 0L;
     if (((bitField0_ & 0x00000001) != 0)) {
       output.writeMessage(9, getSubmittedAt());
     }
+    if (((bitField0_ & 0x00000002) != 0)) {
+      output.writeMessage(10, getTrace());
+    }
     getUnknownFields().writeTo(output);
   }
 
@@ -384,6 +437,10 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(9, getSubmittedAt());
     }
+    if (((bitField0_ & 0x00000002) != 0)) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(10, getTrace());
+    }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
     return size;
@@ -420,6 +477,11 @@ private static final long serialVersionUID = 0L;
       if (!getSubmittedAt()
           .equals(other.getSubmittedAt())) return false;
     }
+    if (hasTrace() != other.hasTrace()) return false;
+    if (hasTrace()) {
+      if (!getTrace()
+          .equals(other.getTrace())) return false;
+    }
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -452,6 +514,10 @@ private static final long serialVersionUID = 0L;
     if (hasSubmittedAt()) {
       hash = (37 * hash) + SUBMITTED_AT_FIELD_NUMBER;
       hash = (53 * hash) + getSubmittedAt().hashCode();
+    }
+    if (hasTrace()) {
+      hash = (37 * hash) + TRACE_FIELD_NUMBER;
+      hash = (53 * hash) + getTrace().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -584,6 +650,7 @@ private static final long serialVersionUID = 0L;
       if (com.google.protobuf.GeneratedMessage
               .alwaysUseFieldBuilders) {
         internalGetSubmittedAtFieldBuilder();
+        internalGetTraceFieldBuilder();
       }
     }
     @java.lang.Override
@@ -602,6 +669,11 @@ private static final long serialVersionUID = 0L;
       if (submittedAtBuilder_ != null) {
         submittedAtBuilder_.dispose();
         submittedAtBuilder_ = null;
+      }
+      trace_ = null;
+      if (traceBuilder_ != null) {
+        traceBuilder_.dispose();
+        traceBuilder_ = null;
       }
       return this;
     }
@@ -667,6 +739,12 @@ private static final long serialVersionUID = 0L;
             : submittedAtBuilder_.build();
         to_bitField0_ |= 0x00000001;
       }
+      if (((from_bitField0_ & 0x00000200) != 0)) {
+        result.trace_ = traceBuilder_ == null
+            ? trace_
+            : traceBuilder_.build();
+        to_bitField0_ |= 0x00000002;
+      }
       result.bitField0_ |= to_bitField0_;
     }
 
@@ -716,6 +794,9 @@ private static final long serialVersionUID = 0L;
       }
       if (other.hasSubmittedAt()) {
         mergeSubmittedAt(other.getSubmittedAt());
+      }
+      if (other.hasTrace()) {
+        mergeTrace(other.getTrace());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -790,6 +871,13 @@ private static final long serialVersionUID = 0L;
               bitField0_ |= 0x00000100;
               break;
             } // case 74
+            case 82: {
+              input.readMessage(
+                  internalGetTraceFieldBuilder().getBuilder(),
+                  extensionRegistry);
+              bitField0_ |= 0x00000200;
+              break;
+            } // case 82
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -1301,6 +1389,10 @@ private static final long serialVersionUID = 0L;
     private com.google.protobuf.SingleFieldBuilder<
         com.google.protobuf.Timestamp, com.google.protobuf.Timestamp.Builder, com.google.protobuf.TimestampOrBuilder> submittedAtBuilder_;
     /**
+     * <pre>
+     * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+     * </pre>
+     *
      * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
      * @return Whether the submittedAt field is set.
      */
@@ -1308,6 +1400,10 @@ private static final long serialVersionUID = 0L;
       return ((bitField0_ & 0x00000100) != 0);
     }
     /**
+     * <pre>
+     * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+     * </pre>
+     *
      * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
      * @return The submittedAt.
      */
@@ -1319,6 +1415,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+     * </pre>
+     *
      * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
      */
     public Builder setSubmittedAt(com.google.protobuf.Timestamp value) {
@@ -1335,6 +1435,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+     * </pre>
+     *
      * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
      */
     public Builder setSubmittedAt(
@@ -1349,6 +1453,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+     * </pre>
+     *
      * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
      */
     public Builder mergeSubmittedAt(com.google.protobuf.Timestamp value) {
@@ -1370,6 +1478,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+     * </pre>
+     *
      * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
      */
     public Builder clearSubmittedAt() {
@@ -1383,6 +1495,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+     * </pre>
+     *
      * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
      */
     public com.google.protobuf.Timestamp.Builder getSubmittedAtBuilder() {
@@ -1391,6 +1507,10 @@ private static final long serialVersionUID = 0L;
       return internalGetSubmittedAtFieldBuilder().getBuilder();
     }
     /**
+     * <pre>
+     * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+     * </pre>
+     *
      * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
      */
     public com.google.protobuf.TimestampOrBuilder getSubmittedAtOrBuilder() {
@@ -1402,6 +1522,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
+     * </pre>
+     *
      * <code>.google.protobuf.Timestamp submitted_at = 9 [json_name = "submittedAt"];</code>
      */
     private com.google.protobuf.SingleFieldBuilder<
@@ -1416,6 +1540,163 @@ private static final long serialVersionUID = 0L;
         submittedAt_ = null;
       }
       return submittedAtBuilder_;
+    }
+
+    private com.cotejs.contracts.common.v1.TraceContext trace_;
+    private com.google.protobuf.SingleFieldBuilder<
+        com.cotejs.contracts.common.v1.TraceContext, com.cotejs.contracts.common.v1.TraceContext.Builder, com.cotejs.contracts.common.v1.TraceContextOrBuilder> traceBuilder_;
+    /**
+     * <pre>
+     * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+     * @return Whether the trace field is set.
+     */
+    public boolean hasTrace() {
+      return ((bitField0_ & 0x00000200) != 0);
+    }
+    /**
+     * <pre>
+     * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+     * @return The trace.
+     */
+    public com.cotejs.contracts.common.v1.TraceContext getTrace() {
+      if (traceBuilder_ == null) {
+        return trace_ == null ? com.cotejs.contracts.common.v1.TraceContext.getDefaultInstance() : trace_;
+      } else {
+        return traceBuilder_.getMessage();
+      }
+    }
+    /**
+     * <pre>
+     * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+     */
+    public Builder setTrace(com.cotejs.contracts.common.v1.TraceContext value) {
+      if (traceBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        trace_ = value;
+      } else {
+        traceBuilder_.setMessage(value);
+      }
+      bitField0_ |= 0x00000200;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+     */
+    public Builder setTrace(
+        com.cotejs.contracts.common.v1.TraceContext.Builder builderForValue) {
+      if (traceBuilder_ == null) {
+        trace_ = builderForValue.build();
+      } else {
+        traceBuilder_.setMessage(builderForValue.build());
+      }
+      bitField0_ |= 0x00000200;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+     */
+    public Builder mergeTrace(com.cotejs.contracts.common.v1.TraceContext value) {
+      if (traceBuilder_ == null) {
+        if (((bitField0_ & 0x00000200) != 0) &&
+          trace_ != null &&
+          trace_ != com.cotejs.contracts.common.v1.TraceContext.getDefaultInstance()) {
+          getTraceBuilder().mergeFrom(value);
+        } else {
+          trace_ = value;
+        }
+      } else {
+        traceBuilder_.mergeFrom(value);
+      }
+      if (trace_ != null) {
+        bitField0_ |= 0x00000200;
+        onChanged();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+     */
+    public Builder clearTrace() {
+      bitField0_ = (bitField0_ & ~0x00000200);
+      trace_ = null;
+      if (traceBuilder_ != null) {
+        traceBuilder_.dispose();
+        traceBuilder_ = null;
+      }
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+     */
+    public com.cotejs.contracts.common.v1.TraceContext.Builder getTraceBuilder() {
+      bitField0_ |= 0x00000200;
+      onChanged();
+      return internalGetTraceFieldBuilder().getBuilder();
+    }
+    /**
+     * <pre>
+     * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+     */
+    public com.cotejs.contracts.common.v1.TraceContextOrBuilder getTraceOrBuilder() {
+      if (traceBuilder_ != null) {
+        return traceBuilder_.getMessageOrBuilder();
+      } else {
+        return trace_ == null ?
+            com.cotejs.contracts.common.v1.TraceContext.getDefaultInstance() : trace_;
+      }
+    }
+    /**
+     * <pre>
+     * 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+     * </pre>
+     *
+     * <code>.common.v1.TraceContext trace = 10 [json_name = "trace"];</code>
+     */
+    private com.google.protobuf.SingleFieldBuilder<
+        com.cotejs.contracts.common.v1.TraceContext, com.cotejs.contracts.common.v1.TraceContext.Builder, com.cotejs.contracts.common.v1.TraceContextOrBuilder> 
+        internalGetTraceFieldBuilder() {
+      if (traceBuilder_ == null) {
+        traceBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+            com.cotejs.contracts.common.v1.TraceContext, com.cotejs.contracts.common.v1.TraceContext.Builder, com.cotejs.contracts.common.v1.TraceContextOrBuilder>(
+                getTrace(),
+                getParentForChildren(),
+                isClean());
+        trace_ = null;
+      }
+      return traceBuilder_;
     }
 
     // @@protoc_insertion_point(builder_scope:judge.v1.Submission)

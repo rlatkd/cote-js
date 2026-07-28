@@ -62,11 +62,12 @@ Problem 1 ──── * Example      (공개 예제, onDelete: Cascade)
 - **의도**: M1 슬라이스에서 web가 쓰던 mock 형태를 그대로 스키마로 옮겨 **프론트 무변경 교체(drop-in)** 를 우선했다. 정규화·수치화보다 세로 슬라이스 완주가 먼저.
 - **상환 완료**: ~~`timeLimit`/`memoryLimit`/`exec_time`·`exec_memory` 문자열~~ → 수치(2026-07-27, V2). 이유는 표시 형식과 데이터를 분리(비교·계산 가능)하고 judge 계약(proto)이 수치라 경계마다 파싱하지 않기 위함.
 - **알려진 부채** (TODO Deferred 추적):
-  ① **타임존** — `TIMESTAMP`(존 없음)에 시스템 로컬 시각을 넣고 있다. judge는 UTC로 보내므로 소비 시 변환하는데, 애초에 `timestamptz`로 UTC 통일하고 표시에서만 변환하는 게 옳다(실제로 이 불일치로 `judged_at`이 9시간 어긋나는 버그를 겪음 — [ADR-0012](../decisions/0012-api-judge-wiring.md))
+  ① ~~타임존~~ → **상환 완료**(2026-07-28, V4): 전부 `timestamptz`(UTC 절대시각), 도메인은 `Instant`, 지역 변환은 화면에서만([ADR-0015](../decisions/0015-cross-service-time-contract.md))
   ② `submission.problem_title` 비정규화 제거
   ③ `username` 문자열 → User 모델+FK(인증 도입 시)
   ④ `result` 한국어 리터럴 → enum/코드화 검토
-  ⑤ **케이스별 채점 결과 미저장** — proto `JudgeResult.cases`로 받지만 종합만 저장한다. "몇 번 케이스에서 틀렸나"를 보여주려면 별도 테이블 필요
+  ⑤ ~~케이스별 채점 결과 미저장~~ → **상환 완료**(2026-07-28, V3): `submission_case` 테이블([ADR-0014](../decisions/0014-execution-modes-and-case-feedback.md))
+  ⑥ **스타터 코드가 문제×언어로 곱해진다** — `starter_code` JSONB에 문제마다 전 언어 코드를 박아둔다. 언어별 기본 템플릿 + 문제별 오버라이드로 분리 필요([ADR-0013](../decisions/0013-judge-language-expansion.md))
 
 ## 예정 스키마 (착수 시 이 문서에 추가)
 
@@ -76,6 +77,7 @@ Problem 1 ──── * Example      (공개 예제, onDelete: Cascade)
 
 ## 갱신 이력
 
+- 2026-07-28 21:35 — **V3**(실행 모드 `submission.mode`·예제 번들 참조·`submission_case` 케이스별 결과) + **V4**(시각 전부 `timestamptz` UTC — 부채 ① 상환). 부채 목록에서 타임존·케이스별 결과 항목 제거.
 - 2026-07-27 23:13 — **V2 마이그레이션**: 제한·측정값 수치화(`time_limit_ms`·`memory_limit_mb`·`exec_time_ms`·`memory_used_kb`), `test_case` 테이블 신설(히든 케이스 진실원), `problem.test_bundle_*`(claim-check 참조 캐시), `submission.code`·`judged_at` 추가. 부채 목록 갱신(타임존·케이스별 결과 추가).
 - 2026-07-25 14:07 — api Kotlin 전환([ADR-0007](../decisions/0007-backend-kotlin-return.md)) 반영: 스키마 실물 Prisma → **Flyway V1/V2**(snake_case, 예약어 회피: `username`·`ord`·`exec_time`), 소유권 표기 R2DBC+Flyway.
 - 2026-07-25 12:48 — 문서 신설. 현행 3모델(problem/example/submission) + 소유권 지도 + 부채 기록.

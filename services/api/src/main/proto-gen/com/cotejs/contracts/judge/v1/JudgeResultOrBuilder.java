@@ -78,21 +78,33 @@ public interface JudgeResultOrBuilder extends
   /**
    * <pre>
    * COMPILE_ERROR·INTERNAL_ERROR 상세(컴파일러 출력 등). 그 외엔 빈 문자열.
+   *
+   * Deprecated: 문자열 하나로는 "재시도해도 되는지·누구 잘못인지"를 담지 못해
+   * 수신자가 추측하게 된다. common.v1.Error(failure)로 대체 중이며,
+   * 소비자 전환이 끝나면 제거한다(그때까지 둘 다 채운다 — ADR-0017).
    * </pre>
    *
-   * <code>string error_message = 6 [json_name = "errorMessage"];</code>
+   * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
+   * @deprecated judge.v1.JudgeResult.error_message is deprecated.
+   *     See judge/v1/result.proto;l=51
    * @return The errorMessage.
    */
-  java.lang.String getErrorMessage();
+  @java.lang.Deprecated java.lang.String getErrorMessage();
   /**
    * <pre>
    * COMPILE_ERROR·INTERNAL_ERROR 상세(컴파일러 출력 등). 그 외엔 빈 문자열.
+   *
+   * Deprecated: 문자열 하나로는 "재시도해도 되는지·누구 잘못인지"를 담지 못해
+   * 수신자가 추측하게 된다. common.v1.Error(failure)로 대체 중이며,
+   * 소비자 전환이 끝나면 제거한다(그때까지 둘 다 채운다 — ADR-0017).
    * </pre>
    *
-   * <code>string error_message = 6 [json_name = "errorMessage"];</code>
+   * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
+   * @deprecated judge.v1.JudgeResult.error_message is deprecated.
+   *     See judge/v1/result.proto;l=51
    * @return The bytes for errorMessage.
    */
-  com.google.protobuf.ByteString
+  @java.lang.Deprecated com.google.protobuf.ByteString
       getErrorMessageBytes();
 
   /**
@@ -109,4 +121,58 @@ public interface JudgeResultOrBuilder extends
    * <code>.google.protobuf.Timestamp judged_at = 7 [json_name = "judgedAt"];</code>
    */
   com.google.protobuf.TimestampOrBuilder getJudgedAtOrBuilder();
+
+  /**
+   * <pre>
+   * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+   * </pre>
+   *
+   * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+   * @return Whether the failure field is set.
+   */
+  boolean hasFailure();
+  /**
+   * <pre>
+   * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+   * </pre>
+   *
+   * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+   * @return The failure.
+   */
+  com.cotejs.contracts.common.v1.Error getFailure();
+  /**
+   * <pre>
+   * 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+   * </pre>
+   *
+   * <code>.common.v1.Error failure = 8 [json_name = "failure"];</code>
+   */
+  com.cotejs.contracts.common.v1.ErrorOrBuilder getFailureOrBuilder();
+
+  /**
+   * <pre>
+   * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+   * </pre>
+   *
+   * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+   * @return Whether the trace field is set.
+   */
+  boolean hasTrace();
+  /**
+   * <pre>
+   * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+   * </pre>
+   *
+   * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+   * @return The trace.
+   */
+  com.cotejs.contracts.common.v1.TraceContext getTrace();
+  /**
+   * <pre>
+   * 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+   * </pre>
+   *
+   * <code>.common.v1.TraceContext trace = 9 [json_name = "trace"];</code>
+   */
+  com.cotejs.contracts.common.v1.TraceContextOrBuilder getTraceOrBuilder();
 }

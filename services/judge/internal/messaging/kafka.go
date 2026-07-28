@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	commonv1 "github.com/rlatkd/cotejs/services/judge/gen/common/v1"
 	judgev1 "github.com/rlatkd/cotejs/services/judge/gen/judge/v1"
 	"github.com/rlatkd/cotejs/services/judge/internal/domain"
 )
@@ -122,7 +123,13 @@ func (w *Worker) handle(ctx context.Context, rec *kgo.Record) {
 		return
 	}
 
-	log := w.log.With("submission_id", msg.SubmissionId, "lane", rec.Topic)
+	// 추적 컨텍스트를 로그에 싣는다 — 서비스를 건너 한 흐름을 이어보려면
+	// 로그가 같은 키를 들고 있어야 한다(ADR-0017).
+	log := w.log.With(
+		"submission_id", msg.SubmissionId,
+		"lane", rec.Topic,
+		"trace_id", msg.GetTrace().GetTraceId(),
+	)
 	started := time.Now()
 
 	result, err := w.judge(ctx, &msg)
@@ -133,7 +140,7 @@ func (w *Worker) handle(ctx context.Context, rec *kgo.Record) {
 	}
 	log.Info("채점 완료", "verdict", result.Verdict, "took", time.Since(started))
 
-	if err := w.publish(ctx, result); err != nil {
+	if err := w.publish(ctx, result, msg.GetTrace()); err != nil {
 		log.Error("결과 발행 실패", "err", err)
 	}
 }
@@ -162,8 +169,8 @@ func (w *Worker) judge(ctx context.Context, msg *judgev1.Submission) (domain.Jud
 	})
 }
 
-func (w *Worker) publish(ctx context.Context, result domain.JudgeResult) error {
-	payload, err := proto.Marshal(toProto(result))
+func (w *Worker) publish(ctx context.Context, result domain.JudgeResult, trace *commonv1.TraceContext) error {
+	payload, err := proto.Marshal(toProto(result, trace))
 	if err != nil {
 		return err
 	}
@@ -176,7 +183,7 @@ func (w *Worker) publish(ctx context.Context, result domain.JudgeResult) error {
 	return w.client.ProduceSync(ctx, rec).FirstErr()
 }
 
-func toProto(r domain.JudgeResult) *judgev1.JudgeResult {
+func toProto(r domain.JudgeResult, trace *commonv1.TraceContext) *judgev1.JudgeResult {
 	cases := make([]*judgev1.CaseResult, 0, len(r.Cases))
 	for _, c := range r.Cases {
 		cases = append(cases, &judgev1.CaseResult{
@@ -192,8 +199,37 @@ func toProto(r domain.JudgeResult) *judgev1.JudgeResult {
 		ExecTimeMs:   r.ExecTimeMS,
 		MemoryUsedKb: r.MemoryUsedKB,
 		Cases:        cases,
+		//nolint:staticcheck // 소비자 전환 기간 동안 구 필드도 함께 채운다(ADR-0017)
 		ErrorMessage: r.ErrorMessage,
 		JudgedAt:     timestamppb.Now(),
+		Failure:      failureToProto(r),
+		// 제출 메시지의 흐름을 그대로 이어받는다 — 새로 만들면 실이 끊긴다.
+		Trace: trace,
+	}
+}
+
+// failureToProto — 실패를 **수신자가 판단할 수 있는 형태**로 옮긴다.
+// 정상 판정(오답·시간초과 등 유저 코드에 대한 평가)은 실패가 아니다: 채점은 성공했다.
+func failureToProto(r domain.JudgeResult) *commonv1.Error {
+	switch r.Verdict {
+	case domain.VerdictCompileError:
+		return &commonv1.Error{
+			Code:      "COMPILE_FAILED",
+			Message:   "제출 코드를 컴파일할 수 없습니다",
+			Origin:    commonv1.FaultOrigin_FAULT_ORIGIN_CALLER,
+			Retryable: false, // 같은 코드를 다시 보내도 결과가 같다
+			Detail:    r.ErrorMessage,
+		}
+	case domain.VerdictInternalError:
+		return &commonv1.Error{
+			Code:      "JUDGE_INTERNAL_ERROR",
+			Message:   "채점 시스템 오류로 판정할 수 없습니다",
+			Origin:    commonv1.FaultOrigin_FAULT_ORIGIN_PROVIDER,
+			Retryable: true, // 일시적 장애일 수 있다 — 재채점이 의미 있다
+			Detail:    r.ErrorMessage,
+		}
+	default:
+		return nil
 	}
 }
 

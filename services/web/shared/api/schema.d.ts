@@ -83,6 +83,16 @@ export interface components {
             language: string | null;
             code: string | null;
             user?: string | null;
+            mode?: string | null;
+        };
+        CaseResultResponse: {
+            /** Format: int32 */
+            no?: number;
+            result?: string;
+            /** Format: int32 */
+            execTimeMs?: number | null;
+            /** Format: int32 */
+            memoryUsedKb?: number | null;
         };
         SubmissionResponse: {
             /** Format: int64 */
@@ -99,8 +109,10 @@ export interface components {
             memoryUsedKb?: number | null;
             /** Format: int32 */
             length?: number;
+            mode?: string;
             submittedAt?: string;
             judgedAt?: string | null;
+            cases?: components["schemas"]["CaseResultResponse"][];
         };
         ExampleResponse: {
             input?: string;

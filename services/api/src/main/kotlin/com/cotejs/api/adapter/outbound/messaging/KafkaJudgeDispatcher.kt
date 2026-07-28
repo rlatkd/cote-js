@@ -1,6 +1,9 @@
 package com.cotejs.api.adapter.outbound.messaging
 
+import com.cotejs.api.domain.model.BundleRef
 import com.cotejs.api.domain.model.Problem
+import com.cotejs.api.domain.model.TraceContext
+import com.cotejs.contracts.common.v1.TraceContext as TraceMessage
 import com.cotejs.api.domain.model.Submission
 import com.cotejs.api.domain.port.outbound.ExecutionLane
 import com.cotejs.api.domain.port.outbound.JudgeDispatcher
@@ -10,7 +13,6 @@ import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.springframework.stereotype.Component
-import java.time.ZoneOffset
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 // 계약 메시지와 도메인 모델이 같은 이름이라 별칭으로 구분한다.
@@ -28,13 +30,11 @@ class KafkaJudgeDispatcher(
     override suspend fun dispatch(
         submission: Submission,
         problem: Problem,
+        bundle: BundleRef,
         code: String,
         lane: ExecutionLane,
+        trace: TraceContext,
     ) {
-        val bundle = requireNotNull(problem.testBundle) {
-            "problem ${problem.id} has no published test bundle"
-        }
-
         val message = SubmissionMessage.newBuilder()
             .setSubmissionId(submission.id)
             .setProblemId(problem.id)
@@ -46,6 +46,14 @@ class KafkaJudgeDispatcher(
             .setTestBundleKey(bundle.key)
             .setTestBundleSha256(bundle.sha256)
             .setSubmittedAt(submission.submittedAt.toProtoTimestamp())
+            // 흐름 식별자를 실어 보낸다 — judge의 로그가 같은 trace_id를 들고 남는다.
+            .setTrace(
+                TraceMessage.newBuilder()
+                    .setTraceId(trace.traceId)
+                    .setSpanId(trace.spanId)
+                    .apply { trace.parentSpanId?.let { setParentSpanId(it) } }
+                    .build(),
+            )
             .build()
 
         val record = ProducerRecord(
@@ -76,10 +84,6 @@ internal fun ExecutionLane.topic(): String = when (this) {
     ExecutionLane.BATCH -> "submission.batch"
 }
 
-internal fun java.time.LocalDateTime.toProtoTimestamp(): Timestamp {
-    val instant = toInstant(ZoneOffset.UTC)
-    return Timestamp.newBuilder()
-        .setSeconds(instant.epochSecond)
-        .setNanos(instant.nano)
-        .build()
-}
+/** Instant → proto Timestamp. 양쪽 다 절대시각이라 존 해석이 없다(ADR-0013). */
+internal fun java.time.Instant.toProtoTimestamp(): Timestamp =
+    Timestamp.newBuilder().setSeconds(epochSecond).setNanos(nano).build()

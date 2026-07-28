@@ -6,6 +6,8 @@ syntax = "proto3";
 package judge.v1;
 
 import "google/protobuf/timestamp.proto";
+import "common/v1/error.proto";
+import "common/v1/trace.proto";
 
 option java_package = "com.cotejs.contracts.judge.v1";
 option java_multiple_files = true;
@@ -43,7 +45,17 @@ message JudgeResult {
   repeated CaseResult cases = 5;
 
   // COMPILE_ERROR·INTERNAL_ERROR 상세(컴파일러 출력 등). 그 외엔 빈 문자열.
-  string error_message = 6;
+  //
+  // Deprecated: 문자열 하나로는 "재시도해도 되는지·누구 잘못인지"를 담지 못해
+  // 수신자가 추측하게 된다. common.v1.Error(failure)로 대체 중이며,
+  // 소비자 전환이 끝나면 제거한다(그때까지 둘 다 채운다 — ADR-0017).
+  string error_message = 6 [deprecated = true];
 
   google.protobuf.Timestamp judged_at = 7;
+
+  // 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+  common.v1.Error failure = 8;
+
+  // 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+  common.v1.TraceContext trace = 9;
 }

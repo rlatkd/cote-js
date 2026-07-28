@@ -1,6 +1,6 @@
 // submission Repository — 조회는 서버 컴포넌트에서, 제출은 브라우저에서 호출한다.
 
-import type { Submission } from "./model";
+import type { ExecutionMode, Submission } from "./model";
 import { BROWSER_API_URL, apiGet } from "@/shared/api/client";
 import type { Language } from "@/entities/problem/model";
 
@@ -17,6 +17,7 @@ export async function createSubmission(input: {
   language: Language;
   code: string;
   user?: string;
+  mode?: ExecutionMode;
 }): Promise<Submission> {
   const res = await fetch(`${BROWSER_API_URL}/submissions`, {
     method: "POST",

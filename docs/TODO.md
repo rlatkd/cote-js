@@ -74,10 +74,18 @@
 - [x] **api 배선 완료** (2026-07-27) — ① JVM 코드젠(buf + protoc 내장 java 생성기, 생성물 커밋) ② 제출 API → Kafka `submission.submit` 발행 ③ 결과 컨슈머 → **멱등 저장**(전량 재소비 실측 검증) ④ SSE(`/api/submissions/stream`, 인프로세스) ⑤ web 실시간 표시(제출 화면·채점 현황). **Kafka 클라이언트는 직접 사용** — reactor-kafka가 Boot 4의 kafka-clients 4.x와 바이너리 비호환(실측). [ADR-0012](decisions/0012-api-judge-wiring.md)
 - [x] **데이터 모델 부채 상환** (2026-07-27) — 제한·측정값 수치화(V2), `test_case` 테이블(히든 케이스 진실원) + `problem.test_bundle_*`(claim-check 캐시), `submission.code`·`judged_at` 추가. web은 표시 포맷터로 대응
 - [x] **테스트케이스 발행 경로** (2026-07-27) — api가 `test_case`로 번들을 만들어 MinIO에 올리고 참조를 캐시(제출 시 lazy). 시드에 문제 1000의 히든 케이스 5건 추가
-- [ ] **`run` 레인 배선** — "예제 실행"이 아직 목업이다(공개 예제용 번들 발행 경로 필요). 화면에도 목업임을 표기 중
-- [ ] **케이스별 채점 결과 저장** — proto `cases`를 받지만 종합만 저장. "몇 번 케이스에서 틀렸나" 표시하려면 테이블 추가
-- [ ] **나머지 문제의 히든 테스트케이스** — 현재 1000번만 채점 가능(다른 문제 제출은 '채점 오류'). 문제별 정답 확보 후 추가
-- [ ] **타임존 정리** — `timestamptz`로 UTC 통일하고 표시에서만 변환([ADR-0012](decisions/0012-api-judge-wiring.md)에서 겪은 9시간 어긋남의 근본 해결)
+- [x] **judge 언어 확장** (2026-07-28) — Python·Java·JavaScript 3종. `internal/language` 레지스트리(단일 진실원)·Go 정적 하니스 1벌·언어별 자원 강제(rlimit vs 힙 옵션)·컴파일 단계 실구현. **C++ 제거**(UI·enum·시드). 언어×판정 실측 검증. [ADR-0013](decisions/0013-judge-language-expansion.md)
+- [x] **`run` 레인 배선 + 케이스별 결과** (2026-07-28) — 실행 모드(run/submit) 도메인화, 예제 번들 발행, 목록에서 run 제외, `submission_case` 저장·조회. web 목업 완전 제거. [ADR-0014](decisions/0014-execution-modes-and-case-feedback.md)
+- [x] **타임존 UTC 통일** (2026-07-28) — V4 `timestamptz` + 도메인 `Instant` + DTO ISO-8601 + web 표시 변환. [ADR-0015](decisions/0015-cross-service-time-contract.md)
+- [x] **공표 언어 층 신설** (2026-07-28) — `contracts/proto/common/v1`(trace·error). 추적 컨텍스트가 api→judge 로그로 이어지는 것 실측 확인. [ADR-0017](decisions/0017-published-language.md)
+- [x] **첫 자동화 테스트** (2026-07-28) — judge executor 8종(출력 비교 경계·판정 우선순위·케이스 보존·미지원 언어·명세 불변식). 전략은 [ADR-0016](decisions/0016-test-strategy.md)
+- [x] **api 테스트** (2026-07-28) — 단위 13종(도메인 규칙·제출 정책) + **통합 3종**(Testcontainers Postgres로 멱등 저장 고정). [ADR-0016](decisions/0016-test-strategy.md)
+- [x] **CI 게이트** (2026-07-28) — [`.github/workflows/ci.yml`](../.github/workflows/ci.yml): contracts(`buf lint`·PR에서 `buf breaking`)·judge(`go vet/build/test`)·api(`gradlew build` — 통합 테스트 포함)·web(`lint`+`build`=계약 체크). 샌드박스 실채점·전구간 E2E는 flaky 위험으로 의도적 제외(수동 절차 유지)
+- [ ] **나머지 문제의 히든 테스트케이스** — 현재 1000번만 submit 채점 가능(예제 실행은 전 문제 가능). 단 시드 문제는 **버려질 픽스처**라 우선순위 낮음 — 데이터 라이선스 결론과 함께 판단
+- [ ] `aggregate()`가 파일시스템을 직접 읽는 설계 개선 — 출력 읽기를 주입 가능하게 하면 순수 함수가 된다(테스트가 드러낸 문제, [ADR-0016](decisions/0016-test-strategy.md))
+- [ ] **스타터 코드 구조 개선** — 문제별 JSONB에 전 언어 코드를 박아두는 구조라 언어 추가 시 곱해진다. 언어별 기본 템플릿 + 문제별 오버라이드로 분리([ADR-0013](decisions/0013-judge-language-expansion.md))
+- [ ] **web→api 추적 연결** — 지금 trace는 api에서 시작한다. 브라우저에서 `traceparent`로 넘기면 전 구간이 이어진다
+- [ ] **OpenTelemetry 도입 검토** — 지금은 로그 필드로만 흐름을 잇는다. SDK를 얹으면 스팬·지연이 자동 수집(관측 백엔드까지 따라와 범위가 커짐 — 시점 미정)
 - [x] [`architecture/judge.md`](architecture/judge.md) 작성 (샌드박스 격리 요건·실증·한계를 포함 — 별도 보안 노트 대신 judge 문서 5장에 통합)
 - [ ] **샌드박스 2단계** (별도 마일스톤): cgroups/namespaces/seccomp 직접 제어 — 케이스별 메모리 피크 정밀 측정(cgroup `memory.peak`), 언어 중립 MLE 판정, seccomp 화이트리스트. 리눅스 기준 개발 머신 결정 필요
 - [ ] judge 언어 확장: C++·Java·JavaScript 러너 추가(executor 인터페이스 불변 — 컴파일 단계 자리 이미 확보)

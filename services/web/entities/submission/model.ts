@@ -15,6 +15,16 @@ export const JUDGE_RESULTS = [
 ] as const;
 export type JudgeResult = (typeof JUDGE_RESULTS)[number];
 
+/** 실행 모드 — 예제 실행(run)은 기록에 남지 않고, 정식 제출(submit)만 채점 현황에 오른다. */
+export type ExecutionMode = "run" | "submit";
+
+export interface CaseResult {
+  no: number;
+  result: JudgeResult;
+  execTimeMs: number | null;
+  memoryUsedKb: number | null;
+}
+
 export interface Submission {
   id: number;
   user: string;
@@ -26,8 +36,11 @@ export interface Submission {
   execTimeMs: number | null;
   memoryUsedKb: number | null;
   length: number;
-  submittedAt: string; // "YYYY-MM-DD HH:mm:ss"
+  mode: ExecutionMode;
+  // ISO-8601 절대시각("2026-07-28T12:23:45Z") — 지역 시간 변환은 여기(화면)에서 한다.
+  submittedAt: string;
   judgedAt: string | null;
+  cases: CaseResult[];
 }
 
 /** 실행 시간 표시 — 미채점은 "—" */
@@ -38,6 +51,20 @@ export function formatExecTime(ms: number | null): string {
 /** 사용 메모리 표시 — KB를 MB로(미채점은 "—") */
 export function formatMemory(kb: number | null): string {
   return kb == null ? "—" : `${Math.round(kb / 1024)} MB`;
+}
+
+/**
+ * 절대시각(ISO-8601) → 보는 사람의 지역 시간 표시.
+ * 서버는 UTC만 다루고(ADR-0013) 지역 시간은 브라우저가 안다 — 그래서 변환이 여기 있다.
+ */
+export function formatTimestamp(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  );
 }
 
 /** 채점이 끝났는가 (SSE로 갱신될 대상인지 판별) */

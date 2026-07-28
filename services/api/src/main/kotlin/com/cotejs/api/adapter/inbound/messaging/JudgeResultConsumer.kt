@@ -1,5 +1,6 @@
 package com.cotejs.api.adapter.inbound.messaging
 
+import com.cotejs.api.domain.model.CaseResult
 import com.cotejs.api.domain.model.JudgeResult
 import com.cotejs.api.domain.model.JudgedOutcome
 import com.cotejs.api.domain.port.inbound.ApplyJudgeOutcome
@@ -23,8 +24,6 @@ import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import java.time.Duration
 import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
 import com.cotejs.contracts.judge.v1.JudgeResult as JudgeResultMessage
 
 /**
@@ -80,6 +79,16 @@ class JudgeResultConsumer(
             return
         }
 
+        // 실패는 이제 구조화돼 온다 — 수신자가 문자열을 보고 추측하지 않는다(ADR-0017).
+        if (message.hasFailure()) {
+            val failure = message.failure
+            log.warn(
+                "채점 실패 수신: submission={} code={} origin={} retryable={} trace={}",
+                message.submissionId, failure.code, failure.origin, failure.retryable,
+                message.trace.traceId,
+            )
+        }
+
         runCatching {
             apply.apply(
                 JudgedOutcome(
@@ -88,7 +97,16 @@ class JudgeResultConsumer(
                     // 미측정(컴파일 에러 등)은 0으로 오지만 0ms 실행은 없으므로 null로 본다.
                     execTimeMs = message.execTimeMs.takeIf { it > 0 },
                     memoryUsedKb = message.memoryUsedKb.takeIf { it > 0 },
-                    judgedAt = message.judgedAt.toLocalDateTime(),
+                    judgedAt = message.judgedAt.toInstant(),
+                    // 케이스별 결과 — "몇 번에서 틀렸나"를 보여주려면 종합만으론 부족하다.
+                    cases = message.casesList.map {
+                        CaseResult(
+                            no = it.no,
+                            result = it.verdict.toDomain(),
+                            execTimeMs = it.execTimeMs.takeIf { ms -> ms > 0 },
+                            memoryUsedKb = it.memoryUsedKb.takeIf { kb -> kb > 0 },
+                        )
+                    },
                 ),
             )
         }.onFailure { e ->
@@ -118,12 +136,8 @@ internal fun Verdict.toDomain(): JudgeResult = when (this) {
 }
 
 /**
- * 계약(proto Timestamp)은 UTC epoch지만 DB의 TIMESTAMP 컬럼은 시스템 로컬 시각으로
- * 쓰이고 있다(`submittedAt = LocalDateTime.now()`). 그래서 로컬존으로 변환해 맞춘다 —
- * UTC 그대로 저장하면 같은 행의 submittedAt/judgedAt이 9시간 어긋난다(실제로 겪음).
- *
- * 알려진 부채: 타임존은 애초에 UTC(`timestamptz`)로 통일하고 표시에서만 변환하는 게 옳다
- * (docs/architecture/data-model.md).
+ * proto Timestamp(UTC epoch) → Instant. **변환이 아니라 그대로 옮기는 것**이다 —
+ * 양쪽 다 절대시각이라 존 해석이 끼어들 여지가 없다(ADR-0013).
  */
-internal fun com.google.protobuf.Timestamp.toLocalDateTime(): LocalDateTime =
-    LocalDateTime.ofInstant(Instant.ofEpochSecond(seconds, nanos.toLong()), ZoneId.systemDefault())
+internal fun com.google.protobuf.Timestamp.toInstant(): Instant =
+    Instant.ofEpochSecond(seconds, nanos.toLong())

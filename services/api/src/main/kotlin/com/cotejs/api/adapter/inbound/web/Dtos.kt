@@ -1,5 +1,6 @@
 package com.cotejs.api.adapter.inbound.web
 
+import com.cotejs.api.domain.model.ExecutionMode
 import com.cotejs.api.domain.model.Language
 import com.cotejs.api.domain.model.NewSubmission
 import com.cotejs.api.domain.model.Problem
@@ -7,7 +8,6 @@ import com.cotejs.api.domain.model.Submission
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Positive
-import java.time.format.DateTimeFormatter
 
 // 웹 어댑터 DTO — web가 소비하는 JSON 계약(OpenAPI /v3/api-docs의 원본).
 // 필드명·포맷은 기존 계약(구 @cotejs/contracts)과 동일하게 유지한다(drop-in).
@@ -56,7 +56,12 @@ data class ProblemResponse(
     }
 }
 
-private val TIMESTAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+data class CaseResultResponse(
+    val no: Int,
+    val result: String,
+    val execTimeMs: Int?,
+    val memoryUsedKb: Int?,
+)
 
 data class SubmissionResponse(
     val id: Long,
@@ -69,8 +74,11 @@ data class SubmissionResponse(
     val execTimeMs: Int?,
     val memoryUsedKb: Int?,
     val length: Int,
+    val mode: String,
+    // ISO-8601 절대시각("2026-07-28T12:23:45Z") — 지역 시간 표시는 web이 한다.
     val submittedAt: String,
     val judgedAt: String?,
+    val cases: List<CaseResultResponse>,
 ) {
     companion object {
         fun from(s: Submission) = SubmissionResponse(
@@ -83,8 +91,12 @@ data class SubmissionResponse(
             execTimeMs = s.execTimeMs,
             memoryUsedKb = s.memoryUsedKb,
             length = s.length,
-            submittedAt = s.submittedAt.format(TIMESTAMP),
-            judgedAt = s.judgedAt?.format(TIMESTAMP),
+            mode = s.mode.label,
+            submittedAt = s.submittedAt.toString(),
+            judgedAt = s.judgedAt?.toString(),
+            cases = s.cases.map {
+                CaseResultResponse(it.no, it.result.label, it.execTimeMs, it.memoryUsedKb)
+            },
         )
     }
 }
@@ -97,12 +109,15 @@ data class CreateSubmissionRequest(
     @field:NotBlank
     val code: String?,
     val user: String? = null,
+    /** 실행 모드 — "run"(예제 실행) 또는 "submit"(정식 제출). 생략 시 정식 제출. */
+    val mode: String? = null,
 ) {
-    /** 검증 통과 후 도메인 커맨드로 변환. 잘못된 language는 IllegalArgumentException → 400. */
+    /** 검증 통과 후 도메인 커맨드로 변환. 잘못된 language·mode는 IllegalArgumentException → 400. */
     fun toCommand(): NewSubmission = NewSubmission(
         user = user?.takeIf { it.isNotBlank() } ?: "guest",
         problemId = requireNotNull(problemId),
         language = Language.fromLabel(requireNotNull(language)),
         code = requireNotNull(code),
+        mode = mode?.let { ExecutionMode.fromLabel(it) } ?: ExecutionMode.SUBMIT,
     )
 }

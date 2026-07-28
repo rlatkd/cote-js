@@ -13,11 +13,12 @@ import reactor.core.publisher.Sinks
  * Redis pub/sub으로 바꾼다([ADR-0006] — M2 스케일아웃 범위). 임시 상태임을 TODO에 추적.
  */
 @Component
-class SubmissionEventHub {
+// open — 테스트에서 발행을 관찰하는 대역으로 대체하기 위해(정책 검증용, 인프라 흉내 아님)
+open class SubmissionEventHub {
     // 구독자가 없을 때의 이벤트는 버린다(SSE는 현재 상태 알림이지 이력 저장소가 아니다).
     private val sink = Sinks.many().multicast().directBestEffort<Submission>()
 
-    fun publish(submission: Submission) {
+    open fun publish(submission: Submission) {
         sink.tryEmitNext(submission)
     }
 

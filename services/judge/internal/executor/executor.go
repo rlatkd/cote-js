@@ -5,12 +5,14 @@ package executor
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/rlatkd/cotejs/services/judge/internal/domain"
+	"github.com/rlatkd/cotejs/services/judge/internal/language"
 )
 
 type Executor struct {
@@ -32,42 +34,52 @@ func (e *Executor) Judge(ctx context.Context, task domain.Task) (domain.JudgeRes
 		}, err
 	}
 
+	// 미지원 언어는 여기서 걸러진다 — 옛 구현은 언어를 무시하고 Python으로 실행해
+	// 다른 언어 제출을 런타임 에러로 **오판정**했다.
+	langSpec, err := language.Lookup(task.Language)
+	if err != nil {
+		return fail(err)
+	}
+
 	cases, err := loadBundle(task.BundleDir)
 	if err != nil {
 		return fail(fmt.Errorf("번들 로드 실패: %w", err))
 	}
 
-	workDir, err := prepareWorkspace(task, cases)
+	workDir, err := prepareWorkspace(task, langSpec, cases)
 	if err != nil {
 		return fail(fmt.Errorf("작업 공간 준비 실패: %w", err))
 	}
 	defer os.RemoveAll(workDir)
 
 	spec := domain.RunSpec{
-		WorkDir:       workDir,
-		CaseCount:     len(cases),
-		TimeLimitMS:   task.TimeLimitMS,
-		MemoryLimitMB: task.MemoryLimitMB,
+		WorkDir:   workDir,
+		Language:  langSpec.ID,
+		CaseCount: len(cases),
+		// 한도 보정은 executor(정책 층)의 몫이다 — 러너는 받은 값을 강제만 한다.
+		TimeLimitMS:   effectiveTimeLimit(task.TimeLimitMS, langSpec),
+		MemoryLimitMB: task.MemoryLimitMB + langSpec.MemoryMarginMB,
 	}
 
-	compile, err := e.runner.Compile(ctx, spec)
-	if err != nil {
-		return fail(fmt.Errorf("컴파일 단계 장애: %w", err))
-	}
-	if !compile.OK {
-		return domain.JudgeResult{
-			SubmissionID: task.SubmissionID,
-			Verdict:      domain.VerdictCompileError,
-			ErrorMessage: compile.Log,
-		}, nil
-	}
-
-	raws, err := e.runner.RunCases(ctx, spec)
+	outcome, err := e.runner.Run(ctx, spec)
 	if err != nil {
 		return fail(fmt.Errorf("실행 장애: %w", err))
 	}
+	if !outcome.Compile.OK {
+		return domain.JudgeResult{
+			SubmissionID: task.SubmissionID,
+			Verdict:      domain.VerdictCompileError,
+			ErrorMessage: outcome.Compile.Log,
+		}, nil
+	}
 
-	return e.aggregate(task, workDir, cases, raws), nil
+	return e.aggregate(task, workDir, cases, outcome.Cases), nil
+}
+
+// effectiveTimeLimit — 문제의 제한값은 통상 C/C++ 기준이라 느린 런타임엔 배수를 준다
+// (온라인 저지의 일반 관행). 보정이 없으면 정상 풀이도 TLE가 난다.
+func effectiveTimeLimit(base uint32, spec language.Spec) uint32 {
+	return uint32(math.Round(float64(base) * spec.TimeFactor))
 }
 
 func (e *Executor) aggregate(task domain.Task, workDir string, cases []bundleCase, raws []domain.RawCaseResult) domain.JudgeResult {
@@ -170,7 +182,7 @@ func loadBundle(dir string) ([]bundleCase, error) {
 //   main.py       제출 소스
 //   cases/NN.in   케이스 입력(01부터 연번으로 정규화)
 //   out/          러너가 케이스 출력을 쓸 자리
-func prepareWorkspace(task domain.Task, cases []bundleCase) (string, error) {
+func prepareWorkspace(task domain.Task, langSpec language.Spec, cases []bundleCase) (string, error) {
 	workDir, err := os.MkdirTemp("", "judge-*")
 	if err != nil {
 		return "", err
@@ -187,7 +199,7 @@ func prepareWorkspace(task domain.Task, cases []bundleCase) (string, error) {
 			return "", err
 		}
 	}
-	if err := os.WriteFile(filepath.Join(workDir, "main.py"), []byte(task.SourceCode), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(workDir, langSpec.SourceFile), []byte(task.SourceCode), 0o644); err != nil {
 		return "", err
 	}
 	for i, c := range cases {

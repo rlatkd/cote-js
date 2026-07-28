@@ -6,6 +6,7 @@ syntax = "proto3";
 package judge.v1;
 
 import "google/protobuf/timestamp.proto";
+import "common/v1/trace.proto";
 
 option java_package = "com.cotejs.contracts.judge.v1";
 option java_multiple_files = true;
@@ -32,5 +33,9 @@ message Submission {
   string test_bundle_key = 7;
   string test_bundle_sha256 = 8;
 
+  // UTC 절대시각(ADR-0015). 존 해석의 여지가 없는 타입만 경계에 둔다.
   google.protobuf.Timestamp submitted_at = 9;
+
+  // 이 실행 요청이 속한 요청 흐름(ADR-0017). 로그·추적이 서비스를 건너 이어진다.
+  common.v1.TraceContext trace = 10;
 }

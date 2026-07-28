@@ -11,6 +11,7 @@
 package judgev1
 
 import (
+	v1 "github.com/rlatkd/cotejs/services/judge/gen/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -169,8 +170,18 @@ type JudgeResult struct {
 	MemoryUsedKb uint32        `protobuf:"varint,4,opt,name=memory_used_kb,json=memoryUsedKb,proto3" json:"memory_used_kb,omitempty"`
 	Cases        []*CaseResult `protobuf:"bytes,5,rep,name=cases,proto3" json:"cases,omitempty"`
 	// COMPILE_ERROR·INTERNAL_ERROR 상세(컴파일러 출력 등). 그 외엔 빈 문자열.
-	ErrorMessage  string                 `protobuf:"bytes,6,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	JudgedAt      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=judged_at,json=judgedAt,proto3" json:"judged_at,omitempty"`
+	//
+	// Deprecated: 문자열 하나로는 "재시도해도 되는지·누구 잘못인지"를 담지 못해
+	// 수신자가 추측하게 된다. common.v1.Error(failure)로 대체 중이며,
+	// 소비자 전환이 끝나면 제거한다(그때까지 둘 다 채운다 — ADR-0017).
+	//
+	// Deprecated: Marked as deprecated in judge/v1/result.proto.
+	ErrorMessage string                 `protobuf:"bytes,6,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	JudgedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=judged_at,json=judgedAt,proto3" json:"judged_at,omitempty"`
+	// 실패의 구조화 표현. 성공(ACCEPTED/WRONG_ANSWER 등 정상 판정)이면 비어 있다.
+	Failure *v1.Error `protobuf:"bytes,8,opt,name=failure,proto3" json:"failure,omitempty"`
+	// 이 결과가 속한 요청 흐름 — 제출 메시지의 trace를 그대로 이어받는다.
+	Trace         *v1.TraceContext `protobuf:"bytes,9,opt,name=trace,proto3" json:"trace,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -240,6 +251,7 @@ func (x *JudgeResult) GetCases() []*CaseResult {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in judge/v1/result.proto.
 func (x *JudgeResult) GetErrorMessage() string {
 	if x != nil {
 		return x.ErrorMessage
@@ -254,27 +266,43 @@ func (x *JudgeResult) GetJudgedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *JudgeResult) GetFailure() *v1.Error {
+	if x != nil {
+		return x.Failure
+	}
+	return nil
+}
+
+func (x *JudgeResult) GetTrace() *v1.TraceContext {
+	if x != nil {
+		return x.Trace
+	}
+	return nil
+}
+
 var File_judge_v1_result_proto protoreflect.FileDescriptor
 
 const file_judge_v1_result_proto_rawDesc = "" +
 	"\n" +
-	"\x15judge/v1/result.proto\x12\bjudge.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x91\x01\n" +
+	"\x15judge/v1/result.proto\x12\bjudge.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15common/v1/error.proto\x1a\x15common/v1/trace.proto\"\x91\x01\n" +
 	"\n" +
 	"CaseResult\x12\x0e\n" +
 	"\x02no\x18\x01 \x01(\rR\x02no\x12+\n" +
 	"\averdict\x18\x02 \x01(\x0e2\x11.judge.v1.VerdictR\averdict\x12 \n" +
 	"\fexec_time_ms\x18\x03 \x01(\rR\n" +
 	"execTimeMs\x12$\n" +
-	"\x0ememory_used_kb\x18\x04 \x01(\rR\fmemoryUsedKb\"\xb1\x02\n" +
+	"\x0ememory_used_kb\x18\x04 \x01(\rR\fmemoryUsedKb\"\x90\x03\n" +
 	"\vJudgeResult\x12#\n" +
 	"\rsubmission_id\x18\x01 \x01(\x03R\fsubmissionId\x12+\n" +
 	"\averdict\x18\x02 \x01(\x0e2\x11.judge.v1.VerdictR\averdict\x12 \n" +
 	"\fexec_time_ms\x18\x03 \x01(\rR\n" +
 	"execTimeMs\x12$\n" +
 	"\x0ememory_used_kb\x18\x04 \x01(\rR\fmemoryUsedKb\x12*\n" +
-	"\x05cases\x18\x05 \x03(\v2\x14.judge.v1.CaseResultR\x05cases\x12#\n" +
-	"\rerror_message\x18\x06 \x01(\tR\ferrorMessage\x127\n" +
-	"\tjudged_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\bjudgedAt*\xe8\x01\n" +
+	"\x05cases\x18\x05 \x03(\v2\x14.judge.v1.CaseResultR\x05cases\x12'\n" +
+	"\rerror_message\x18\x06 \x01(\tB\x02\x18\x01R\ferrorMessage\x127\n" +
+	"\tjudged_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\bjudgedAt\x12*\n" +
+	"\afailure\x18\b \x01(\v2\x10.common.v1.ErrorR\afailure\x12-\n" +
+	"\x05trace\x18\t \x01(\v2\x17.common.v1.TraceContextR\x05trace*\xe8\x01\n" +
 	"\aVerdict\x12\x17\n" +
 	"\x13VERDICT_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10VERDICT_ACCEPTED\x10\x01\x12\x18\n" +
@@ -305,17 +333,21 @@ var file_judge_v1_result_proto_goTypes = []any{
 	(*CaseResult)(nil),            // 1: judge.v1.CaseResult
 	(*JudgeResult)(nil),           // 2: judge.v1.JudgeResult
 	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
+	(*v1.Error)(nil),              // 4: common.v1.Error
+	(*v1.TraceContext)(nil),       // 5: common.v1.TraceContext
 }
 var file_judge_v1_result_proto_depIdxs = []int32{
 	0, // 0: judge.v1.CaseResult.verdict:type_name -> judge.v1.Verdict
 	0, // 1: judge.v1.JudgeResult.verdict:type_name -> judge.v1.Verdict
 	1, // 2: judge.v1.JudgeResult.cases:type_name -> judge.v1.CaseResult
 	3, // 3: judge.v1.JudgeResult.judged_at:type_name -> google.protobuf.Timestamp
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	4, // 4: judge.v1.JudgeResult.failure:type_name -> common.v1.Error
+	5, // 5: judge.v1.JudgeResult.trace:type_name -> common.v1.TraceContext
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_judge_v1_result_proto_init() }
