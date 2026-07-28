@@ -1,3 +1,21 @@
+# 줄바꿈 정규화 — **저장소에는 항상 LF**로 담는다.
+#
+# 왜 필요한가: 개발은 Windows(CRLF), CI·컨테이너는 Linux(LF)다. 저장소에 CRLF가
+# 담기면 리눅스에서 ① 생성물 재생성 결과가 매번 달라 보이고(CI 오탐) ② 셸 스크립트가
+# 캐리지리턴 때문에 "command not found"로 죽는다. 실제로 CI의 생성물 동기화 검사가 이 문제로
+# 오탐할 상태였다(2026-07-28 발견).
+#
+# 최초 도입 시 1회: `git add --renormalize .` 후 별도 커밋으로 정리한다.
+* text=auto eol=lf
+
+# 바이너리는 손대지 않는다.
+*.woff2 binary
+*.jar   binary
+*.png   binary
+*.jpg   binary
+# Windows 배치 파일만 CRLF여야 동작한다.
+*.bat   text eol=crlf
+
 # GitHub 언어 통계(Linguist) — Go·Kotlin·Python만 집계한다.
 # 기본을 전부 끄고 대상 언어만 켠다
 # (TypeScript·JavaScript·CSS·SQL·Dockerfile·Shell·proto 등 전부 제외).

@@ -19,6 +19,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# 이 워크플로는 읽기만 하면 된다 — 토큰 권한은 필요한 만큼만.
+permissions:
+  contents: read
+
 jobs:
   contracts:
     name: 계약 (buf lint · breaking)
@@ -31,15 +35,51 @@ jobs:
       - uses: bufbuild/buf-action@v1
         with:
           setup_only: true
+      # 생성물 동기화 검사에 Go 플러그인이 필요하다(protoc는 JVM 생성기용).
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: services/judge/go.sum
+      - run: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+      - uses: arduino/setup-protoc@v3
+        with:
+          version: "33.1"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: lint
         working-directory: contracts
         run: buf lint
-      - name: 호환성 파괴 검사
-        # Schema Registry를 보류한 대신 이것이 스키마 진화를 강제한다([ADR-0011]).
-        # PR에서만 의미가 있다(main 기준과 대조).
+      # Schema Registry를 보류한 대신 이것이 스키마 진화를 강제한다([ADR-0011]).
+      # **push에서도 돌려야 한다** — 이 저장소는 main 직접 푸시가 주 흐름이라
+      # PR 조건만 걸어두면 검사가 영영 실행되지 않는다(실제로 그랬다).
+      - name: 호환성 파괴 검사 (PR — 대상 브랜치 기준)
         if: github.event_name == 'pull_request'
         working-directory: contracts
         run: buf breaking --against "../.git#branch=origin/${{ github.base_ref }},subdir=contracts"
+
+      - name: 호환성 파괴 검사 (push — 직전 커밋 기준)
+        if: github.event_name == 'push'
+        working-directory: contracts
+        run: |
+          # 최초 커밋에는 비교 대상이 없다.
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            buf breaking --against "../.git#ref=HEAD~1,subdir=contracts"
+          else
+            echo "직전 커밋이 없어 건너뜀"
+          fi
+
+      # 생성물을 커밋하는 방식([ADR-0011])의 알려진 약점: .proto만 고치고 재생성을
+      # 잊으면 원본과 생성 코드가 어긋난 채 빌드가 통과한다. 여기서 재생성해 보고
+      # 차이가 나면 실패시킨다 — "생성 후 커밋" 규율을 사람이 아닌 CI가 지킨다.
+      - name: 생성물 동기화 검사
+        run: |
+          cd contracts && buf generate && cd ..
+          # --ignore-cr-at-eol: 저장소 줄바꿈 정규화(.gitattributes)가 끝나기 전에도
+          # Windows/Linux 차이로 오탐하지 않게 한다.
+          if ! git diff --quiet --ignore-cr-at-eol -- services/judge/gen services/api/src/main/proto-gen; then
+            echo "::error::생성물이 .proto와 어긋납니다. 'cd contracts && buf generate' 후 커밋하세요."
+            git diff --stat --ignore-cr-at-eol -- services/judge/gen services/api/src/main/proto-gen
+            exit 1
+          fi
 
   judge:
     name: judge (Go)
@@ -83,7 +123,11 @@ jobs:
         working-directory: services/web
     steps:
       - uses: actions/checkout@v4
+      # 버전은 services/web/package.json의 packageManager 필드에서 읽는다 —
+      # 워크플로에 또 적으면 로컬과 어긋날 수 있어 진실원을 하나로 둔다.
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: services/web/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

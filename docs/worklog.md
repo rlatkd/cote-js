@@ -13,7 +13,10 @@
 - **검증(실측)**: 언어 3종 × 판정(AC/CE/TLE/MLE/RE) — **컴파일 에러 경로 첫 검증**(3종 모두 실제 컴파일러 메시지) / 미지원 언어는 오판정 대신 명시적 실패 / run 모드가 히든 케이스 없는 문제(2231)를 공개 예제로 채점 + `lane=submission.run` + 목록 비노출 / 케이스별 결과(3번 케이스만 실패하는 Java 풀이 → 1·2·4·5 통과, 3만 실패) / 타임존 `14:22:10 KST → 05:22:10Z` 환산, 새 제출은 0.86초 차 / **추적 전파** — 같은 `trace_id`가 api·judge 로그 양쪽에 / `go test`·`buf lint`·api 컴파일·web 빌드 그린.
 - **함정(실증)**: 하니스가 리눅스 전용 syscall을 써서 Windows 빌드가 깨짐 → `//go:build linux` + 스텁 분리. `@Bean` 팩토리명이 컴포넌트 클래스명과 겹쳐 기동 실패(재발). 목록 응답의 `cases`가 늘 비어 있던 문제 — SSE로만 채워지고 조회 경로엔 없었음(**응답에 필드가 있는데 항상 비면 계약이 거짓**).
 - **추가(21:57)**: ⑦ **api 테스트** — 단위 13종(enum 레이블 왕복·제출 정책: 모드별 번들·레인, 데이터 미비 시 채점 오류, 번들 캐시 재사용) + **통합 3종**(Testcontainers Postgres로 멱등 저장·재채점 시 케이스 대체·미지 제출 흘려보내기). 손으로 하던 멱등성 검증이 코드가 됨 ⑧ **CI 게이트 신설** — [`.github/workflows/ci.yml`](../.github/workflows/ci.yml): contracts(`buf lint`, PR에서 `buf breaking`)·judge(vet/build/test)·api(`gradlew build`)·web(lint+build=계약 체크). 샌드박스 실채점·E2E는 flaky 위험으로 의도적 제외. 로컬에서 전 단계 재현 확인.
-- **중단점**: 전체 미커밋. CI는 파일만 있고 **아직 원격에서 돌아본 적 없음**(푸시 후 첫 실행에서 러너 환경 이슈가 나올 수 있음).
+- **CI 첫 원격 실행(22:0x)**: 예상대로 러너 환경 이슈 1건 — **web 잡 실패**(`pnpm/action-setup`이 pnpm 버전을 못 찾음). 원인: 워크플로에도, `package.json`에도 버전 명시가 없었다. 수정: `services/web/package.json`에 **`packageManager: pnpm@10.33.0`** 추가(로컬·CI가 같은 버전을 쓰게 하는 표준 방식) + 액션에 `package_json_file` 지정. **버전 진실원을 워크플로가 아니라 package.json에 둔 이유**: 워크플로에 또 적으면 로컬과 어긋날 수 있다. 로컬에서 `--frozen-lockfile`·lint·build 재현 확인.
+- **함께 점검한 것**: `gradlew` 실행 권한 비트(git 100755 — 리눅스 러너에서 Permission denied 안 남), `buf-action`의 `setup_only` 입력 유효성.
+- **CI 사후 검토(22:10, 나머지 잡 성공 확인 후)**: 초록불이 검증을 뜻하지 않는다는 걸 확인 — ① **`buf breaking`이 한 번도 실행되지 않았음**(PR 조건인데 이 저장소는 main 직접 푸시, 머지 커밋 0개) → push에서 직전 커밋 기준 검사 추가 ② **생성물 드리프트 검사 부재** → 재생성 후 `git diff`로 강제(proto에 필드를 추가해 실제로 감지되는지 확인) ③ **저장소 blob에 CRLF** → 리눅스 CI에서 드리프트 검사가 매번 오탐할 상태였음. `.gitattributes`에 `* text=auto eol=lf` + 검사에 `--ignore-cr-at-eol` 이중 방어 ④ `permissions: contents: read` 추가. `gradlew` 실행 비트(100755)·`setup_only`·`setup-protoc` 버전 표기는 사전 확인해 문제 없음.
+- **중단점**: 전체 미커밋. CI 수정분은 **다시 푸시해야 검증**된다. **줄바꿈 정규화는 별도 커밋 권장** — `git add --renormalize .` 실행 시 텍스트 파일 전체가 변경으로 잡혀 다른 작업과 섞이면 리뷰가 어려워진다.
 - **다음**: 인증(선별적 TDD의 첫 적용 대상 — 정책이 명확하고 인프라 의존이 적다) 또는 web→api 추적 연결. 샌드박스 2단계·언어 확장은 별도 마일스톤.
 
 ## 2026-07-27 23:13 — api↔judge 배선 완료: web 제출이 실제로 채점된다
