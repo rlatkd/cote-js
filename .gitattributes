@@ -6,15 +6,15 @@
 # 오탐할 상태였다(2026-07-28 발견).
 #
 # 최초 도입 시 1회: `git add --renormalize .` 후 별도 커밋으로 정리한다.
-* text=auto eol=lf
+# * text=auto eol=lf
 
 # 바이너리는 손대지 않는다.
-*.woff2 binary
-*.jar   binary
-*.png   binary
-*.jpg   binary
+# *.woff2 binary
+# *.jar   binary
+# *.png   binary
+# *.jpg   binary
 # Windows 배치 파일만 CRLF여야 동작한다.
-*.bat   text eol=crlf
+# *.bat   text eol=crlf
 
 # GitHub 언어 통계(Linguist) — Go·Kotlin·Python만 집계한다.
 # 기본을 전부 끄고 대상 언어만 켠다
@@ -22,6 +22,7 @@
 * linguist-detectable=false
 
 *.ts  linguist-detectable=true
+*.tsx  linguist-detectable=true
 *.go  linguist-detectable=true
 *.kt  linguist-detectable=true
 *.kts linguist-detectable=true
