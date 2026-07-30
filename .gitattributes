@@ -32,6 +32,6 @@
 services/judge/gen/** linguist-generated=true
 
 # 벤더(Gradle 래퍼 — 도구가 배포하는 파일)
-services/api/gradle/wrapper/** linguist-vendored=true
-services/api/gradlew           linguist-vendored=true
-services/api/gradlew.bat       linguist-vendored=true
+# services/api/gradle/wrapper/** linguist-vendored=true
+# services/api/gradlew           linguist-vendored=true
+# services/api/gradlew.bat       linguist-vendored=true
