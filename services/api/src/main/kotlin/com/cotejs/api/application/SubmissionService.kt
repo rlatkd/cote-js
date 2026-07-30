@@ -78,11 +78,12 @@ class SubmissionService(
             return pending
         }
 
-        // 흐름의 시작점 — 여기서 만든 id가 judge 로그까지 따라간다(ADR-0017).
-        val trace = TraceContext.start()
+        // web(Next 서버)이 시작한 추적이 있으면 잇고, 없으면 여기가 시작점이다.
+        // 이 id가 judge 로그까지 따라간다(ADR-0017).
+        val trace = command.parentTrace?.child() ?: TraceContext.start()
         log.info(
-            "채점 요청 발행: submission={} mode={} trace={}",
-            pending.id, command.mode.label, trace.traceId,
+            "채점 요청 발행: submission={} mode={} trace={} parentSpan={}",
+            pending.id, command.mode.label, trace.traceId, trace.parentSpanId ?: "-",
         )
 
         dispatcher.dispatch(

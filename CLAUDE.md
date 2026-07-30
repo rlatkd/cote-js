@@ -87,6 +87,8 @@
 | judge 라이브러리 | **franz-go**(Kafka, 순수 Go — cgo 회피)·**minio-go**(S3 호환) ([ADR-0011](docs/decisions/0011-codegen-and-kafka-client.md)) | confluent-kafka-go(cgo), sarama, kafka-go |
 | api 라이브러리 | **kafka-clients 직접 사용 + 코루틴**(프로듀서=콜백→suspend, 컨슈머=단일 병렬도 IO 디스패처)·**AWS SDK v2 S3 async**(MinIO) ([ADR-0012](docs/decisions/0012-api-judge-wiring.md)) | reactor-kafka(Boot 4의 kafka-clients 4.x와 바이너리 비호환), spring-kafka(스레드 점유형) |
 | 실시간 알림 | **SSE** `/api/submissions/stream` — 팬아웃은 인프로세스(단일 인스턴스). 다중 인스턴스 시 Redis pub/sub 전환(M2) | WebSocket(양방향 불필요), 폴링 |
+| 관측(추적·로깅) | **OpenTelemetry + Jaeger(자가호스팅)** — 전파는 W3C `traceparent` 단일(web 시작→api→Kafka 헤더→judge), **trace_id = 전 구간 로그 상관관계 id**(서비스별 reqId 금지), 업무 키 `submission_id` 병기. api=Java 에이전트(MDC 자동 주입)·judge=Go SDK 수동·web=`@vercel/otel` ([ADR-0018](docs/decisions/0018-observability-tracing.md)) | Micrometer(폴리글랏 못 덮음), Zipkin, Tempo(운영 관측 M5에서 재검토), 관측 SaaS |
+| 인증 | **카카오 OIDC 단독 위임 + 자체 JWT(access+refresh 회전, httpOnly 쿠키) + 직접 WebFilter**(Spring Security 미채택, 암호 원시연산만 JDK 내장). 제출(run·submit)=로그인 필수, 조회·SSE=공개. 이메일 동의항목 미사용(`sub`+닉네임) ([ADR-0019](docs/decisions/0019-authentication-kakao-oidc.md)) | GitHub(후속 보류 — 국내 타깃 도달률 열세), 자체 가입(배제), Keycloak 등 자체 AS(과설계), 세션+Redis |
 | 메시지 전달 보장 | **at-least-once** — 채점 후 수동 오프셋 커밋(유실 방지 우선). 중복은 api가 `submission_id` 멱등 저장으로 흡수 ([ADR-0011](docs/decisions/0011-codegen-and-kafka-client.md)) | 자동 커밋, exactly-once(외부 부수효과라 무의미) |
 | 테스트케이스 전달 | **claim-check** — MinIO 번들(버킷 `testdata`) + 메시지엔 키·sha256만, judge는 해시 기준 로컬 캐시 | 메시지 인라인(1MB 상한·반복 운반), judge→api HTTP 조회(동기 결합 재도입) |
 | 버전 정책 | **LTS/안정판 기준** — JDK 21 LTS, Boot 4.0.x(성숙 마이너), Node 22 LTS, Postgres 16. 최신 첫 릴리스 회피 | 최신 우선주의 |

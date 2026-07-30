@@ -2,6 +2,13 @@
 server:
   port: 4000
 
+logging:
+  pattern:
+    # 모든 로그 라인에 요청 상관관계 id를 찍는다 — OTel 에이전트가 요청·컨슈머 단위로
+    # MDC에 넣는 trace_id가 곧 "트랜잭션을 찾아가는 reqId"다. 이 id 하나로
+    # web(Next 콘솔)→api→judge 로그를 관통 검색한다(ADR-0017·0018).
+    console: "%clr(%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}){faint} %clr(%5p) %clr([%X{trace_id:-}]){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n"
+
 spring:
   webflux:
     base-path: /api # 전역 prefix

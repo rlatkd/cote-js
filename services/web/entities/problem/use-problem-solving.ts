@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { type Language, type Problem } from "./model";
-import { createSubmission } from "@/entities/submission/api";
+import { submitCode } from "@/entities/submission/actions";
 import {
   isPending,
   type ExecutionMode,
@@ -72,7 +72,8 @@ export function useProblemSolving(problem: Problem) {
 
     let accepted: Submission;
     try {
-      accepted = await createSubmission({
+      // Server Action — Next 서버가 traceparent를 발급해 api로 전달한다.
+      accepted = await submitCode({
         problemId: problem.id,
         language,
         code,

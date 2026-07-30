@@ -16,10 +16,19 @@ import (
 	"github.com/rlatkd/cotejs/services/judge/internal/executor"
 	"github.com/rlatkd/cotejs/services/judge/internal/messaging"
 	"github.com/rlatkd/cotejs/services/judge/internal/sandbox/docker"
+	"github.com/rlatkd/cotejs/services/judge/internal/telemetry"
 )
 
 func main() {
 	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+	// OTel 추적(OTLP→Jaeger). 실패해도 채점은 계속한다 — 관측은 부가 기능.
+	otelShutdown, err := telemetry.Init(context.Background(), "judge")
+	if err != nil {
+		log.Warn("OTel 초기화 실패 — 추적 없이 진행", "err", err)
+	} else {
+		defer otelShutdown(context.Background())
+	}
 
 	store, err := bundle.NewStore(bundle.Config{
 		Endpoint:  env("MINIO_ENDPOINT", "localhost:9000"),

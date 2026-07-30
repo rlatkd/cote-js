@@ -166,8 +166,13 @@ exactly-once(Kafka 트랜잭션)는 배제했다 — 채점의 부수효과가 �
 - **해시 불일치는 채점 거부**: 발행자가 알린 해시와 실제 내용이 다르면 계약 위반이다. 조용히 채점하면 잘못된 테스트로 판정하게 된다.
 - **zip slip 방어**: 아카이브 내부 경로(`../`)를 신뢰하지 않고, 심볼릭 링크는 무시한다 — 테스트 데이터에 필요 없고 캐시 밖으로 쓰는 탈출 경로가 된다.
 
-## 10. 다음 단계
+## 10. 관측 ([ADR-0018](../decisions/0018-observability-tracing.md), 2026-07-30)
 
-1. **api 배선** — 제출 시 프로듀스(3레인 선택), 결과 소비 → DB 저장(멱등) → SSE 푸시. JVM Protobuf 생성기 확보 방식도 이때 결정([ADR-0011](../decisions/0011-codegen-and-kafka-client.md) 미결).
-2. **테스트케이스 발행 경로** — 지금은 judgeprobe가 번들을 올린다. 실제로는 api가 문제 등록 시 번들을 올리고 키·해시를 DB에 보관해야 한다(시드에 히든 케이스 추가 포함).
-3. **워커 수평 확장**(M2) — 컨슈머 그룹은 이미 준비됨. 레인별 동시성 슬롯·SSE Redis 전환이 함께.
+- **채점 1건 = 스팬 1개** — 어댑터(`internal/messaging`)가 소비 시점에 `judge <lane>` 스팬을 열고 submission_id·lane·language·verdict를 태그로 싣는다. 부모 복원은 ① Kafka 레코드 헤더의 W3C `traceparent`(표준 경로) ② 없으면 proto `TraceContext`(계약 경로 폴백). 결과 발행 레코드에도 헤더를 주입해 api의 결과 컨슈머 스팬이 같은 추적으로 이어진다.
+- **초기화 = [`internal/telemetry`](../../services/judge/internal/telemetry/telemetry.go)**(우리 코드, OTel Go SDK 사용) — OTLP gRPC(기본 localhost:4317→Jaeger). **함정(실증): gRPC 익스포터 기본값은 TLS**라 평문 수집기엔 스팬이 조용히 전량 유실 — https 엔드포인트가 아니면 `WithInsecure`. 수집기 다운 시 채점은 무영향(스팬만 버림 — 관측은 부가 기능).
+- **로그 상관관계**: 핸들러 진입 시 slog `With(submission_id, lane, trace_id)`로 바인딩 — `채점 시작`/`채점 완료` 등 전 라인이 같은 키를 갖는다.
+
+## 11. 다음 단계
+
+1. **워커 수평 확장**(M2) — 컨슈머 그룹은 이미 준비됨. 레인별 동시성 슬롯·SSE Redis 전환이 함께.
+2. **샌드박스 2단계**(별도 마일스톤) — cgroups/namespaces/seccomp 직접 제어(5장 한계 해소). 리눅스 개발 환경 결정 선행.

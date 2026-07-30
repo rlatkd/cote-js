@@ -75,6 +75,6 @@ services/web/
 
 ## 데이터 연동
 
-- `entities/*/api.ts`(Repository)가 `@/shared/api/api`로 **api(Kotlin/Spring) API를 서버에서 fetch**한다. mock → api 교체가 이 파일들에서만 일어났고 뷰·뷰모델은 무변경(Repository 경계 덕분).
-- 응답 타입은 web 로컬 도메인 모델(`entities/*/model.ts`) — api OpenAPI 스키마와의 정합은 `shared/api/contract-check.ts`가 컴파일 타임에 검사([ADR-0007](../decisions/0007-backend-kotlin-return.md)).
-- 단, 에디터의 실행/제출 채점은 아직 client mock(`use-problem-solving.ts`) — 실제 채점은 Judge 마일스톤.
+- **조회**: `entities/*/api.ts`(Repository)가 `shared/api/client.ts`로 **api(Kotlin/Spring)를 서버에서 fetch**한다(서버 컴포넌트). 응답 타입은 web 로컬 도메인 모델(`entities/*/model.ts`) — api OpenAPI 스키마와의 정합은 `shared/api/contract-check.ts`가 컴파일 타임에 검사([ADR-0007](../decisions/0007-backend-kotlin-return.md)).
+- **제출**: `entities/submission/actions.ts`의 **Server Action**(2026-07-30, [ADR-0018](../decisions/0018-observability-tracing.md)에서 브라우저 직접 fetch → 이전). Next 서버를 거치는 이유: ① 추적 시작점=신뢰 경계 안(`traceparent` 발급) ② 인증 쿠키(httpOnly)가 first-party 유지(ADR-0019 선행 정지작업). 판정 수신은 여전히 SSE(`EventSource`, 브라우저→api 직접).
+- **관측**: `instrumentation.ts`(+`next.config.mjs`의 `instrumentationHook`)에서 `@vercel/otel` 등록 — Next 내장 스팬 + fetch 전파(api 오리진은 `propagateContextUrls`에 명시해야 헤더가 실린다 — 기본은 같은 배포 URL 한정). `shared/api/trace.ts`는 활성 스팬이 있으면 그 컨텍스트로 traceparent를 만든다(임의 생성 시 계측이 주입하는 값과 어긋남).

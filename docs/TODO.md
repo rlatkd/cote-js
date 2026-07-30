@@ -82,13 +82,27 @@
 - [x] **api 테스트** (2026-07-28) — 단위 13종(도메인 규칙·제출 정책) + **통합 3종**(Testcontainers Postgres로 멱등 저장 고정). [ADR-0016](decisions/0016-test-strategy.md)
 - [x] **CI 게이트** (2026-07-28) — [`.github/workflows/ci.yml`](../.github/workflows/ci.yml): contracts(`buf lint`·PR에서 `buf breaking`)·judge(`go vet/build/test`)·api(`gradlew build` — 통합 테스트 포함)·web(`lint`+`build`=계약 체크). 샌드박스 실채점·전구간 E2E는 flaky 위험으로 의도적 제외(수동 절차 유지)
 - [ ] **나머지 문제의 히든 테스트케이스** — 현재 1000번만 submit 채점 가능(예제 실행은 전 문제 가능). 단 시드 문제는 **버려질 픽스처**라 우선순위 낮음 — 데이터 라이선스 결론과 함께 판단
-- [ ] `aggregate()`가 파일시스템을 직접 읽는 설계 개선 — 출력 읽기를 주입 가능하게 하면 순수 함수가 된다(테스트가 드러낸 문제, [ADR-0016](decisions/0016-test-strategy.md))
+- [x] `aggregate()` 주입 리팩터링 (2026-07-30) — 출력 조달자(`outputOf`) 주입으로 순수 함수화, 메서드→자유 함수(리시버 미사용이 드러낸 신호). 출력 비교 판정(AC/WA)을 파일시스템 없이 검증하는 테스트 추가([ADR-0016](decisions/0016-test-strategy.md)이 드러낸 부채 상환)
 - [ ] **스타터 코드 구조 개선** — 문제별 JSONB에 전 언어 코드를 박아두는 구조라 언어 추가 시 곱해진다. 언어별 기본 템플릿 + 문제별 오버라이드로 분리([ADR-0013](decisions/0013-judge-language-expansion.md))
-- [ ] **web→api 추적 연결** — 지금 trace는 api에서 시작한다. 브라우저에서 `traceparent`로 넘기면 전 구간이 이어진다
-- [ ] **OpenTelemetry 도입 검토** — 지금은 로그 필드로만 흐름을 잇는다. SDK를 얹으면 스팬·지연이 자동 수집(관측 백엔드까지 따라와 범위가 커짐 — 시점 미정)
+- [x] **web→api 추적 연결** (2026-07-30) — Next 서버가 `traceparent` 발급(신뢰 경계 안), 제출을 **Server Action으로 이전**, api는 파싱·검증 후 이어받기(`TraceContext.parse/child` + 테스트). [ADR-0018](decisions/0018-observability-tracing.md)
+- [x] **OpenTelemetry 도입** (2026-07-30) — api=Java 에이전트(bootRun, MDC trace_id 자동 주입) / judge=Go SDK 수동(`internal/telemetry`, 채점 1건=스팬 1개) / web=`@vercel/otel` / 백엔드=Jaeger 2.19 자가호스팅(infra). 전 구간 실측: 같은 trace_id가 3서비스 로그+Jaeger 스팬 트리에. [ADR-0018](decisions/0018-observability-tracing.md)
 - [x] [`architecture/judge.md`](architecture/judge.md) 작성 (샌드박스 격리 요건·실증·한계를 포함 — 별도 보안 노트 대신 judge 문서 5장에 통합)
 - [ ] **샌드박스 2단계** (별도 마일스톤): cgroups/namespaces/seccomp 직접 제어 — 케이스별 메모리 피크 정밀 측정(cgroup `memory.peak`), 언어 중립 MLE 판정, seccomp 화이트리스트. 리눅스 기준 개발 머신 결정 필요
 - [ ] judge 언어 확장: C++·Java·JavaScript 러너 추가(executor 인터페이스 불변 — 컴파일 단계 자리 이미 확보)
+
+## 다음 스프린트: 인증 (설계 확정 — [ADR-0019](decisions/0019-authentication-kakao-oidc.md), 2026-07-30)
+
+> 결정은 전부 확정(카카오 OIDC 단독 / 자체 JWT+httpOnly 쿠키 / Spring Security 미채택·직접 WebFilter / 제출 로그인 필수 / 시드 제출은 시드 유저 귀속). **구현만 남았다.**
+
+- [ ] **사용자 액션**: 카카오 개발자 앱 등록(OIDC 활성화, Redirect URI `http://localhost:4000/api/auth/callback/kakao`) → REST API 키·Client Secret 전달
+- [ ] V5 마이그레이션 재도입 — `users` + `submission.user_id NOT NULL` + 시드 귀속 (초안은 이번 세션에 작성했다가 **코드 미배선 상태로 두면 제출·CI가 깨져** 되돌림 — 코드와 같은 커밋으로 재도입, 설계는 ADR-0019 5절)
+- [ ] JWT 코덱(HS256, JDK 내장) + 단위 테스트(왕복·만료·변조·타입) — 선별적 TDD 첫 적용 대상
+- [ ] 카카오 OIDC — 코드 교환(WebClient), JWKS 캐시, id_token 검증(RS256·iss·aud·exp·nonce) + 검증기 단위 테스트
+- [ ] AuthService + 엔드포인트(login/callback/refresh/logout/me), state·nonce 서명 쿠키
+- [ ] 인증 WebFilter — access 쿠키 검증→principal, **POST /api/submissions 401 가드**
+- [ ] SubmissionService가 principal 사용(body의 user 무시), 영속 계층 user_id 배선
+- [ ] web 배선 — 로그인 버튼, 세션 표시(/auth/me), Server Action 쿠키 포워딩, 401 안내
+- [ ] OpenAPI 재생성(`pnpm gen:api`) + 계약 체크
 
 ## 보류 / 추후 재논의 (Deferred)
 

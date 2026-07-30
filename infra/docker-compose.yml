@@ -109,6 +109,19 @@ services:
         mc mb --ignore-existing local/testdata
         mc ls local
 
+  # 분산 추적 백엔드(OTel) — web·api·judge가 OTLP로 스팬을 보내고 UI(:16686)에서 조회.
+  # 저장은 인메모리(개발용) — 재시작하면 추적이 사라진다. 영속 저장은 운영 마일스톤의 일.
+  # 이미지가 distroless(셸 없음)라 healthcheck 없음 — 의존하는 compose 서비스도 없다.
+  jaeger:
+    build: ./jaeger
+    image: cotejs-jaeger:2.19
+    container_name: cotejs-jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317"   # OTLP gRPC (judge)
+      - "4318:4318"   # OTLP HTTP (web·api)
+
 volumes:
   cotejs-pgdata:
   cotejs-kafkadata:

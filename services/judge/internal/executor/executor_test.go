@@ -62,15 +62,14 @@ func TestAggregateVerdictPriority(t *testing.T) {
 		},
 	}
 
-	e := New(nil)
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			// 출력 파일이 없는 상태 = 비교 이전 단계에서 판정이 갈려야 한다.
-			got := e.aggregate(
+			// 출력이 없는 상태 = 비교 이전 단계에서 판정이 갈려야 한다.
+			got := aggregate(
 				domain.Task{SubmissionID: 1},
-				t.TempDir(),
 				[]bundleCase{{input: "x", expected: "y"}},
 				[]domain.RawCaseResult{c.raw},
+				noOutput,
 			)
 			if got.Verdict != c.want {
 				t.Errorf("verdict = %v, want %v", got.Verdict, c.want)
@@ -85,16 +84,15 @@ func TestAggregateVerdictPriority(t *testing.T) {
 // 종합 판정은 "첫 실패"이고, 케이스는 끝까지 남아야 한다
 // (학습 플랫폼이라 "몇 번에서 틀렸나"가 사용자 가치 — 대회형처럼 중단하지 않는다).
 func TestAggregateKeepsAllCasesAndTakesFirstFailure(t *testing.T) {
-	e := New(nil)
-	result := e.aggregate(
+	result := aggregate(
 		domain.Task{SubmissionID: 7},
-		t.TempDir(),
 		[]bundleCase{{}, {}, {}},
 		[]domain.RawCaseResult{
 			{No: 1, ExitCode: 0, ExecTimeMS: 10, MemoryUsedKB: 100},
 			{No: 2, ExitCode: 1, ExecTimeMS: 20, MemoryUsedKB: 300}, // 첫 실패
 			{No: 3, TimedOut: true, ExecTimeMS: 30, MemoryUsedKB: 200},
 		},
+		noOutput,
 	)
 
 	if result.Verdict != domain.VerdictRuntimeError {
@@ -111,17 +109,40 @@ func TestAggregateKeepsAllCasesAndTakesFirstFailure(t *testing.T) {
 
 // 러너가 케이스 결과를 빠뜨리면 조용히 통과시키면 안 된다(시스템 장애로 드러내야 한다).
 func TestAggregateMissingCaseIsInternalError(t *testing.T) {
-	e := New(nil)
-	result := e.aggregate(
+	result := aggregate(
 		domain.Task{SubmissionID: 1},
-		t.TempDir(),
 		[]bundleCase{{}, {}},
 		[]domain.RawCaseResult{{No: 1, ExitCode: 0}}, // 2번 누락
+		noOutput,
 	)
 	if result.Verdict != domain.VerdictInternalError {
 		t.Errorf("verdict = %v, want INTERNAL_ERROR", result.Verdict)
 	}
 }
+
+// 출력 비교 판정(AC/WA)이 주입된 출력만으로 갈리는지 — aggregate가 순수 함수라
+// 파일시스템 없이 정책 전체를 검증할 수 있다(이 리팩터링의 목적).
+func TestAggregateComparesOutputs(t *testing.T) {
+	outputs := map[int]string{1: "3\n", 2: "5\n"}
+	result := aggregate(
+		domain.Task{SubmissionID: 1},
+		[]bundleCase{{expected: "3\n"}, {expected: "4\n"}},
+		[]domain.RawCaseResult{{No: 1}, {No: 2}},
+		func(no int) string { return outputs[no] },
+	)
+	if result.Cases[0].Verdict != domain.VerdictAccepted {
+		t.Errorf("케이스 1 = %v, want AC", result.Cases[0].Verdict)
+	}
+	if result.Cases[1].Verdict != domain.VerdictWrongAnswer {
+		t.Errorf("케이스 2 = %v, want WA", result.Cases[1].Verdict)
+	}
+	if result.Verdict != domain.VerdictWrongAnswer {
+		t.Errorf("종합 = %v, want WA (첫 실패)", result.Verdict)
+	}
+}
+
+// noOutput — 출력이 존재하지 않는 상황의 조달자(출력 파일 부재 = 빈 출력 정책과 동일).
+func noOutput(int) string { return "" }
 
 // 시간 한도 보정 — 문제의 제한은 C/C++ 기준이라 느린 런타임엔 배수를 준다.
 // 이 값이 바뀌면 정상 풀이가 TLE로 떨어질 수 있어 회귀를 막는다.

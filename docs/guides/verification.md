@@ -134,6 +134,29 @@ curl -s localhost:4000/api/submissions | head -c 300   # 잠시 후 "맞았습�
 | **추적 전파** | 제출 후 api 로그의 `trace=` 값을 judge 로그에서 검색 | **같은 `trace_id`**가 양쪽에 존재 |
 | 채점 불가 처리 | 테스트케이스 없는 문제(예: 2231)에 제출 | `채점 오류`(오답류가 아님) |
 
+### 8. 관측 — 분산 추적·상관관계 로깅 ([ADR-0018](../decisions/0018-observability-tracing.md))
+
+**원리**: id 하나를 손으로 지정해 전 구간에서 재발견되는지 본다 — "동작하는 것처럼 보임"과 "실제로 이어짐"은 다르다.
+
+```bash
+# 인프라(jaeger 포함) + api(bootRun=에이전트 부착) + judged 기동 상태에서,
+# trace_id를 직접 지정해 제출 (web을 거치면 Next 서버가 이 헤더를 만들어 보낸다)
+curl -s -X POST localhost:4000/api/submissions \
+  -H "content-type: application/json" \
+  -H "traceparent: 00-cafe1234cafe1234cafe1234cafe1234-a1b2c3d4e5f60718-01" \
+  -d '{"problemId":1000,"language":"Python","code":"a,b=map(int,input().split())\nprint(a+b)","mode":"submit"}'
+```
+
+| 항목 | 확인 방법 | 기대 |
+|---|---|---|
+| api MDC | api 콘솔에서 `cafe1234` 검색 | `INFO [cafe1234...]` — 요청·컨슈머 문맥의 **모든** 라인에 대괄호 id. `발행` 라인에 `parentSpan=a1b2c3d4e5f60718`(웹 헤더의 span) |
+| judge 로그 | judged 콘솔에서 `cafe1234` 검색 | `채점 시작`·`채점 완료` 라인에 `trace_id=cafe1234... submission_id=...` |
+| 스팬 트리 | `curl -s localhost:16686/api/traces/cafe1234cafe1234cafe1234cafe1234` 또는 UI :16686 | **api**(POST·SELECT/INSERT·Kafka publish·result process)와 **judge**(`judge submission.submit`, verdict 태그)가 **한 추적**에 |
+| 깨진 헤더 방어 | 대문자·전부 0 등 무효 traceparent로 제출 | api가 버리고 **새 trace 시작**(단위 테스트 `TraceContextTest`가 고정) |
+| 관측 독립성 | jaeger 컨테이너 중지 후 제출 | 채점 정상(스팬만 유실) — 관측은 부가 기능 |
+
+> **함정(실증)**: judge의 OTLP gRPC 익스포터 기본값은 TLS — 평문 Jaeger에는 핸드셰이크 실패로 스팬이 **조용히 전량 유실**된다(`WithInsecure` 필요). 스팬이 안 보이면 익스포터 오류 로그부터 확인.
+
 ## 추가 예정 (해당 마일스톤 착수 시 이 문서에 절차 추가)
 
 - **problem/plagiarism**: 파이프라인 상태 전이, 유사도 질의 왕복
@@ -141,6 +164,7 @@ curl -s localhost:4000/api/submissions | head -c 300   # 잠시 후 "맞았습�
 
 ## 갱신 이력
 
+- 2026-07-30 23:01 — 절차 8(관측) 신설: 지정 trace_id의 전 구간 재발견(api MDC·judge 로그·Jaeger 스팬 트리), 무효 헤더 방어, 관측 독립성. OTLP gRPC TLS 기본값 함정 명시. 절차 7의 제출은 이제 web에서 Server Action 경유임을 반영.
 - 2026-07-28 21:57 — 품질 게이트에 **자동화 테스트**(api 단위13+통합3, judge 8) 추가하고 **CI가 강제**함을 명시. CI가 의도적으로 제외하는 범위(샌드박스 실채점·E2E)도 기록.
 - 2026-07-28 21:35 — judge 절차에 **언어 3종·컴파일 에러·미지원 언어** 추가, 러너 이미지 빌드 3종·`go test` 반영. 전 구간 절차에 **실행 모드(run)·케이스별 결과·추적 전파** 확인 항목 추가.
 - 2026-07-27 23:13 — 전 구간 절차(7) 신설: api 제출→채점→표시, SSE·멱등성·타임존·번들 발행·채점 불가 확인. api 절차의 필드명을 수치 기준으로 갱신.

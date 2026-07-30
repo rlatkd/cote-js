@@ -90,11 +90,30 @@ data class TraceContext(
     val spanId: String,
     val parentSpanId: String? = null,
 ) {
+    /** 이 컨텍스트를 부모로 하는 다음 구간 — 같은 추적 id, 새 span. */
+    fun child(): TraceContext = TraceContext(traceId = traceId, spanId = hex(8), parentSpanId = spanId)
+
     companion object {
         private val random = java.security.SecureRandom()
 
-        /** 흐름의 시작점 — api가 제출을 접수하는 순간 한 번 만든다. */
+        // W3C traceparent: version(2) - trace-id(32) - parent-id(16) - flags(2), 전부 소문자 hex.
+        private val TRACEPARENT = Regex("([0-9a-f]{2})-([0-9a-f]{32})-([0-9a-f]{16})-[0-9a-f]{2}")
+
+        /** 추적이 없는 흐름의 시작점(내부 발생 작업 등). */
         fun start(): TraceContext = TraceContext(traceId = hex(16), spanId = hex(8))
+
+        /**
+         * W3C traceparent 헤더 파싱. 브라우저·프록시를 거친 외부 입력이므로
+         * 형식이 어긋나면 잇지 않고 버린다(null) — 오염된 id가 전 구간 로그에 퍼지는 것보다
+         * 추적이 끊기는 쪽이 낫다.
+         */
+        fun parse(traceparent: String?): TraceContext? {
+            val m = TRACEPARENT.matchEntire(traceparent ?: return null) ?: return null
+            val (version, traceId, spanId) = m.destructured
+            if (version == "ff") return null // 스펙상 무효 버전
+            if (traceId.all { it == '0' } || spanId.all { it == '0' }) return null // 스펙상 무효 id
+            return TraceContext(traceId = traceId, spanId = spanId)
+        }
 
         private fun hex(bytes: Int): String =
             ByteArray(bytes).also(random::nextBytes).joinToString("") { "%02x".format(it) }
@@ -118,4 +137,6 @@ data class NewSubmission(
     val language: Language,
     val code: String,
     val mode: ExecutionMode = ExecutionMode.SUBMIT,
+    /** web(Next 서버)이 시작한 추적 — 있으면 잇고, 없으면 api가 새로 시작한다. */
+    val parentTrace: TraceContext? = null,
 )

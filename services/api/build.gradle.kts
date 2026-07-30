@@ -32,7 +32,13 @@ dependencyManagement {
 	imports { mavenBom("org.testcontainers:testcontainers-bom:1.21.4") }
 }
 
+// OTel Java 에이전트 — 코드 수정 없이 WebFlux 서버·kafka-clients·R2DBC를 자동 계측하고
+// logback MDC에 trace_id/span_id를 주입한다(모든 로그 라인이 요청 상관관계 id를 갖는다).
+// SDK 수동 계측 대신 에이전트를 쓰는 근거는 ADR-0018.
+val otelAgent: Configuration by configurations.creating
+
 dependencies {
+	otelAgent("io.opentelemetry.javaagent:opentelemetry-javaagent:2.16.0")
 	implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -85,4 +91,16 @@ tasks.withType<Test> {
 // Windows(MS949)에서 JEP 400의 UTF-8 기본값이 덮이는 것을 차단
 tasks.withType<JavaExec> {
 	defaultCharacterEncoding = "UTF-8"
+}
+
+// 개발 실행에만 에이전트를 붙인다(테스트·CI는 계측 불필요 — 결과에 영향 없음).
+// Jaeger가 내려가 있어도 기동에는 지장 없다(내보내기 실패 시 스팬만 버려짐).
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+	jvmArgs("-javaagent:${otelAgent.singleFile}")
+	systemProperty("otel.service.name", "api")
+	systemProperty("otel.exporter.otlp.endpoint", "http://localhost:4318")
+	systemProperty("otel.exporter.otlp.protocol", "http/protobuf")
+	// 추적만 쓴다 — 메트릭·로그 내보내기는 백엔드가 없어 주기적 실패 로그만 만든다
+	systemProperty("otel.metrics.exporter", "none")
+	systemProperty("otel.logs.exporter", "none")
 }

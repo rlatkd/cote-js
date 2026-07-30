@@ -9,6 +9,10 @@ import (
 	"time"
 
 	"github.com/twmb/franz-go/pkg/kgo"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -123,26 +127,94 @@ func (w *Worker) handle(ctx context.Context, rec *kgo.Record) {
 		return
 	}
 
+	// 채점 1건 = 스팬 1개. 부모는 ① Kafka 헤더의 W3C traceparent(표준 경로)
+	// ② 없으면 proto 페이로드의 TraceContext(계약 경로)로 복원한다.
+	ctx = extractParent(ctx, rec, msg.GetTrace())
+	ctx, span := otel.Tracer("judge").Start(ctx, "judge "+rec.Topic,
+		oteltrace.WithSpanKind(oteltrace.SpanKindConsumer),
+		oteltrace.WithAttributes(
+			attribute.Int64("submission.id", msg.SubmissionId),
+			attribute.String("submission.lane", rec.Topic),
+			attribute.String("submission.language", msg.Language),
+		),
+	)
+	defer span.End()
+
 	// 추적 컨텍스트를 로그에 싣는다 — 서비스를 건너 한 흐름을 이어보려면
 	// 로그가 같은 키를 들고 있어야 한다(ADR-0017).
 	log := w.log.With(
 		"submission_id", msg.SubmissionId,
 		"lane", rec.Topic,
-		"trace_id", msg.GetTrace().GetTraceId(),
+		"trace_id", span.SpanContext().TraceID().String(),
 	)
 	started := time.Now()
+	// 시작도 남긴다 — 완료 로그만 있으면 채점이 멈췄을 때 "받긴 했는지"를 알 수 없다.
+	log.Info("채점 시작", "language", msg.Language)
 
 	result, err := w.judge(ctx, &msg)
 	if err != nil {
 		// 시스템 장애 — 결과는 INTERNAL_ERROR로 보낸다. 결과를 안 보내면 사용자의
 		// 화면이 영원히 "채점 중"에 머문다(침묵이 최악의 실패 모드).
 		log.Error("채점 장애", "err", err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "채점 장애")
 	}
+	span.SetAttributes(attribute.String("submission.verdict", string(result.Verdict)))
 	log.Info("채점 완료", "verdict", result.Verdict, "took", time.Since(started))
 
 	if err := w.publish(ctx, result, msg.GetTrace()); err != nil {
 		log.Error("결과 발행 실패", "err", err)
+		span.RecordError(err)
 	}
+}
+
+// extractParent — 원격 부모 추적 복원. proto 경로는 trace_id·span_id만 있으면 충분하다.
+func extractParent(ctx context.Context, rec *kgo.Record, tc *commonv1.TraceContext) context.Context {
+	ctx = otel.GetTextMapPropagator().Extract(ctx, recordCarrier{rec})
+	if oteltrace.SpanContextFromContext(ctx).IsValid() {
+		return ctx
+	}
+	traceID, err1 := oteltrace.TraceIDFromHex(tc.GetTraceId())
+	spanID, err2 := oteltrace.SpanIDFromHex(tc.GetSpanId())
+	if err1 != nil || err2 != nil {
+		return ctx // 부모 없음 — 여기서 새 추적이 시작된다
+	}
+	return oteltrace.ContextWithRemoteSpanContext(ctx, oteltrace.NewSpanContext(oteltrace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: oteltrace.FlagsSampled,
+		Remote:     true,
+	}))
+}
+
+// recordCarrier — kgo.Record 헤더를 OTel 전파 규약(TextMap)에 맞춘 운반자.
+type recordCarrier struct{ rec *kgo.Record }
+
+func (c recordCarrier) Get(key string) string {
+	for _, h := range c.rec.Headers {
+		if h.Key == key {
+			return string(h.Value)
+		}
+	}
+	return ""
+}
+
+func (c recordCarrier) Set(key, val string) {
+	for i, h := range c.rec.Headers {
+		if h.Key == key {
+			c.rec.Headers[i].Value = []byte(val)
+			return
+		}
+	}
+	c.rec.Headers = append(c.rec.Headers, kgo.RecordHeader{Key: key, Value: []byte(val)})
+}
+
+func (c recordCarrier) Keys() []string {
+	keys := make([]string, 0, len(c.rec.Headers))
+	for _, h := range c.rec.Headers {
+		keys = append(keys, h.Key)
+	}
+	return keys
 }
 
 func (w *Worker) judge(ctx context.Context, msg *judgev1.Submission) (domain.JudgeResult, error) {
@@ -180,6 +252,8 @@ func (w *Worker) publish(ctx context.Context, result domain.JudgeResult, trace *
 		Key:   []byte(fmt.Sprint(result.SubmissionID)),
 		Value: payload,
 	}
+	// 결과에도 추적 헤더를 실어 api 결과 컨슈머 스팬이 같은 추적으로 이어지게 한다.
+	otel.GetTextMapPropagator().Inject(ctx, recordCarrier{rec})
 	return w.client.ProduceSync(ctx, rec).FirstErr()
 }
 

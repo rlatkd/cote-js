@@ -73,7 +73,7 @@ func (e *Executor) Judge(ctx context.Context, task domain.Task) (domain.JudgeRes
 		}, nil
 	}
 
-	return e.aggregate(task, workDir, cases, outcome.Cases), nil
+	return aggregate(task, cases, outcome.Cases, workspaceOutputs(workDir)), nil
 }
 
 // effectiveTimeLimit — 문제의 제한값은 통상 C/C++ 기준이라 느린 런타임엔 배수를 준다
@@ -82,7 +82,10 @@ func effectiveTimeLimit(base uint32, spec language.Spec) uint32 {
 	return uint32(math.Round(float64(base) * spec.TimeFactor))
 }
 
-func (e *Executor) aggregate(task domain.Task, workDir string, cases []bundleCase, raws []domain.RawCaseResult) domain.JudgeResult {
+// aggregate — 러너의 원시 결과와 기대 출력을 대조해 판정을 집계하는 순수 함수.
+// 실제 출력의 조달은 outputOf로 주입받는다 — 집계 정책이 파일시스템과 무관해야
+// 테스트가 판정 규칙만 검증할 수 있다.
+func aggregate(task domain.Task, cases []bundleCase, raws []domain.RawCaseResult, outputOf func(no int) string) domain.JudgeResult {
 	result := domain.JudgeResult{
 		SubmissionID: task.SubmissionID,
 		Verdict:      domain.VerdictAccepted,
@@ -112,11 +115,7 @@ func (e *Executor) aggregate(task domain.Task, workDir string, cases []bundleCas
 		case raw.ExitCode != 0:
 			cr.Verdict = domain.VerdictRuntimeError
 		default:
-			got, err := os.ReadFile(filepath.Join(workDir, "out", fmt.Sprintf("%02d.out", no)))
-			if err != nil {
-				got = nil
-			}
-			if outputMatches(string(got), c.expected) {
+			if outputMatches(outputOf(no), c.expected) {
 				cr.Verdict = domain.VerdictAccepted
 			} else {
 				cr.Verdict = domain.VerdictWrongAnswer
@@ -136,6 +135,18 @@ func (e *Executor) aggregate(task domain.Task, workDir string, cases []bundleCas
 		}
 	}
 	return result
+}
+
+// workspaceOutputs — 작업 공간 out/ 디렉토리에서 케이스 출력을 읽는 조달자.
+// 읽기 실패는 빈 출력으로 취급한다(출력 파일 부재 = 아무것도 출력하지 않은 제출).
+func workspaceOutputs(workDir string) func(no int) string {
+	return func(no int) string {
+		b, err := os.ReadFile(filepath.Join(workDir, "out", fmt.Sprintf("%02d.out", no)))
+		if err != nil {
+			return ""
+		}
+		return string(b)
+	}
 }
 
 // --- 번들 ---

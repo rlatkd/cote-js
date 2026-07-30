@@ -79,9 +79,14 @@ submission.result 소비 → 멱등 반영(같은 결과 재수신해도 상태 
 - 스키마·시드는 **Flyway가 소유**(`db/migration/V1__schema.sql`·`V2__numeric_limits_and_judge_fields.sql`, 시드는 `db/seed/R__dev_seed.sql`) — 기동 시 자동 적용. 상세: [data-model.md](data-model.md).
 - 함정 기록: Flyway 플레이스홀더가 PG 달러 인용(`$tag${`)을 오인 → `placeholder-replacement: false` 필수.
 
+## 관측 ([ADR-0018](../decisions/0018-observability-tracing.md), 2026-07-30)
+
+- **추적 이어받기**: web(Next 서버)이 보낸 W3C `traceparent`를 제출 컨트롤러가 받아 도메인 `TraceContext.parse()`(외부 입력이라 엄격 검증 — 무효면 버리고 새 추적)로 잇고, `child()`로 구간을 파생해 Kafka 메시지(proto `common.v1.TraceContext`)로 judge까지 전파한다.
+- **계측 = OTel Java 에이전트** — `bootRun`에만 부착(`build.gradle.kts`의 `otelAgent` 구성). WebFlux 서버·kafka-clients·R2DBC 자동 스팬 + **logback MDC에 trace_id 자동 주입**. `application.yml` 콘솔 패턴의 `%X{trace_id}`로 **모든 로그 라인이 요청 상관관계 id**를 갖는다. 테스트·CI에는 부착하지 않는다(계측이 결과에 영향 없음).
+- **스팬 수신처 = Jaeger**(infra, OTLP HTTP 4318). 에이전트는 메트릭·로그 익스포터를 꺼둔다(백엔드 없음 — 주기적 실패 로그 방지).
+
 ## 다음 단계
 
-- **`run` 레인 배선** — "예제 실행"은 아직 목업이다. 공개 예제(`example`)용 번들 발행 경로가 필요하다.
-- **케이스별 결과 저장** — proto `JudgeResult.cases`를 받지만 종합만 저장 중. "몇 번 케이스에서 틀렸나" 표시하려면 테이블 추가.
+- **인증 구현** — 설계 확정([ADR-0019](../decisions/0019-authentication-kakao-oidc.md)): 카카오 OIDC + 자체 JWT(httpOnly 쿠키) + 직접 WebFilter, `users`+`submission.user_id`(V5). 체크리스트는 [TODO](../TODO.md).
 - **문제 등록 API(admin)** — 지금 번들은 제출 시 lazy 발행이다. 등록 시 발행으로 옮기면 첫 제출이 빨라진다.
-- 인증/인가·랭킹(Redis sorted set)·제출 rate limit은 api 후속 백로그.
+- 랭킹(Redis sorted set)·제출 rate limit은 api 후속 백로그.

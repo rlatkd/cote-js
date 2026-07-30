@@ -1,6 +1,7 @@
 package com.cotejs.api.adapter.inbound.web
 
 import com.cotejs.api.application.SubmissionEventHub
+import com.cotejs.api.domain.model.TraceContext
 import com.cotejs.api.domain.port.inbound.ProblemQueries
 import com.cotejs.api.domain.port.inbound.SubmissionQueries
 import com.cotejs.api.domain.port.inbound.SubmitCode
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
@@ -46,8 +48,12 @@ class SubmissionController(
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    suspend fun create(@Valid @RequestBody body: CreateSubmissionRequest): SubmissionResponse =
-        SubmissionResponse.from(submit.submit(body.toCommand()))
+    suspend fun create(
+        @Valid @RequestBody body: CreateSubmissionRequest,
+        // web(Next 서버)이 시작한 추적을 이어받는다(W3C Trace Context, [ADR-0017]).
+        @RequestHeader("traceparent", required = false) traceparent: String? = null,
+    ): SubmissionResponse =
+        SubmissionResponse.from(submit.submit(body.toCommand(TraceContext.parse(traceparent))))
 
     /**
      * 제출 상태 변화 스트림(SSE) — 채점이 비동기라 "언제 끝났는지"를 서버가 알려준다.

@@ -87,6 +87,13 @@ class JudgeResultConsumer(
                 message.submissionId, failure.code, failure.origin, failure.retryable,
                 message.trace.traceId,
             )
+        } else {
+            // 정상 결과도 trace를 들고 남긴다 — 제출 한 건을 web→api→judge→api 로그로
+            // 끝까지 따라가려면 모든 구간이 같은 키를 찍어야 한다(ADR-0017).
+            log.info(
+                "채점 결과 수신: submission={} verdict={} trace={}",
+                message.submissionId, message.verdict, message.trace.traceId,
+            )
         }
 
         runCatching {

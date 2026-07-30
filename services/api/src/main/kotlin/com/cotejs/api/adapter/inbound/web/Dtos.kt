@@ -5,6 +5,7 @@ import com.cotejs.api.domain.model.Language
 import com.cotejs.api.domain.model.NewSubmission
 import com.cotejs.api.domain.model.Problem
 import com.cotejs.api.domain.model.Submission
+import com.cotejs.api.domain.model.TraceContext
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Positive
@@ -113,11 +114,12 @@ data class CreateSubmissionRequest(
     val mode: String? = null,
 ) {
     /** 검증 통과 후 도메인 커맨드로 변환. 잘못된 language·mode는 IllegalArgumentException → 400. */
-    fun toCommand(): NewSubmission = NewSubmission(
+    fun toCommand(parentTrace: TraceContext? = null): NewSubmission = NewSubmission(
         user = user?.takeIf { it.isNotBlank() } ?: "guest",
         problemId = requireNotNull(problemId),
         language = Language.fromLabel(requireNotNull(language)),
         code = requireNotNull(code),
         mode = mode?.let { ExecutionMode.fromLabel(it) } ?: ExecutionMode.SUBMIT,
+        parentTrace = parentTrace,
     )
 }
