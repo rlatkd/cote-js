@@ -21,6 +21,7 @@
 # (TypeScript·JavaScript·CSS·SQL·Dockerfile·Shell·proto 등 전부 제외).
 * linguist-detectable=false
 
+*.ts  linguist-detectable=true
 *.go  linguist-detectable=true
 *.kt  linguist-detectable=true
 *.kts linguist-detectable=true
