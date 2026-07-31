@@ -7,14 +7,13 @@ DELETE FROM example;
 DELETE FROM test_case;
 DELETE FROM problem;
 
-WITH sc AS (
-    SELECT $starter${"Python":"import sys\ninput = sys.stdin.readline\n\ndef solve():\n    # 여기에 풀이를 작성하세요\n    pass\n\nsolve()\n","Java":"import java.util.*;\nimport java.io.*;\n\npublic class Main {\n    public static void main(String[] args) throws IOException {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        // 여기에 풀이를 작성하세요\n    }\n}\n","JavaScript":"const input = require('fs').readFileSync(0, 'utf8').trim().split('\\n');\n\n// 여기에 풀이를 작성하세요\n"}$starter$::jsonb AS v
-)
+-- 스타터 코드는 V6부터 언어별 공용 템플릿(starter_template, 스키마 소유)이 기본이다.
+-- 시드 문제는 전부 공용 템플릿을 쓰므로 starter_code(오버라이드)를 넣지 않는다(ADR-0020).
 INSERT INTO problem (id, title, difficulty, tier, time_limit_ms, memory_limit_mb,
                      submission_count, accepted_count, tags, ai_generated,
-                     description, input_desc, output_desc, starter_code)
-SELECT p.*, sc.v
-FROM sc CROSS JOIN (VALUES
+                     description, input_desc, output_desc)
+SELECT p.*
+FROM (VALUES
     (1000::bigint, '두 수의 합', 'Bronze', 'Bronze V', 1000, 256, 128430, 96322,
      ARRAY['구현','사칙연산'], FALSE,
      '두 정수 A와 B를 입력받은 다음, A+B를 출력하는 프로그램을 작성하시오.',
@@ -83,21 +82,22 @@ SELECT 'seed', u, u
 FROM unnest(ARRAY ['sanghoon','devkim','algo_master','novice22','hayoon','coder_lee']) AS u
 ON CONFLICT (provider, provider_id) DO NOTHING;
 
-INSERT INTO submission (username, problem_id, problem_title, result, language,
+-- result는 enum name으로 저장한다(V6, ADR-0020) — 표시 라벨은 API 경계에서 붙는다.
+INSERT INTO submission (username, problem_id, result, language,
                         exec_time_ms, memory_used_kb, length, submitted_at, user_id)
-SELECT v.username, v.problem_id, v.problem_title, v.result, v.language,
+SELECT v.username, v.problem_id, v.result, v.language,
        v.exec_time_ms, v.memory_used_kb, v.length, v.submitted_at::timestamptz, u.id
 FROM (VALUES
-    ('sanghoon', 100001, '정원사의 물결 정렬', '맞았습니다', 'Python', 148, 31744, 612, '2026-07-09 14:22:10+09'),
-    ('sanghoon', 100001, '정원사의 물결 정렬', '틀렸습니다', 'Python', NULL, NULL, 588, '2026-07-09 14:19:44+09'),
-    ('devkim', 7576, '토마토', '맞았습니다', 'Java', 92, 18432, 1204, '2026-07-09 14:05:31+09'),
-    ('algo_master', 9019, 'DSLR', '시간 초과', 'Java', NULL, NULL, 1533, '2026-07-09 13:58:12+09'),
-    ('novice22', 1000, '두 수의 합', '맞았습니다', 'JavaScript', 76, 24576, 142, '2026-07-09 13:50:03+09'),
-    ('hayoon', 100002, '캐시된 미로 탈출', '런타임 에러', 'JavaScript', NULL, NULL, 2011, '2026-07-09 13:41:29+09'),
-    ('devkim', 1932, '정수 삼각형', '맞았습니다', 'Python', 104, 29696, 402, '2026-07-09 13:30:57+09'),
-    ('sanghoon', 100002, '캐시된 미로 탈출', '메모리 초과', 'Java', NULL, NULL, 1890, '2026-07-09 13:22:41+09'),
-    ('coder_lee', 2231, '분해합', '맞았습니다', 'Java', 4, 2048, 356, '2026-07-09 13:10:08+09'),
-    ('novice22', 2231, '분해합', '컴파일 에러', 'Java', NULL, NULL, 401, '2026-07-09 13:02:55+09')
-) AS v(username, problem_id, problem_title, result, language,
+    ('sanghoon', 100001, 'ACCEPTED', 'Python', 148, 31744, 612, '2026-07-09 14:22:10+09'),
+    ('sanghoon', 100001, 'WRONG_ANSWER', 'Python', NULL, NULL, 588, '2026-07-09 14:19:44+09'),
+    ('devkim', 7576, 'ACCEPTED', 'Java', 92, 18432, 1204, '2026-07-09 14:05:31+09'),
+    ('algo_master', 9019, 'TIME_LIMIT', 'Java', NULL, NULL, 1533, '2026-07-09 13:58:12+09'),
+    ('novice22', 1000, 'ACCEPTED', 'JavaScript', 76, 24576, 142, '2026-07-09 13:50:03+09'),
+    ('hayoon', 100002, 'RUNTIME_ERROR', 'JavaScript', NULL, NULL, 2011, '2026-07-09 13:41:29+09'),
+    ('devkim', 1932, 'ACCEPTED', 'Python', 104, 29696, 402, '2026-07-09 13:30:57+09'),
+    ('sanghoon', 100002, 'MEMORY_LIMIT', 'Java', NULL, NULL, 1890, '2026-07-09 13:22:41+09'),
+    ('coder_lee', 2231, 'ACCEPTED', 'Java', 4, 2048, 356, '2026-07-09 13:10:08+09'),
+    ('novice22', 2231, 'COMPILE_ERROR', 'Java', NULL, NULL, 401, '2026-07-09 13:02:55+09')
+) AS v(username, problem_id, result, language,
        exec_time_ms, memory_used_kb, length, submitted_at)
 JOIN users u ON u.provider = 'seed' AND u.provider_id = v.username;

@@ -23,7 +23,8 @@ data class ProblemEntity(
     val description: String,
     val inputDesc: String,
     val outputDesc: String,
-    val starterCode: Json,
+    /** V6부터 문제별 **오버라이드**만 — 기본은 starter_template(ADR-0020). */
+    val starterCode: Json? = null,
     val testBundleKey: String? = null,
     val testBundleSha256: String? = null,
     val exampleBundleKey: String? = null,
@@ -58,13 +59,25 @@ data class UserEntity(
     val createdAt: Instant,
 )
 
+/** 언어별 공용 스타터 템플릿(V6, ADR-0020) — 문제별 값은 problem.starter_code 오버라이드. */
+@Table("starter_template")
+data class StarterTemplateEntity(
+    @Id val language: String,
+    val code: String,
+)
+
+/** 목록 조회용 제목 프로젝션 — problem 전체 행(지문 포함)을 끌어오지 않기 위함. */
+data class ProblemTitleRow(
+    val id: Long,
+    val title: String,
+)
+
 @Table("submission")
 data class SubmissionEntity(
     @Id val id: Long? = null,
     val username: String,
     val userId: Long,
     val problemId: Long,
-    val problemTitle: String,
     val result: String,
     val language: String,
     val execTimeMs: Int? = null,

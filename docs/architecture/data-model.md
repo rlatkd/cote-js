@@ -72,13 +72,14 @@ Problem 1 ──── * Example      (공개 예제, onDelete: Cascade)
 
 - **의도**: M1 슬라이스에서 web가 쓰던 mock 형태를 그대로 스키마로 옮겨 **프론트 무변경 교체(drop-in)** 를 우선했다. 정규화·수치화보다 세로 슬라이스 완주가 먼저.
 - **상환 완료**: ~~`timeLimit`/`memoryLimit`/`exec_time`·`exec_memory` 문자열~~ → 수치(2026-07-27, V2). 이유는 표시 형식과 데이터를 분리(비교·계산 가능)하고 judge 계약(proto)이 수치라 경계마다 파싱하지 않기 위함.
+- **V6 상환**(2026-07-31, [ADR-0020](../decisions/0020-data-debt-starter-templates.md)): `starter_template`(언어별 공용 템플릿, api 소유 — 유효 스타터 = problem 오버라이드 ?: 템플릿, 병합은 api) / `result` 저장값 enum name화(라벨은 응답 경계) / `problem_title` 컬럼 제거(제목 프로젝션 조인).
 - **알려진 부채** (TODO Deferred 추적):
   ① ~~타임존~~ → **상환 완료**(2026-07-28, V4): 전부 `timestamptz`(UTC 절대시각), 도메인은 `Instant`, 지역 변환은 화면에서만([ADR-0015](../decisions/0015-cross-service-time-contract.md))
-  ② `submission.problem_title` 비정규화 제거
+  ② ~~`submission.problem_title` 비정규화 제거~~ → **상환 완료**(2026-07-31, V6)
   ③ ~~`username` 문자열 → User 모델+FK~~ → **상환 완료**(2026-07-31, V5): `users` + `user_id NOT NULL`, username은 표시 스냅샷으로 역할 재정의([ADR-0019](../decisions/0019-authentication-kakao-oidc.md))
-  ④ `result` 한국어 리터럴 → enum/코드화 검토
+  ④ ~~`result` 한국어 리터럴~~ → **상환 완료**(2026-07-31, V6): enum name 저장
   ⑤ ~~케이스별 채점 결과 미저장~~ → **상환 완료**(2026-07-28, V3): `submission_case` 테이블([ADR-0014](../decisions/0014-execution-modes-and-case-feedback.md))
-  ⑥ **스타터 코드가 문제×언어로 곱해진다** — `starter_code` JSONB에 문제마다 전 언어 코드를 박아둔다. 언어별 기본 템플릿 + 문제별 오버라이드로 분리 필요([ADR-0013](../decisions/0013-judge-language-expansion.md))
+  ⑥ ~~스타터 코드가 문제×언어로 곱해진다~~ → **상환 완료**(2026-07-31, V6): `starter_template` + 오버라이드([ADR-0020](../decisions/0020-data-debt-starter-templates.md))
 
 ## 예정 스키마 (착수 시 이 문서에 추가)
 
@@ -88,6 +89,7 @@ Problem 1 ──── * Example      (공개 예제, onDelete: Cascade)
 
 ## 갱신 이력
 
+- 2026-07-31 21:40 — **V6**(`starter_template`·result 코드화·problem_title 제거 — 부채 ②④⑥ 상환, [ADR-0020](../decisions/0020-data-debt-starter-templates.md)). 알려진 부채 전부 상환 완료.
 - 2026-07-31 21:02 — **V5**(`users` + `submission.user_id NOT NULL` — 부채 ③ 상환, [ADR-0019](../decisions/0019-authentication-kakao-oidc.md)). 기존 개발 DB(guest 포함 픽스처)에 조건부 시드 유저 귀속이 실측대로 동작.
 
 - 2026-07-28 21:35 — **V3**(실행 모드 `submission.mode`·예제 번들 참조·`submission_case` 케이스별 결과) + **V4**(시각 전부 `timestamptz` UTC — 부채 ① 상환). 부채 목록에서 타임존·케이스별 결과 항목 제거.

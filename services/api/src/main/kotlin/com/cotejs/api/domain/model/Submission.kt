@@ -32,6 +32,11 @@ enum class JudgeResult(val label: String) {
     INTERNAL_ERROR("채점 오류");
 
     companion object {
+        /** 저장 계약(V6, ADR-0020) — DB에는 enum name('ACCEPTED'…)이 저장된다. */
+        fun fromName(name: String): JudgeResult =
+            entries.firstOrNull { it.name == name }
+                ?: throw IllegalArgumentException("unknown result code: $name")
+
         fun fromLabel(label: String): JudgeResult =
             entries.firstOrNull { it.label == label }
                 ?: throw IllegalArgumentException("unknown judge result: $label")
@@ -54,6 +59,9 @@ enum class ExecutionMode(val label: String) {
                 ?: throw IllegalArgumentException("unknown execution mode: $label")
     }
 }
+
+/** 제출 빈도 초과 — 어댑터가 429로 번역한다. */
+class RateLimitExceededException(message: String) : RuntimeException(message)
 
 /** 케이스별 채점 결과 — "몇 번에서 틀렸나"가 학습 플랫폼의 핵심 피드백이다. */
 data class CaseResult(

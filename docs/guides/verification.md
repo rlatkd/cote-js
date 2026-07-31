@@ -172,6 +172,17 @@ curl -s -X POST localhost:4000/api/submissions \
 | 로그아웃 | Navbar 로그아웃 | 쿠키 만료, Navbar가 로그인 버튼으로, 제출 시 401 안내 |
 | 토큰 정책(자동) | `JwtCodecTest`(6)·`IdTokenVerifierTest`(6) — CI 강제 | 만료·변조·타입 오용·alg 바꿔치기·nonce 불일치 전부 거부 |
 
+### 10. M2 스케일아웃 — Redis 팬아웃·rate limit·레인 동시성 (2026-07-31)
+
+| 항목 | 확인 방법 | 기대 |
+|---|---|---|
+| SSE via Redis | `curl -N /api/submissions/stream` 구독 중 제출 | 채점 중→판정 이벤트 수신(경로: api→Redis 채널→구독 인스턴스). `docker stop cotejs-redis` 상태에선 알림만 끊기고 채점 정상 |
+| rate limit | 로그인 쿠키로 run 32연사 | **정확히 30×201 + 2×429**(`{"statusCode":429,...}`), 1분 후 리셋 |
+| 페이지네이션 | `GET /api/submissions?limit=3&offset=3` | 3건, 최신순 연속 |
+| 레인 동시성 | run 다건 적재 후 judged 로그 | `채점 시작`이 **같은 시각에 2건**(run 슬롯 2), batch는 1건씩 |
+| V6 데이터 | `SELECT DISTINCT result FROM submission` / `starter_template` 3행 / `problem_title` 컬럼 부재 | 저장값=enum name, 응답은 여전히 한국어 라벨(계약 불변) |
+| 스타터 병합 | `GET /api/problems/1000`의 `starterCode` | 3언어 — DB 오버라이드 NULL이어도 템플릿에서 채워짐 |
+
 ## 추가 예정 (해당 마일스톤 착수 시 이 문서에 절차 추가)
 
 - **problem/plagiarism**: 파이프라인 상태 전이, 유사도 질의 왕복
@@ -179,6 +190,7 @@ curl -s -X POST localhost:4000/api/submissions \
 
 ## 갱신 이력
 
+- 2026-07-31 21:40 — 절차 10(M2·V6) 신설: Redis 팬아웃·rate limit 429·레인 동시성·저장값 코드화·스타터 병합.
 - 2026-07-31 21:02 — 절차 9(인증) 신설: V5·401 가드·로그인 302·실로그인·소유 귀속·로그아웃 + 토큰 정책은 단위 테스트가 상시 강제.
 - 2026-07-30 23:01 — 절차 8(관측) 신설: 지정 trace_id의 전 구간 재발견(api MDC·judge 로그·Jaeger 스팬 트리), 무효 헤더 방어, 관측 독립성. OTLP gRPC TLS 기본값 함정 명시. 절차 7의 제출은 이제 web에서 Server Action 경유임을 반영.
 - 2026-07-28 21:57 — 품질 게이트에 **자동화 테스트**(api 단위13+통합3, judge 8) 추가하고 **CI가 강제**함을 명시. CI가 의도적으로 제외하는 범위(샌드박스 실채점·E2E)도 기록.

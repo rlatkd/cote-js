@@ -93,7 +93,13 @@ submission.result 소비 → 멱등 반영(같은 결과 재수신해도 상태 
 - **비밀 주입**: `services/api/.env`(gitignore) → bootRun이 환경변수로 로딩(`KAKAO_CLIENT_ID` 등).
 - **제출 주체**: body의 user 필드 폐기 — `NewSubmission.by: AuthPrincipal`(non-null)로 "제출=로그인 필수"가 타입 불변식.
 
+## Redis (M2, 2026-07-31 — 역할은 [ADR-0006](../decisions/0006-service-seams-and-ai-consolidation.md) 한정)
+
+- **SSE 팬아웃 = Redis pub/sub** — `SubmissionEventHub`(인터페이스) + `RedisSubmissionEventHub`. 인프로세스 Sinks를 대체한 이유: 다중 인스턴스에서 이벤트가 들어온 인스턴스와 구독자가 붙은 인스턴스가 다를 수 있다. 실패 모드: Redis 다운 시 **알림만** 유실(채점·저장 무관, web은 목록 조회로 복구) — 발행은 로그만 남기고 삼킨다.
+- **제출 rate limit** — `RateLimiter` 포트 + Redis 고정 창(INCR+첫 증가에 EXPIRE). run 30/분·submit 10/분(`cotejs.rate-limit.*`), 사용자×모드 키. **fail-open**(한도 장치 장애가 제출을 인질로 잡지 않게). 초과는 429. 고정 창인 이유: 경계 순간 2배 허용이 무해한 워크로드라 슬라이딩 창은 과설계.
+- **페이지네이션** — `GET /api/submissions?limit&offset`(기본 50·상한 100). 전량 조회는 계약에서 제거.
+
 ## 다음 단계
 
 - **문제 등록 API(admin)** — 지금 번들은 제출 시 lazy 발행이다. 등록 시 발행으로 옮기면 첫 제출이 빨라진다. role=ADMIN 인가는 필터에 경계 추가.
-- 랭킹(Redis sorted set)·제출 rate limit은 api 후속 백로그. refresh 자동 갱신 web 배선(지금은 access 만료 시 재로그인).
+- 랭킹·통계(Redis sorted set)는 M5 리더보드와 함께.

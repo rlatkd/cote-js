@@ -4,6 +4,7 @@ import { pretendard, jetbrainsMono } from "./fonts";
 import Navbar from "@/shared/ui/Navbar";
 import { getSession } from "@/entities/auth/api";
 import { logout } from "@/entities/auth/actions";
+import SessionRefresher from "@/entities/auth/SessionRefresher";
 
 export const metadata: Metadata = {
   title: "CoteJS — AI 코딩 테스트 플랫폼",
@@ -40,6 +41,8 @@ export default async function RootLayout({
       </head>
       <body>
         <Navbar session={session} onLogout={logout} />
+        {/* 비로그인으로 보일 때만 — refresh 쿠키가 살아 있으면 조용히 세션을 되살린다 */}
+        {session === null && <SessionRefresher />}
         {children}
       </body>
     </html>

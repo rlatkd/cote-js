@@ -4,8 +4,8 @@
 
 ## 로드맵 (마일스톤)
 
-- [ ] **M1 온라인 채점 코어(비동기)** — web(Next) + api(Kotlin/Spring) + PostgreSQL *(연결 ✅)*, 수기 등록 문제, Go Judge + 샌드박스, **Kafka 제출·결과 토픽(QoS 3레인) + MinIO claim-check** *(구 M1+M2 통합 — 동기 채점 단계 폐지, [ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md))*
-- [ ] **M2 채점 스케일아웃** — Judge Worker 수평 확장, SSE Redis pub/sub 전환, 제출량 처리 *(구 M2에서 Kafka 도입이 M1로 이동한 잔여)*
+- [x] **M1 온라인 채점 코어(비동기)** (2026-07-31 완료) — web(Next) + api(Kotlin/Spring) + PostgreSQL, 수기 등록 문제, Go Judge + 샌드박스(Docker 1단계), Kafka 3레인 + MinIO claim-check. 계획 외 추가 달성: 언어 3종·실행 모드·인증(카카오 OIDC)·관측(OTel)·CI
+- [x] **M2 채점 스케일아웃** (2026-07-31 — 단일 머신에서 가능한 범위 완료) — **SSE Redis pub/sub 전환** ✅, **레인별 동시성 슬롯**(run2·submit2·batch1) ✅, **제출 rate limit**(Redis 고정 창) ✅, 페이지네이션 ✅. 잔여: 워커 **다중 프로세스** 실증(컨슈머 그룹은 준비됨 — 멀티 인스턴스 기동 검증은 배포 환경에서)
 - [ ] **M3 AI 생성 파이프라인** — LLM API + LangChain 생성, 사람 검수 게이트
 - [ ] **M4 유사도/품질 검증** — 자체 임베딩 + pgvector 유사도, 정답 교차검증 자동화
 - [ ] **M5 운영 고도화** — Kubernetes 이관, 모니터링/로깅, 랭킹·통계·콘테스트
@@ -83,7 +83,7 @@
 - [x] **CI 게이트** (2026-07-28) — [`.github/workflows/ci.yml`](../.github/workflows/ci.yml): contracts(`buf lint`·PR에서 `buf breaking`)·judge(`go vet/build/test`)·api(`gradlew build` — 통합 테스트 포함)·web(`lint`+`build`=계약 체크). 샌드박스 실채점·전구간 E2E는 flaky 위험으로 의도적 제외(수동 절차 유지)
 - [ ] **나머지 문제의 히든 테스트케이스** — 현재 1000번만 submit 채점 가능(예제 실행은 전 문제 가능). 단 시드 문제는 **버려질 픽스처**라 우선순위 낮음 — 데이터 라이선스 결론과 함께 판단
 - [x] `aggregate()` 주입 리팩터링 (2026-07-30) — 출력 조달자(`outputOf`) 주입으로 순수 함수화, 메서드→자유 함수(리시버 미사용이 드러낸 신호). 출력 비교 판정(AC/WA)을 파일시스템 없이 검증하는 테스트 추가([ADR-0016](decisions/0016-test-strategy.md)이 드러낸 부채 상환)
-- [ ] **스타터 코드 구조 개선** — 문제별 JSONB에 전 언어 코드를 박아두는 구조라 언어 추가 시 곱해진다. 언어별 기본 템플릿 + 문제별 오버라이드로 분리([ADR-0013](decisions/0013-judge-language-expansion.md))
+- [x] **스타터 코드 구조 개선** (2026-07-31, V6) — 언어별 기본 템플릿(`starter_template`) + 문제별 오버라이드로 분리([ADR-0020](decisions/0020-data-debt-starter-templates.md))
 - [x] **web→api 추적 연결** (2026-07-30) — Next 서버가 `traceparent` 발급(신뢰 경계 안), 제출을 **Server Action으로 이전**, api는 파싱·검증 후 이어받기(`TraceContext.parse/child` + 테스트). [ADR-0018](decisions/0018-observability-tracing.md)
 - [x] **OpenTelemetry 도입** (2026-07-30) — api=Java 에이전트(bootRun, MDC trace_id 자동 주입) / judge=Go SDK 수동(`internal/telemetry`, 채점 1건=스팬 1개) / web=`@vercel/otel` / 백엔드=Jaeger 2.19 자가호스팅(infra). 전 구간 실측: 같은 trace_id가 3서비스 로그+Jaeger 스팬 트리에. [ADR-0018](decisions/0018-observability-tracing.md)
 - [x] [`architecture/judge.md`](architecture/judge.md) 작성 (샌드박스 격리 요건·실증·한계를 포함 — 별도 보안 노트 대신 judge 문서 5장에 통합)
@@ -104,14 +104,24 @@
 - [ ] **실로그인 E2E(사용자 브라우저)** — 카카오 동의→복귀→닉네임 표시→제출→소유 귀속→로그아웃 (verification 절차 9)
 - [ ] 후속: refresh 자동 갱신 web 배선(현재 access 만료 시 재로그인), 배포 시 secure 쿠키·시크릿 회전
 
+## 현재 스프린트: 부채 상환 + M2 스케일아웃 (2026-07-31) ✅
+
+- [x] **V6 데이터 부채 일괄 상환**([ADR-0020](decisions/0020-data-debt-starter-templates.md)) — ① 스타터 코드: `starter_template`(언어별 공용, api 소유) + `problem.starter_code` 오버라이드 강등(보류했던 재결정 — judge 레지스트리와 분리: 채점 지식이 아니라 서빙 지식) ② `result` 저장값 enum name화(응답 라벨 계약은 불변 → web 무변경, name 집합은 테스트로 고정) ③ `submission.problem_title` 제거(조회 시 제목 프로젝션 조인)
+- [x] **refresh 자동 갱신** — `SessionRefresher`(브라우저→api 직접: refresh 쿠키가 path=/api/auth라 Next 서버로는 안 옴) + CORS credentials(origin을 web으로 한정)
+- [x] **Redis 도입**(infra 8.8.1-alpine) — 역할 한정(ADR-0006): SSE pub/sub·rate limit
+- [x] **SSE 팬아웃 Redis pub/sub 전환**(M2) — `SubmissionEventHub` 인터페이스화 + Redis 구현. 실패 모드: Redis 다운 시 알림만 유실(채점 무관, 목록 조회로 복구)
+- [x] **judge 레인별 동시성 슬롯**(M2) — run2·submit2·batch1, 폴 배치 병렬 처리 후 일괄 커밋(at-least-once 유지). 실측: run 2건 동시 시작. 대가(레인 내 제출 간 순서 상실)는 무해 — 순서 단위는 제출 1건(결과 키)
+- [x] **제출 rate limit** — Redis 고정 창(INCR+EXPIRE), run 30/분·submit 10/분(설정), fail-open. 실측: 32연사 → 정확히 30×201+2×429
+- [x] **페이지네이션** — `GET /api/submissions?limit&offset`(기본 50·상한 100), 전량 조회 계약 제거
+- [x] **샌드박스 점검** — cap-drop ALL·no-new-privileges·read-only·nobody·스왑 금지는 **1단계에 이미 적용돼 있음을 확인**. 잔여(케이스별 memory.peak·seccomp 화이트리스트)는 컨테이너 내 서브 cgroup 제어가 필요해 Docker CLI로 불가 — 리눅스 환경 결정 대기 유지
+
 ## 보류 / 추후 재논의 (Deferred)
 
-- [ ] api 후속: 인증/인가, 랭킹·통계(Redis sorted set), 페이지네이션, 제출 rate limiting(Redis)
+- [ ] api 후속: ~~인증/인가~~(0019) · ~~페이지네이션~~ · ~~rate limiting~~(2026-07-31) → 잔여: **랭킹·통계(Redis sorted set — M5 리더보드와 함께)**, admin 문제 등록 API
 - [ ] M3 범위: 사람 검수 게이트 UI — web admin 라우트(검수 큐) + api admin API
 - [ ] AI 아키텍처 확정 시 [architecture/](architecture/) 상세화 (problem.md/plagiarism.md)
 - [ ] api↔AI(problem·plagiarism) 경계 계약 — M3 착수 시 정의(방침: Protobuf 단일 IDL, [ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md))
 - [ ] **Kafka Streams 재검토** — 실시간 통계·채점 SLA 모니터링 등 스트림 집계 요구가 기능으로 들어올 때. 적용 후보·탈락 후보는 [engineering-notes](engineering-notes.md)
 - [ ] **Avro + Schema Registry 재검토** — 스키마 거버넌스(호환성 강제) 필요 시. Registry는 Protobuf도 지원하므로 IDL 교체 없이 추가 가능
-- [ ] SSE 팬아웃 Redis pub/sub 전환 — api 다중 인스턴스(M2) 시점
 - [ ] 데이터 라이선스 문제 결론 (공개 데이터셋 vs 자체 시드 문제)
 - [ ] 향후 문서 생성: 테스트 전략(테스트 도입 시), 배포 런북(K8s 시) — 데이터 모델은 [architecture/data-model.md](architecture/data-model.md)로 완료

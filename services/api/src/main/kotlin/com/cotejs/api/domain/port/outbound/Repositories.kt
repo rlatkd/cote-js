@@ -24,8 +24,8 @@ interface ProblemRepository {
 }
 
 interface SubmissionRepository {
-    /** 정식 제출만 — 예제 실행(run)은 기록에 노출하지 않는다. */
-    suspend fun findAllNewestFirst(): List<Submission>
+    /** 정식 제출만, 최신순 페이지 — 예제 실행(run)은 기록에 노출하지 않는다. */
+    suspend fun findNewestFirst(limit: Int, offset: Int): List<Submission>
 
     /** [submission].id는 무시되고 저장 후 발급된 id로 반환된다. */
     suspend fun save(submission: Submission): Submission
@@ -52,6 +52,15 @@ interface JudgeDispatcher {
 
 /** 실행 QoS 레인([ADR-0006]) — 같은 채점기라도 대기열을 나눈다. */
 enum class ExecutionLane { RUN, SUBMIT, BATCH }
+
+/**
+ * 제출 남용 방지 — 레인별 횟수 제한(ADR-0006의 Redis 역할). 고정 창(fixed window) 카운터:
+ * 슬라이딩 창의 정밀함이 필요한 워크로드가 아니다(경계 순간 2배 허용이 무해).
+ */
+fun interface RateLimiter {
+    /** [key]의 창 내 카운트를 올리고 한도 안이면 true. 저장소 장애 시 true(가용성 우선, 로그). */
+    suspend fun tryAcquire(key: String, limit: Int, window: java.time.Duration): Boolean
+}
 
 /** 테스트 번들 저장소(MinIO) — claim-check의 발행자 측. */
 interface BundleStore {

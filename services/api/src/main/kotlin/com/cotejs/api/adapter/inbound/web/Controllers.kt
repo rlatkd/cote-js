@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
@@ -47,7 +48,15 @@ class SubmissionController(
     private val events: SubmissionEventHub,
 ) {
     @GetMapping
-    suspend fun list(): List<SubmissionResponse> = queries.all().map(SubmissionResponse::from)
+    suspend fun list(
+        // 페이지네이션(M2) — 응답은 배열 그대로(봉투 없음), 기본 50·상한 100.
+        @RequestParam(required = false) limit: Int?,
+        @RequestParam(required = false) offset: Int?,
+    ): List<SubmissionResponse> =
+        queries.page(
+            limit = (limit ?: 50).coerceIn(1, 100),
+            offset = (offset ?: 0).coerceAtLeast(0),
+        ).map(SubmissionResponse::from)
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

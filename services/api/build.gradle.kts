@@ -40,6 +40,8 @@ val otelAgent: Configuration by configurations.creating
 dependencies {
 	otelAgent("io.opentelemetry.javaagent:opentelemetry-javaagent:2.16.0")
 	implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
+	// Redis(Lettuce 리액티브) — SSE 팬아웃 pub/sub + 제출 rate limit(ADR-0006 역할 한정)
+	implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webflux")

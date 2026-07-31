@@ -18,7 +18,8 @@ interface ProblemQueries {
 }
 
 interface SubmissionQueries {
-    suspend fun all(): List<Submission>
+    /** 최신순 페이지 — 제출은 무한히 쌓이는 데이터라 전량 조회는 계약에서 제거(M2). */
+    suspend fun page(limit: Int, offset: Int): List<Submission>
 }
 
 interface SubmitCode {

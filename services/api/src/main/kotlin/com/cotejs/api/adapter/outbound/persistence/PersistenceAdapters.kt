@@ -30,6 +30,7 @@ class ProblemPersistenceAdapter(
     private val problemRepo: ProblemR2dbcRepository,
     private val exampleRepo: ExampleR2dbcRepository,
     private val testCaseRepo: TestCaseR2dbcRepository,
+    private val templateRepo: StarterTemplateR2dbcRepository,
     private val json: ObjectMapper,
 ) : ProblemRepository {
     override suspend fun findAll(): List<Problem> {
@@ -37,14 +38,18 @@ class ProblemPersistenceAdapter(
         if (rows.isEmpty()) return emptyList()
         val examplesByProblem =
             exampleRepo.findByProblemIdIn(rows.map { it.id }).toList().groupBy { it.problemId }
-        return rows.map { it.toDomain(examplesByProblem[it.id].orEmpty()) }
+        val templates = starterTemplates()
+        return rows.map { it.toDomain(examplesByProblem[it.id].orEmpty(), templates) }
     }
 
     override suspend fun findById(id: Long): Problem? {
         val row = problemRepo.findById(id) ?: return null
         val examples = exampleRepo.findByProblemIdIn(listOf(id)).toList()
-        return row.toDomain(examples)
+        return row.toDomain(examples, starterTemplates())
     }
+
+    private suspend fun starterTemplates(): Map<String, String> =
+        templateRepo.findAll().toList().associate { it.language to it.code }
 
     override suspend fun findTestCases(problemId: Long): List<TestCase> =
         testCaseRepo.findByProblemIdOrderByOrd(problemId).toList()
@@ -58,7 +63,7 @@ class ProblemPersistenceAdapter(
         problemRepo.updateExampleBundle(problemId, bundle.key, bundle.sha256)
     }
 
-    private fun ProblemEntity.toDomain(examples: List<ExampleEntity>): Problem =
+    private fun ProblemEntity.toDomain(examples: List<ExampleEntity>, templates: Map<String, String>): Problem =
         Problem(
             id = id,
             title = title,
@@ -80,9 +85,10 @@ class ProblemPersistenceAdapter(
             inputDesc = inputDesc,
             outputDesc = outputDesc,
             examples = examples.sortedBy { it.ord }.map { Example(it.input, it.output) },
+            // 유효 스타터 = 공용 템플릿 위에 문제별 오버라이드를 덮는다(ADR-0020).
             // JSONB는 asArray()로 받아 Jackson이 UTF-8로 해석하게 한다.
             // asString()은 JVM 기본 문자셋 디코딩이라 Windows(MS949)에서 한글이 깨진다.
-            starterCode = json.readValue(starterCode.asArray()),
+            starterCode = templates + (starterCode?.let { json.readValue<Map<String, String>>(it.asArray()) } ?: emptyMap()),
         )
 }
 
@@ -131,21 +137,29 @@ class UserPersistenceAdapter(
 class SubmissionPersistenceAdapter(
     private val submissionRepo: SubmissionR2dbcRepository,
     private val caseRepo: SubmissionCaseR2dbcRepository,
+    private val problemRepo: ProblemR2dbcRepository,
 ) : SubmissionRepository {
-    override suspend fun findAllNewestFirst(): List<Submission> {
-        val rows = submissionRepo.findByModeOrderBySubmittedAtDesc(ExecutionMode.SUBMIT.label).toList()
+    override suspend fun findNewestFirst(limit: Int, offset: Int): List<Submission> {
+        val rows = submissionRepo.findByModeNewestFirst(ExecutionMode.SUBMIT.label, limit, offset).toList()
         if (rows.isEmpty()) return emptyList()
 
         // 케이스별 결과를 함께 싣는다 — 응답에 필드가 있는데 항상 비어 있으면 계약이 거짓이 된다.
         val casesBySubmission = caseRepo.findBySubmissionIdIn(rows.mapNotNull { it.id })
             .toList().groupBy { it.submissionId }
+        // 제목은 비정규화 컬럼 대신 조인(프로젝션) — 제목 수정이 과거 제출에도 반영된다(V6).
+        val titles = problemRepo.findTitles(rows.map { it.problemId }.distinct())
+            .toList().associate { it.id to it.title }
         return rows.map { row ->
-            row.toDomain(casesBySubmission[row.id].orEmpty().sortedBy { it.no }.map { it.toDomain() })
+            row.toDomain(
+                cases = casesBySubmission[row.id].orEmpty().sortedBy { it.no }.map { it.toDomain() },
+                problemTitle = titles[row.problemId] ?: "(삭제된 문제)",
+            )
         }
     }
 
     override suspend fun save(submission: Submission): Submission =
-        submissionRepo.save(submission.toEntity()).toDomain()
+        // 제목은 저장하지 않는다 — 입력 도메인 객체의 것을 되돌려줄 뿐(진실원은 problem).
+        submissionRepo.save(submission.toEntity()).toDomain(problemTitle = submission.problemTitle)
 
     /**
      * 멱등 반영: 대상 행을 읽어 결과 필드만 덮어쓴다. 같은 결과가 두 번 와도
@@ -154,7 +168,7 @@ class SubmissionPersistenceAdapter(
     override suspend fun applyOutcome(outcome: JudgedOutcome): Submission? {
         val row = submissionRepo.findById(outcome.submissionId) ?: return null
         val updated = row.copy(
-            result = outcome.result.label,
+            result = outcome.result.name,
             execTimeMs = outcome.execTimeMs,
             memoryUsedKb = outcome.memoryUsedKb,
             judgedAt = outcome.judgedAt,
@@ -170,32 +184,34 @@ class SubmissionPersistenceAdapter(
                     SubmissionCaseEntity(
                         submissionId = outcome.submissionId,
                         no = it.no,
-                        result = it.result.label,
+                        result = it.result.name,
                         execTimeMs = it.execTimeMs,
                         memoryUsedKb = it.memoryUsedKb,
                     )
                 },
             ).toList()
         }
-        return saved.toDomain(outcome.cases)
+        val title = problemRepo.findTitles(listOf(saved.problemId)).toList().firstOrNull()?.title
+        return saved.toDomain(outcome.cases, title ?: "(삭제된 문제)")
     }
 
     private fun SubmissionCaseEntity.toDomain(): CaseResult =
         CaseResult(
             no = no,
-            result = JudgeResult.fromLabel(result),
+            result = JudgeResult.fromName(result),
             execTimeMs = execTimeMs,
             memoryUsedKb = memoryUsedKb,
         )
 
-    private fun SubmissionEntity.toDomain(cases: List<CaseResult> = emptyList()): Submission =
+    private fun SubmissionEntity.toDomain(cases: List<CaseResult> = emptyList(), problemTitle: String): Submission =
         Submission(
             id = requireNotNull(id) { "persisted submission must have id" },
             user = username,
             userId = userId,
             problemId = problemId,
             problemTitle = problemTitle,
-            result = JudgeResult.fromLabel(result),
+            // 저장값은 enum name(V6, ADR-0020) — 표시 라벨은 응답 DTO에서 붙는다.
+            result = JudgeResult.fromName(result),
             language = Language.fromLabel(language),
             execTimeMs = execTimeMs,
             memoryUsedKb = memoryUsedKb,
@@ -213,8 +229,7 @@ class SubmissionPersistenceAdapter(
             username = user,
             userId = userId,
             problemId = problemId,
-            problemTitle = problemTitle,
-            result = result.label,
+            result = result.name,
             language = language.label,
             execTimeMs = execTimeMs,
             memoryUsedKb = memoryUsedKb,

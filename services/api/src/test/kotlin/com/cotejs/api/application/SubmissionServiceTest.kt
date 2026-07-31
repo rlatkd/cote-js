@@ -1,7 +1,9 @@
 package com.cotejs.api.application
 
+import com.cotejs.api.config.RateLimitProperties
 import com.cotejs.api.domain.model.AuthPrincipal
 import com.cotejs.api.domain.model.BundleRef
+import com.cotejs.api.domain.model.RateLimitExceededException
 import com.cotejs.api.domain.model.CaseResult
 import com.cotejs.api.domain.model.Difficulty
 import com.cotejs.api.domain.model.ExecutionMode
@@ -97,6 +99,15 @@ class SubmissionServiceTest {
     }
 
     @Test
+    fun `한도를 넘긴 제출은 접수 자체를 거부한다 - 저장도 발행도 없다`() = runTest {
+        val fixture = fixture(withinRateLimit = false)
+        assertFailsWith<RateLimitExceededException> { fixture.service.submit(command(ExecutionMode.SUBMIT)) }
+        assertTrue(fixture.bundles.published.isEmpty(), "거부한 요청에 번들 작업을 시키면 안 된다")
+        assertTrue(fixture.dispatcher.lanes.isEmpty())
+        assertTrue(fixture.events.published.isEmpty())
+    }
+
+    @Test
     fun `결과 반영은 알 수 없는 제출을 만나도 예외를 던지지 않는다`() = runTest {
         // at-least-once라 이미 지워진 제출의 결과가 올 수 있다. 예외를 던지면
         // 컨슈머가 그 파티션에서 멈춘다([ADR-0011] poison message 규율).
@@ -169,6 +180,7 @@ class SubmissionServiceTest {
     private fun fixture(
         problem: Problem? = problem(),
         testCases: List<TestCase> = listOf(히든_케이스),
+        withinRateLimit: Boolean = true,
     ): Fixture {
         val problems = FakeProblems(problem, testCases)
         val submissions = FakeSubmissions()
@@ -176,7 +188,11 @@ class SubmissionServiceTest {
         val bundles = FakeBundles()
         val events = RecordingEventHub()
         return Fixture(
-            SubmissionService(submissions, problems, dispatcher, bundles, events),
+            SubmissionService(
+                submissions, problems, dispatcher, bundles, events,
+                limiter = { _, _, _ -> withinRateLimit },
+                rateLimit = RateLimitProperties(),
+            ),
             dispatcher, bundles, events,
         )
     }
@@ -203,7 +219,8 @@ class SubmissionServiceTest {
         private val stored = mutableMapOf<Long, Submission>()
         private var nextId = 1L
 
-        override suspend fun findAllNewestFirst() = stored.values.toList()
+        override suspend fun findNewestFirst(limit: Int, offset: Int) =
+            stored.values.toList().drop(offset).take(limit)
 
         override suspend fun save(submission: Submission): Submission =
             submission.copy(id = nextId++).also { stored[it.id] = it }
@@ -246,10 +263,11 @@ class SubmissionServiceTest {
         }
     }
 
-    private class RecordingEventHub : SubmissionEventHub() {
+    private class RecordingEventHub : SubmissionEventHub {
         val published = mutableListOf<Submission>()
         override fun publish(submission: Submission) {
             published += submission
         }
+        override fun stream(): reactor.core.publisher.Flux<Submission> = reactor.core.publisher.Flux.empty()
     }
 }

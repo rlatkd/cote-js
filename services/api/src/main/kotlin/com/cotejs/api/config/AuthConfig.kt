@@ -35,8 +35,15 @@ data class AuthProperties(
     )
 }
 
+/** 제출 rate limit(분당) — 고정 창. run(예제 실행)은 반복이 잦아 한도를 넉넉히 둔다. */
+@ConfigurationProperties("cotejs.rate-limit")
+data class RateLimitProperties(
+    val runPerMinute: Int = 30,
+    val submitPerMinute: Int = 10,
+)
+
 @Configuration
-@EnableConfigurationProperties(AuthProperties::class)
+@EnableConfigurationProperties(AuthProperties::class, RateLimitProperties::class)
 class AuthConfig {
     @Bean
     fun jwtCodec(props: AuthProperties, json: ObjectMapper): JwtCodec =

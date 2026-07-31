@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-07-31 21:45 — 부채 상환(V6)·M2 스케일아웃 완료 — M1·M2 로드맵 마감 (ADR-0020)
+
+- **범위(사용자 지시 "AI 제외 전부")**: A 잔여 부채 + B M2 + D 샌드박스. M5(랭킹·콘테스트·K8s)는 미착수 마일스톤이라 제외로 해석.
+- **한 일**: ① **V6**([ADR-0020](decisions/0020-data-debt-starter-templates.md)) — 스타터 코드를 `starter_template`(언어 공용, **api 소유** — judge 레지스트리와 분리한 근거: 같은 '언어별'이라도 바뀌는 이유가 다르면 다른 진실원)+문제 오버라이드로 분리, `result` 저장값 enum name화(**응답 라벨 계약 불변** → web 무변경, name 집합 테스트 고정), `problem_title` 컬럼 제거(제목 프로젝션 조인) ② **refresh 자동 갱신** — `SessionRefresher`(브라우저→api 직접 — refresh 쿠키 path 때문) + CORS credentials(origin 한정) ③ **Redis 8.8.1**(infra) ④ **SSE 팬아웃 Redis pub/sub**(허브 인터페이스화, Redis 다운=알림만 유실) ⑤ **judge 레인 슬롯**(run2·submit2·batch1, 배치 완료 후 일괄 커밋=at-least-once 유지) ⑥ **rate limit**(고정 창 INCR+EXPIRE, run30/submit10 per 분, fail-open, 429) ⑦ **페이지네이션**(limit≤100·offset) ⑧ 샌드박스 점검 — 강화 항목(cap-drop ALL 등)은 이미 1단계에 적용돼 있음을 확인, 잔여는 리눅스 대기 유지.
+- **검증(실측)**: api `gradlew build`(33 tests — rate limit 정책·name 계약 테스트 추가)·judge `go test`·web build+gen:api 그린 / V6가 기존 DB에 적용(템플릿 3행·오버라이드 0·result 전부 코드·컬럼 드롭) / 스타터 병합 3언어 / 페이지네이션 3건+제목 조인+라벨 유지 / **rate limit 32연사 → 정확히 30×201+2×429**(민팅 JWT로 필터 경유) / **SSE가 Redis 채널 경유로 채점 중→맞았습니다 수신** / judged 로그에 run 2건 **동시 시작**(슬롯 병렬).
+- **함정(실측)**: ① 고아 JVM이 :4000 점유(기지 함정 재발) — 새 인스턴스가 **마이그레이션만 적용하고 포트 충돌로 죽어**, 구 코드가 신 스키마를 서빙하는 어긋남이 잠깐 발생(V6 적용 후 starterCode 누락 응답). 재기동 검증 시 `jps`/포트 확인 먼저 ② IT가 케이스 저장값을 `.label`로 검사하고 있었다 — 저장 계약 변경(V6)은 테스트도 계약의 일부임을 상기.
+- **중단점**: 전체 미커밋. 서비스 4종+인프라(레디스 포함) 기동 중. 로드맵 **M1·M2 완료 체크**(M2 잔여: 워커 다중 프로세스 실증은 배포 환경에서).
+- **다음**: 커밋(사용자) → 남은 큰 덩어리는 **M3(AI 문제 생성)**뿐 — 선결: 데이터 라이선스 결론, api↔AI Protobuf 계약. 그 외 백로그: admin 문제 등록 API, 랭킹(M5), 샌드박스 2단계(리눅스).
+
 ## 2026-07-31 21:05 — 인증 구현 완료(카카오 OIDC·JWT·WebFilter) — 실로그인 E2E만 사용자 검증 대기
 
 - **한 일**: ① **V5 재도입** — `users`(provider+provider_id UNIQUE·role 선반영)+`submission.user_id NOT NULL`, 주인 없는 제출이 있을 때만 시드 유저 생성·귀속(운영 빈 DB엔 무행) + R__ 시드 유저 6명 ② **JWT 코덱**(HS256, javax.crypto만) — 상수시간 서명 비교·타입 분리(access/refresh/state), **테스트 먼저 6종** ③ **id_token 검증기**(RS256) — alg 고정(바꿔치기 차단)·iss/aud(배열 대응)/exp/nonce, 자체 RSA 키쌍으로 위조 시나리오 **테스트 먼저 6종** ④ **카카오 어댑터** — 코드 교환(KOE 에러 본문 보존)·JWKS 캐시 6h·JWK→RSAPublicKey ⑤ **AuthService** — state·nonce 서명 쿠키(무상태 CSRF·리플레이 방어), upsert(동시 첫 로그인 경합은 UNIQUE로 승자 결정), access에 nick·role 클레임(요청당 DB 0회) ⑥ **엔드포인트 5종**+httpOnly 쿠키(access 1h=`/`, refresh 14d=`/api/auth`, 본문에 토큰 금지) ⑦ **WebFilter** — principal 전파+제출 401 가드(+컨트롤러 이중 방어), `NewSubmission.by: AuthPrincipal`로 "제출=로그인 필수"를 **타입 불변식**으로(body user 폐기) ⑧ web — Navbar 로그인/`@닉네임`/로그아웃(레이어 준수: layout(RSC)→props 주입), 제출 쿠키 포워딩, 401 안내 ⑨ `.env`→bootRun 주입, gen:api(+279줄), 문서(data-model·api.md·web.md·verification 절차9·TODO).

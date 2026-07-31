@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -32,6 +33,13 @@ const (
 // 레인 우선순위 — 낮을수록 먼저. batch(AI 검증 대량 실행)가 유저 제출을 굶기지 않게 한다.
 var lanePriority = map[string]int{TopicRun: 0, TopicSubmit: 1, TopicBatch: 2}
 
+// 레인별 동시성 슬롯(M2) — 폴 단위 순차 처리의 한계(집어 든 batch가 끝나야 run 실행)를
+// 슬롯으로 개선한다: run·submit이 batch를 기다리지 않고, batch는 1슬롯이라 자원을 독식 못 한다.
+// 대가: 같은 레인 안의 "제출 간" 처리 순서가 사라진다 — 무해하다. 순서가 의미 있는 단위는
+// 제출 1건이고(결과 토픽 키=submission_id로 보존), 서로 다른 제출 사이엔 인과가 없다.
+// 총합(2+2+1=5)이 동시 채점 컨테이너 상한이기도 하다.
+var laneSlots = map[string]int{TopicRun: 2, TopicSubmit: 2, TopicBatch: 1}
+
 // Judger는 채점 코어(executor)를 가리키는 최소 인터페이스 — 이 패키지가 executor에
 // 의존하지 않게 해 방향을 (어댑터 → 도메인)으로 유지한다.
 type Judger interface {
@@ -48,6 +56,7 @@ type Worker struct {
 	judger  Judger
 	bundles BundleFetcher
 	log     *slog.Logger
+	sems    map[string]chan struct{} // 레인별 동시성 슬롯
 }
 
 type Config struct {
@@ -69,7 +78,11 @@ func NewWorker(cfg Config, judger Judger, bundles BundleFetcher, log *slog.Logge
 	if err != nil {
 		return nil, err
 	}
-	return &Worker{client: client, judger: judger, bundles: bundles, log: log}, nil
+	sems := make(map[string]chan struct{}, len(laneSlots))
+	for lane, n := range laneSlots {
+		sems[lane] = make(chan struct{}, n)
+	}
+	return &Worker{client: client, judger: judger, bundles: bundles, log: log, sems: sems}, nil
 }
 
 func (w *Worker) Close() { w.client.Close() }
@@ -92,15 +105,26 @@ func (w *Worker) Run(ctx context.Context) error {
 			continue
 		}
 
-		// 한 번에 받은 레코드를 레인 우선순위로 정렬해 처리한다. 한 폴에 run과 batch가
-		// 섞여 오면 run을 먼저 — 인터랙티브 요청의 대기시간을 배치 뒤에 세우지 않는다.
+		// 한 번에 받은 레코드를 레인 우선순위로 정렬한다 — 높은 우선순위(run)가
+		// 먼저 슬롯을 잡게 하는 시작 순서로서 여전히 의미가 있다.
 		var records []*kgo.Record
 		fetches.EachRecord(func(r *kgo.Record) { records = append(records, r) })
 		sortByLane(records)
 
+		// 레인별 슬롯으로 병렬 처리하되, 커밋은 폴 배치 전체 완료 후 —
+		// 처리 전 커밋이 생기면 죽었을 때 유실된다(at-least-once 유지).
+		var wg sync.WaitGroup
 		for _, rec := range records {
-			w.handle(ctx, rec)
+			sem := w.sems[rec.Topic]
+			wg.Add(1)
+			go func(rec *kgo.Record) {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
+				w.handle(ctx, rec)
+			}(rec)
 		}
+		wg.Wait()
 
 		// 처리한 만큼만 커밋(위 DisableAutoCommit 참조).
 		if err := w.client.CommitUncommittedOffsets(ctx); err != nil {

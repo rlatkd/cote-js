@@ -79,7 +79,8 @@ class SubmissionIdempotencyIT {
 
         val stored = cases.findBySubmissionIdIn(listOf(saved.id)).toList()
         assertEquals(3, stored.size, "옛 케이스가 남아 섞이면 안 된다")
-        assertEquals(setOf(JudgeResult.WRONG_ANSWER.label), stored.map { it.result }.toSet())
+        // 저장값은 enum name(V6, ADR-0020) — 라벨은 응답 경계에서만 붙는다.
+        assertEquals(setOf(JudgeResult.WRONG_ANSWER.name), stored.map { it.result }.toSet())
     }
 
     @Test

@@ -109,6 +109,20 @@ services:
         mc mb --ignore-existing local/testdata
         mc ls local
 
+  # rate limit·SSE pub/sub(M2 전환)·리더보드(예정) — ADR-0006 역할 한정.
+  redis:
+    build: ./redis
+    image: cotejs-redis:8.8
+    container_name: cotejs-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # 분산 추적 백엔드(OTel) — web·api·judge가 OTLP로 스팬을 보내고 UI(:16686)에서 조회.
   # 저장은 인메모리(개발용) — 재시작하면 추적이 사라진다. 영속 저장은 운영 마일스톤의 일.
   # 이미지가 distroless(셸 없음)라 healthcheck 없음 — 의존하는 compose 서비스도 없다.

@@ -12,6 +12,10 @@ logging:
 spring:
   webflux:
     base-path: /api # 전역 prefix
+  data:
+    redis: # SSE 팬아웃 pub/sub + rate limit (ADR-0006)
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   r2dbc: # 런타임(논블로킹)
     url: ${DB_R2DBC_URL:r2dbc:postgresql://localhost:5432/cotejs}
     username: ${DB_USER:cotejs}

@@ -29,6 +29,21 @@ class DomainRulesTest {
     }
 
     @Test
+    fun `JudgeResult의 name은 저장 계약이다 - 이름을 바꾸면 저장된 행을 못 읽는다`() {
+        // V6부터 DB에 enum name이 저장된다(ADR-0020). label(표시 문구)은 바꿔도 되지만
+        // name 집합이 바뀌면 데이터 마이그레이션이 함께 가야 한다 — 이 테스트가 그걸 알린다.
+        assertEquals(
+            setOf(
+                "ACCEPTED", "WRONG_ANSWER", "TIME_LIMIT", "MEMORY_LIMIT",
+                "RUNTIME_ERROR", "COMPILE_ERROR", "PENDING", "INTERNAL_ERROR",
+            ),
+            JudgeResult.entries.map { it.name }.toSet(),
+        )
+        JudgeResult.entries.forEach { assertEquals(it, JudgeResult.fromName(it.name)) }
+        assertFailsWith<IllegalArgumentException> { JudgeResult.fromName("맞았습니다") } // 라벨은 저장값이 아니다
+    }
+
+    @Test
     fun `알 수 없는 label은 조용히 통과하지 않는다`() {
         // 잘못된 입력이 기본값으로 흡수되면 오판정·오분류가 조용히 퍼진다.
         assertFailsWith<IllegalArgumentException> { Language.fromLabel("C++") }

@@ -13,10 +13,13 @@ import com.cotejs.api.domain.model.Submission
 import com.cotejs.api.domain.port.inbound.ApplyJudgeOutcome
 import com.cotejs.api.domain.port.inbound.SubmissionQueries
 import com.cotejs.api.domain.port.inbound.SubmitCode
+import com.cotejs.api.config.RateLimitProperties
+import com.cotejs.api.domain.model.RateLimitExceededException
 import com.cotejs.api.domain.port.outbound.BundleStore
 import com.cotejs.api.domain.port.outbound.ExecutionLane
 import com.cotejs.api.domain.port.outbound.JudgeDispatcher
 import com.cotejs.api.domain.port.outbound.ProblemRepository
+import com.cotejs.api.domain.port.outbound.RateLimiter
 import com.cotejs.api.domain.port.outbound.SubmissionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -29,16 +32,33 @@ class SubmissionService(
     private val dispatcher: JudgeDispatcher,
     private val bundles: BundleStore,
     private val events: SubmissionEventHub,
+    private val limiter: RateLimiter,
+    private val rateLimit: RateLimitProperties,
 ) : SubmissionQueries, SubmitCode, ApplyJudgeOutcome {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override suspend fun all(): List<Submission> = submissions.findAllNewestFirst()
+    override suspend fun page(limit: Int, offset: Int): List<Submission> =
+        submissions.findNewestFirst(limit, offset)
 
     /**
      * 제출 흐름: "채점 중"으로 먼저 영속(사용자에게 즉시 응답) → 번들 확보 →
      * 제출 레인으로 발행. 판정은 결과 토픽으로 되돌아와 [apply]가 반영한다.
      */
     override suspend fun submit(command: NewSubmission): Submission {
+        // 남용 방지 — 사용자×모드 단위 고정 창. 문제 조회보다 앞: 거부할 요청에 일을 시키지 않는다.
+        val limit = when (command.mode) {
+            ExecutionMode.RUN -> rateLimit.runPerMinute
+            ExecutionMode.SUBMIT -> rateLimit.submitPerMinute
+        }
+        val allowed = limiter.tryAcquire(
+            key = "${command.mode.label}:${command.by.userId}",
+            limit = limit,
+            window = java.time.Duration.ofMinutes(1),
+        )
+        if (!allowed) {
+            throw RateLimitExceededException("요청이 너무 잦습니다 — 잠시 후 다시 시도하세요(분당 ${limit}회)")
+        }
+
         val problem = problems.findById(command.problemId)
             ?: throw ProblemNotFoundException(command.problemId)
 
