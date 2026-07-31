@@ -28,9 +28,14 @@
 *.py  linguist-detectable=true
 *.java  linguist-detectable=true
 
-# 내가 쓴 코드가 아닌 것은 위 3종이어도 제외한다.
+# 내가 쓴 코드가 아닌 것은 위 언어들이어도 제외한다.
 # 생성물(코드젠 산출물 — 원본은 contracts/*.proto)
 services/judge/gen/** linguist-generated=true
+# api의 protoc 생성 Java — 현재 저장소의 .java는 전부 이것(직접 작성 Java 0).
+# Linguist가 protobuf 헤더로 자동 제외하긴 하지만, 감지에 의존하지 않고 명시한다.
+services/api/src/main/proto-gen/** linguist-generated=true
+# web의 OpenAPI 생성 타입 — *.ts 집계에서 생성물이 물 타지 않게.
+services/web/shared/api/schema.d.ts linguist-generated=true
 
 # 벤더(Gradle 래퍼 — 도구가 배포하는 파일)
 # services/api/gradle/wrapper/** linguist-vendored=true

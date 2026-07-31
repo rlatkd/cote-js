@@ -157,13 +157,29 @@ curl -s -X POST localhost:4000/api/submissions \
 
 > **함정(실증)**: judge의 OTLP gRPC 익스포터 기본값은 TLS — 평문 Jaeger에는 핸드셰이크 실패로 스팬이 **조용히 전량 유실**된다(`WithInsecure` 필요). 스팬이 안 보이면 익스포터 오류 로그부터 확인.
 
+### 9. 인증 — 카카오 OIDC·JWT·보호 경계 ([ADR-0019](../decisions/0019-authentication-kakao-oidc.md))
+
+전제: `services/api/.env`에 카카오 자격 증명(bootRun이 주입), infra 기동.
+
+| 항목 | 확인 방법 | 기대 |
+|---|---|---|
+| 마이그레이션(V5) | `docker exec cotejs-postgres psql -U cotejs -d cotejs -c "SELECT provider, count(*) FROM users GROUP BY 1"` | 시드 유저(provider='seed') 존재, `submission.user_id`는 `is_nullable=NO` |
+| **401 가드** | 쿠키 없이 `POST /api/submissions` | `401 {"message":"로그인이 필요합니다"}` (run·submit 공통) |
+| 세션 조회 | 쿠키 없이 `GET /api/auth/me` | 401 |
+| 로그인 시작 | `curl -D - localhost:4000/api/auth/login/kakao` | 302 → kauth.kakao.com(…scope=openid profile_nickname&state=…&nonce=…) + `oauth_state` 서명 쿠키(HttpOnly·10m·path=/api/auth) |
+| **실로그인(브라우저)** | :3000 → "카카오 로그인" → 동의 → 복귀 | Navbar에 `@닉네임`, `users`에 provider='kakao' 행, access(1h)·refresh(14d) httpOnly 쿠키 |
+| 로그인 제출 | 로그인 상태로 문제 1000 제출 | 채점 정상 + `submission.user_id`=내 유저, `username`=카카오 닉네임 |
+| 로그아웃 | Navbar 로그아웃 | 쿠키 만료, Navbar가 로그인 버튼으로, 제출 시 401 안내 |
+| 토큰 정책(자동) | `JwtCodecTest`(6)·`IdTokenVerifierTest`(6) — CI 강제 | 만료·변조·타입 오용·alg 바꿔치기·nonce 불일치 전부 거부 |
+
 ## 추가 예정 (해당 마일스톤 착수 시 이 문서에 절차 추가)
 
 - **problem/plagiarism**: 파이프라인 상태 전이, 유사도 질의 왕복
-- **인증 도입 시**: 권한 경계(남의 제출 조회 차단 등)
+- **인증 후속**: 남의 제출 코드 조회 차단 등 세부 인가 경계(현재는 조회 전면 공개 정책)
 
 ## 갱신 이력
 
+- 2026-07-31 21:02 — 절차 9(인증) 신설: V5·401 가드·로그인 302·실로그인·소유 귀속·로그아웃 + 토큰 정책은 단위 테스트가 상시 강제.
 - 2026-07-30 23:01 — 절차 8(관측) 신설: 지정 trace_id의 전 구간 재발견(api MDC·judge 로그·Jaeger 스팬 트리), 무효 헤더 방어, 관측 독립성. OTLP gRPC TLS 기본값 함정 명시. 절차 7의 제출은 이제 web에서 Server Action 경유임을 반영.
 - 2026-07-28 21:57 — 품질 게이트에 **자동화 테스트**(api 단위13+통합3, judge 8) 추가하고 **CI가 강제**함을 명시. CI가 의도적으로 제외하는 범위(샌드박스 실채점·E2E)도 기록.
 - 2026-07-28 21:35 — judge 절차에 **언어 3종·컴파일 에러·미지원 언어** 추가, 러너 이미지 빌드 3종·`go test` 반영. 전 구간 절차에 **실행 모드(run)·케이스별 결과·추적 전파** 확인 항목 추가.

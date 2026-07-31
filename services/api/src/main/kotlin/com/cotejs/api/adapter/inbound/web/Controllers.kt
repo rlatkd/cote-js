@@ -1,6 +1,7 @@
 package com.cotejs.api.adapter.inbound.web
 
 import com.cotejs.api.application.SubmissionEventHub
+import com.cotejs.api.domain.model.AuthPrincipal
 import com.cotejs.api.domain.model.TraceContext
 import com.cotejs.api.domain.port.inbound.ProblemQueries
 import com.cotejs.api.domain.port.inbound.SubmissionQueries
@@ -19,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ResponseStatusException
+import org.springframework.web.server.ServerWebExchange
 
 // 인바운드 웹 어댑터 — suspend 핸들러(WebFlux + 코루틴).
 // 전역 prefix(/api)는 spring.webflux.base-path가 담당한다.
@@ -52,8 +55,14 @@ class SubmissionController(
         @Valid @RequestBody body: CreateSubmissionRequest,
         // web(Next 서버)이 시작한 추적을 이어받는다(W3C Trace Context, [ADR-0017]).
         @RequestHeader("traceparent", required = false) traceparent: String? = null,
-    ): SubmissionResponse =
-        SubmissionResponse.from(submit.submit(body.toCommand(TraceContext.parse(traceparent))))
+        exchange: ServerWebExchange,
+    ): SubmissionResponse {
+        // 필터가 이미 401로 막지만, 여기서도 확인한다 — 보호가 필터 설정 한 곳에만
+        // 매달려 있으면 경로 매칭 한 줄이 어긋나는 순간 조용히 뚫린다(이중 방어).
+        val principal = exchange.attributes[AuthenticationFilter.PRINCIPAL_ATTR] as? AuthPrincipal
+            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다")
+        return SubmissionResponse.from(submit.submit(body.toCommand(principal, TraceContext.parse(traceparent))))
+    }
 
     /**
      * 제출 상태 변화 스트림(SSE) — 채점이 비동기라 "언제 끝났는지"를 서버가 알려준다.

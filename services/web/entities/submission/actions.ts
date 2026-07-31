@@ -7,6 +7,7 @@
 //   ② 인증 쿠키(httpOnly)가 first-party로 유지된다 — 도입 예정인 인증의 선행 정지작업
 // SSE(EventSource)는 여전히 브라우저가 api에 직접 붙는다(스트림은 프록시 실익 없음).
 
+import { cookies } from "next/headers";
 import { apiPost } from "@/shared/api/client";
 import type { Language } from "@/entities/problem/model";
 import type { ExecutionMode, Submission } from "./model";
@@ -14,6 +15,7 @@ import type { ExecutionMode, Submission } from "./model";
 /**
  * 코드 제출 — 응답은 "채점 중" 상태의 제출이다(채점은 비동기).
  * 최종 판정은 SSE로 도착한다(`/submissions/stream`).
+ * 제출은 로그인 필수(ADR-0019) — 브라우저가 보낸 세션 쿠키를 api로 이어 나른다.
  */
 export async function submitCode(input: {
   problemId: number;
@@ -21,5 +23,5 @@ export async function submitCode(input: {
   code: string;
   mode?: ExecutionMode;
 }): Promise<Submission> {
-  return apiPost<Submission>("/submissions", input);
+  return apiPost<Submission>("/submissions", input, { cookie: cookies().toString() });
 }

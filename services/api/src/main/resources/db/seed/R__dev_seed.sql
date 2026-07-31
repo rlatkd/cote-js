@@ -76,8 +76,18 @@ INSERT INTO test_case (problem_id, ord, input, output) VALUES
     (1000, 4, '1 1', '2'),
     (1000, 5, '3 7', '10');
 
+-- 시드 유저 — 픽스처 제출의 소유자(2026-07-30 결정: 시드 유저 귀속으로 user_id NOT NULL 유지).
+-- provider='seed'는 실제 로그인 경로(kakao)와 절대 겹치지 않는다. 실 유저 행은 지우지 않는다.
+INSERT INTO users (provider, provider_id, nickname)
+SELECT 'seed', u, u
+FROM unnest(ARRAY ['sanghoon','devkim','algo_master','novice22','hayoon','coder_lee']) AS u
+ON CONFLICT (provider, provider_id) DO NOTHING;
+
 INSERT INTO submission (username, problem_id, problem_title, result, language,
-                        exec_time_ms, memory_used_kb, length, submitted_at) VALUES
+                        exec_time_ms, memory_used_kb, length, submitted_at, user_id)
+SELECT v.username, v.problem_id, v.problem_title, v.result, v.language,
+       v.exec_time_ms, v.memory_used_kb, v.length, v.submitted_at::timestamptz, u.id
+FROM (VALUES
     ('sanghoon', 100001, '정원사의 물결 정렬', '맞았습니다', 'Python', 148, 31744, 612, '2026-07-09 14:22:10+09'),
     ('sanghoon', 100001, '정원사의 물결 정렬', '틀렸습니다', 'Python', NULL, NULL, 588, '2026-07-09 14:19:44+09'),
     ('devkim', 7576, '토마토', '맞았습니다', 'Java', 92, 18432, 1204, '2026-07-09 14:05:31+09'),
@@ -87,4 +97,7 @@ INSERT INTO submission (username, problem_id, problem_title, result, language,
     ('devkim', 1932, '정수 삼각형', '맞았습니다', 'Python', 104, 29696, 402, '2026-07-09 13:30:57+09'),
     ('sanghoon', 100002, '캐시된 미로 탈출', '메모리 초과', 'Java', NULL, NULL, 1890, '2026-07-09 13:22:41+09'),
     ('coder_lee', 2231, '분해합', '맞았습니다', 'Java', 4, 2048, 356, '2026-07-09 13:10:08+09'),
-    ('novice22', 2231, '분해합', '컴파일 에러', 'Java', NULL, NULL, 401, '2026-07-09 13:02:55+09');
+    ('novice22', 2231, '분해합', '컴파일 에러', 'Java', NULL, NULL, 401, '2026-07-09 13:02:55+09')
+) AS v(username, problem_id, problem_title, result, language,
+       exec_time_ms, memory_used_kb, length, submitted_at)
+JOIN users u ON u.provider = 'seed' AND u.provider_id = v.username;

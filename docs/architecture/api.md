@@ -85,8 +85,15 @@ submission.result 소비 → 멱등 반영(같은 결과 재수신해도 상태 
 - **계측 = OTel Java 에이전트** — `bootRun`에만 부착(`build.gradle.kts`의 `otelAgent` 구성). WebFlux 서버·kafka-clients·R2DBC 자동 스팬 + **logback MDC에 trace_id 자동 주입**. `application.yml` 콘솔 패턴의 `%X{trace_id}`로 **모든 로그 라인이 요청 상관관계 id**를 갖는다. 테스트·CI에는 부착하지 않는다(계측이 결과에 영향 없음).
 - **스팬 수신처 = Jaeger**(infra, OTLP HTTP 4318). 에이전트는 메트릭·로그 익스포터를 꺼둔다(백엔드 없음 — 주기적 실패 로그 방지).
 
+## 인증 ([ADR-0019](../decisions/0019-authentication-kakao-oidc.md), 2026-07-31)
+
+- **구조**: Spring Security 미채택 — `AuthenticationFilter`(WebFilter)가 access 쿠키를 검증해 principal을 exchange 속성으로 전파하고, 보호 경계(POST /api/submissions)만 401로 막는다(공개가 기본, 보호가 예외). 컨트롤러도 principal 부재 시 401(이중 방어 — 보호가 필터 경로 매칭 한 줄에만 매달리지 않게).
+- **층 배치**: 순수 로직은 `application/auth`(JwtCodec=HS256 자체 세션, IdTokenVerifier=RS256 id_token — 둘 다 JDK 내장 암호 연산, 단위 테스트로 실패 경로 고정) / I/O는 어댑터(`adapter/outbound/oidc/KakaoOidcAdapter` — 코드 교환·JWKS 캐시 6h) / 유스케이스는 `AuthService`(state·nonce를 서명 쿠키로 무상태 운반).
+- **쿠키**: 전부 httpOnly·SameSite=Lax. access(1h)=path `/`, refresh(14d, 회전)=path `/api/auth`, oauth_state(10m)=path `/api/auth`. 토큰은 응답 본문에 싣지 않는다.
+- **비밀 주입**: `services/api/.env`(gitignore) → bootRun이 환경변수로 로딩(`KAKAO_CLIENT_ID` 등).
+- **제출 주체**: body의 user 필드 폐기 — `NewSubmission.by: AuthPrincipal`(non-null)로 "제출=로그인 필수"가 타입 불변식.
+
 ## 다음 단계
 
-- **인증 구현** — 설계 확정([ADR-0019](../decisions/0019-authentication-kakao-oidc.md)): 카카오 OIDC + 자체 JWT(httpOnly 쿠키) + 직접 WebFilter, `users`+`submission.user_id`(V5). 체크리스트는 [TODO](../TODO.md).
-- **문제 등록 API(admin)** — 지금 번들은 제출 시 lazy 발행이다. 등록 시 발행으로 옮기면 첫 제출이 빨라진다.
-- 랭킹(Redis sorted set)·제출 rate limit은 api 후속 백로그.
+- **문제 등록 API(admin)** — 지금 번들은 제출 시 lazy 발행이다. 등록 시 발행으로 옮기면 첫 제출이 빨라진다. role=ADMIN 인가는 필터에 경계 추가.
+- 랭킹(Redis sorted set)·제출 rate limit은 api 후속 백로그. refresh 자동 갱신 web 배선(지금은 access 만료 시 재로그인).

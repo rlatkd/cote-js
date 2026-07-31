@@ -54,7 +54,9 @@ class SubmissionService(
         val pending = submissions.save(
             Submission(
                 id = 0,
-                user = command.user,
+                // 주체는 인증 필터가 확인한 principal — 닉네임은 표시용 스냅샷, 소유는 userId.
+                user = command.by.nickname,
+                userId = command.by.userId,
                 problemId = problem.id,
                 problemTitle = problem.title,
                 // 번들이 없으면 채점할 수 없다 — 유저 귀책이 아니므로 오답류가 아닌

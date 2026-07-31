@@ -27,6 +27,19 @@ spring:
 
 # judge 파이프라인(ADR-0009·0011) — Kafka 제출/결과 토픽 + 테스트 번들 스토리지
 cotejs:
+  # 인증(ADR-0019) — 카카오 자격 증명은 services/api/.env(커밋 금지)에서 bootRun이 주입
+  auth:
+    web-origin: ${WEB_ORIGIN:http://localhost:3000}
+    jwt:
+      # 개발 기본값 — 운영은 JWT_SECRET 필수(이 값이 곧 세션 위조 가능 여부다)
+      secret: ${JWT_SECRET:cotejs-dev-only-secret-0123456789abcdef}
+      access-ttl: 1h   # 탈취 노출 창의 상한 — 즉시 무효화 불가의 수용 비용(ADR-0019)
+      refresh-ttl: 14d # 무활동 시 재로그인까지의 기간
+      state-ttl: 10m   # 카카오 로그인 절차가 걸릴 수 있는 최대 시간
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID:}
+      client-secret: ${KAKAO_CLIENT_SECRET:}
+      redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:4000/api/auth/callback/kakao}
   kafka:
     brokers: ${KAFKA_BROKERS:localhost:9092}
     result-topic: ${KAFKA_RESULT_TOPIC:submission.result}

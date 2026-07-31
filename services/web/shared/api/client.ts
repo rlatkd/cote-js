@@ -6,7 +6,8 @@
 
 import { currentTraceparent } from "./trace";
 
-const API_URL = process.env.API_URL ?? "http://localhost:4000";
+/** 서버 전용 base — 서버 컴포넌트·Server Action의 fetch가 쓴다. */
+export const API_URL = process.env.API_URL ?? "http://localhost:4000";
 
 /**
  * 브라우저가 직접 붙는 base(SSE 등). 서버 전용 `API_URL`과 달리 클라이언트 번들에
@@ -39,14 +40,22 @@ export async function apiGetOptional<T>(path: string): Promise<T | undefined> {
   return res.json() as Promise<T>;
 }
 
-/** POST — Server Action에서 호출한다. 요청·응답 모두 JSON. */
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+/**
+ * POST — Server Action에서 호출한다. 요청·응답 모두 JSON.
+ * 인증이 필요한 호출은 extraHeaders로 요청 쿠키를 넘긴다(호출자가 next/headers로 읽음 —
+ * 이 모듈은 클라이언트 컴포넌트도 import하므로 next/headers를 직접 쓸 수 없다).
+ */
+export async function apiPost<T>(
+  path: string,
+  body: unknown,
+  extraHeaders: Record<string, string> = {},
+): Promise<T> {
   const traceparent = currentTraceparent();
   // 쓰기 요청은 Next 서버 콘솔에도 남긴다 — 여기 찍힌 trace로 api·judge 로그를 찾아간다.
   console.log(`[web→api] POST ${path} traceparent=${traceparent}`);
   const res = await fetch(`${API_URL}/api${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json", traceparent },
+    headers: { "content-type": "application/json", traceparent, ...extraHeaders },
     body: JSON.stringify(body),
   });
   if (!res.ok) {

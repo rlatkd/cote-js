@@ -96,6 +96,14 @@ tasks.withType<JavaExec> {
 // 개발 실행에만 에이전트를 붙인다(테스트·CI는 계측 불필요 — 결과에 영향 없음).
 // Jaeger가 내려가 있어도 기동에는 지장 없다(내보내기 실패 시 스팬만 버려짐).
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+	// .env(비밀 — .gitignore로 커밋 차단)를 환경변수로 주입: 카카오 자격 증명(ADR-0019)
+	file(".env").takeIf { it.exists() }?.readLines()
+		?.map { it.trim() }
+		?.filter { it.isNotEmpty() && !it.startsWith("#") && it.contains("=") }
+		?.forEach { line ->
+			val (key, value) = line.split("=", limit = 2)
+			environment(key, value)
+		}
 	jvmArgs("-javaagent:${otelAgent.singleFile}")
 	systemProperty("otel.service.name", "api")
 	systemProperty("otel.exporter.otlp.endpoint", "http://localhost:4318")

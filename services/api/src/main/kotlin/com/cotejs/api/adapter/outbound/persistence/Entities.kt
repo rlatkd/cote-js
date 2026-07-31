@@ -48,10 +48,21 @@ data class TestCaseEntity(
     val output: String,
 )
 
+@Table("users")
+data class UserEntity(
+    @Id val id: Long? = null,
+    val provider: String,
+    val providerId: String,
+    val nickname: String,
+    val role: String,
+    val createdAt: Instant,
+)
+
 @Table("submission")
 data class SubmissionEntity(
     @Id val id: Long? = null,
     val username: String,
+    val userId: Long,
     val problemId: Long,
     val problemTitle: String,
     val result: String,

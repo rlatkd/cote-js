@@ -37,11 +37,18 @@ class SubmissionIdempotencyIT {
     private lateinit var submissions: SubmissionPersistenceAdapter
 
     @Autowired
+    private lateinit var users: UserPersistenceAdapter
+
+    @Autowired
     private lateinit var cases: SubmissionCaseR2dbcRepository
+
+    /** 제출은 소유자가 필수(user_id NOT NULL) — 테스트 유저를 upsert로 확보(재실행 멱등). */
+    private suspend fun testUserId(): Long =
+        users.upsert(provider = "seed", providerId = "it-tester", nickname = "it-tester").id
 
     @Test
     fun `같은 결과를 두 번 반영해도 상태와 케이스 수가 변하지 않는다`() = runTest {
-        val saved = submissions.save(pendingSubmission())
+        val saved = submissions.save(pendingSubmission(testUserId()))
         val outcome = outcomeFor(saved.id)
 
         val first = submissions.applyOutcome(outcome)
@@ -59,7 +66,7 @@ class SubmissionIdempotencyIT {
 
     @Test
     fun `재채점 결과가 오면 이전 케이스를 남기지 않고 대체한다`() = runTest {
-        val saved = submissions.save(pendingSubmission())
+        val saved = submissions.save(pendingSubmission(testUserId()))
         submissions.applyOutcome(outcomeFor(saved.id)) // 케이스 2건
 
         // 문제의 테스트케이스가 늘어 재채점된 상황 — 케이스가 3건으로 바뀐다.
@@ -81,9 +88,10 @@ class SubmissionIdempotencyIT {
         assertEquals(null, submissions.applyOutcome(outcomeFor(999_999)))
     }
 
-    private fun pendingSubmission() = Submission(
+    private fun pendingSubmission(userId: Long) = Submission(
         id = 0,
         user = "it-tester",
+        userId = userId,
         problemId = 1000,
         problemTitle = "두 수의 합",
         result = JudgeResult.PENDING,

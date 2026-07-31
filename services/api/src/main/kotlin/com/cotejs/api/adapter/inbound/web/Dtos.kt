@@ -1,5 +1,6 @@
 package com.cotejs.api.adapter.inbound.web
 
+import com.cotejs.api.domain.model.AuthPrincipal
 import com.cotejs.api.domain.model.ExecutionMode
 import com.cotejs.api.domain.model.Language
 import com.cotejs.api.domain.model.NewSubmission
@@ -109,13 +110,16 @@ data class CreateSubmissionRequest(
     val language: String?,
     @field:NotBlank
     val code: String?,
-    val user: String? = null,
     /** 실행 모드 — "run"(예제 실행) 또는 "submit"(정식 제출). 생략 시 정식 제출. */
     val mode: String? = null,
 ) {
-    /** 검증 통과 후 도메인 커맨드로 변환. 잘못된 language·mode는 IllegalArgumentException → 400. */
-    fun toCommand(parentTrace: TraceContext? = null): NewSubmission = NewSubmission(
-        user = user?.takeIf { it.isNotBlank() } ?: "guest",
+    /**
+     * 검증 통과 후 도메인 커맨드로 변환. 잘못된 language·mode는 IllegalArgumentException → 400.
+     * 제출 주체는 body가 아니라 **인증 필터가 확인한 principal**이다 — 요청이 자신을
+     * 아무 이름으로나 소개하게 두지 않는다(구 `user` 필드 폐기, ADR-0019).
+     */
+    fun toCommand(by: AuthPrincipal, parentTrace: TraceContext? = null): NewSubmission = NewSubmission(
+        by = by,
         problemId = requireNotNull(problemId),
         language = Language.fromLabel(requireNotNull(language)),
         code = requireNotNull(code),

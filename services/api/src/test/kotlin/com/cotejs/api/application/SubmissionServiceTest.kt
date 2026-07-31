@@ -1,5 +1,6 @@
 package com.cotejs.api.application
 
+import com.cotejs.api.domain.model.AuthPrincipal
 import com.cotejs.api.domain.model.BundleRef
 import com.cotejs.api.domain.model.CaseResult
 import com.cotejs.api.domain.model.Difficulty
@@ -11,6 +12,7 @@ import com.cotejs.api.domain.model.Language
 import com.cotejs.api.domain.model.NewSubmission
 import com.cotejs.api.domain.model.Problem
 import com.cotejs.api.domain.model.ProblemNotFoundException
+import com.cotejs.api.domain.model.Role
 import com.cotejs.api.domain.model.Submission
 import com.cotejs.api.domain.model.TestCase
 import com.cotejs.api.domain.model.TraceContext
@@ -144,7 +146,8 @@ class SubmissionServiceTest {
     )
 
     private fun command(mode: ExecutionMode) = NewSubmission(
-        user = "tester",
+        // 제출은 로그인 필수 — 커맨드에 인증 주체가 항상 실린다(ADR-0019).
+        by = AuthPrincipal(userId = 1, nickname = "tester", role = Role.USER),
         problemId = 1000,
         language = Language.PYTHON,
         code = "print(1)",

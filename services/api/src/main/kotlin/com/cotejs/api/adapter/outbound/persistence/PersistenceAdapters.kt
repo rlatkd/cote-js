@@ -9,11 +9,16 @@ import com.cotejs.api.domain.model.JudgeResult
 import com.cotejs.api.domain.model.JudgedOutcome
 import com.cotejs.api.domain.model.Language
 import com.cotejs.api.domain.model.Problem
+import com.cotejs.api.domain.model.Role
 import com.cotejs.api.domain.model.Submission
 import com.cotejs.api.domain.model.TestCase
+import com.cotejs.api.domain.model.User
 import com.cotejs.api.domain.port.outbound.ProblemRepository
 import com.cotejs.api.domain.port.outbound.SubmissionRepository
+import com.cotejs.api.domain.port.outbound.UserRepository
+import java.time.Instant
 import kotlinx.coroutines.flow.toList
+import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Component
 import tools.jackson.databind.ObjectMapper
 import tools.jackson.module.kotlin.readValue
@@ -82,6 +87,47 @@ class ProblemPersistenceAdapter(
 }
 
 @Component
+class UserPersistenceAdapter(
+    private val userRepo: UserR2dbcRepository,
+) : UserRepository {
+    override suspend fun findById(id: Long): User? = userRepo.findById(id)?.toDomain()
+
+    override suspend fun upsert(provider: String, providerId: String, nickname: String): User {
+        val existing = userRepo.findByProviderAndProviderId(provider, providerId)
+        val saved = when {
+            existing == null -> try {
+                userRepo.save(
+                    UserEntity(
+                        provider = provider,
+                        providerId = providerId,
+                        nickname = nickname,
+                        role = Role.USER.name,
+                        createdAt = Instant.now(),
+                    ),
+                )
+            } catch (_: DuplicateKeyException) {
+                // 동시 첫 로그인 경합 — UNIQUE(provider, provider_id)가 한쪽을 이기게 했으니
+                // 진 쪽은 이긴 행을 읽어 닉네임만 맞춘다.
+                val won = requireNotNull(userRepo.findByProviderAndProviderId(provider, providerId))
+                if (won.nickname == nickname) won else userRepo.save(won.copy(nickname = nickname))
+            }
+            // 재로그인 — 닉네임은 로그인 시점 스냅샷이므로 바뀌었을 때만 갱신.
+            existing.nickname != nickname -> userRepo.save(existing.copy(nickname = nickname))
+            else -> existing
+        }
+        return saved.toDomain()
+    }
+
+    private fun UserEntity.toDomain(): User = User(
+        id = requireNotNull(id) { "persisted user must have id" },
+        provider = provider,
+        providerId = providerId,
+        nickname = nickname,
+        role = Role.fromName(role),
+    )
+}
+
+@Component
 class SubmissionPersistenceAdapter(
     private val submissionRepo: SubmissionR2dbcRepository,
     private val caseRepo: SubmissionCaseR2dbcRepository,
@@ -146,6 +192,7 @@ class SubmissionPersistenceAdapter(
         Submission(
             id = requireNotNull(id) { "persisted submission must have id" },
             user = username,
+            userId = userId,
             problemId = problemId,
             problemTitle = problemTitle,
             result = JudgeResult.fromLabel(result),
@@ -164,6 +211,7 @@ class SubmissionPersistenceAdapter(
         SubmissionEntity(
             id = null, // 신규 저장 — id는 DB가 발급
             username = user,
+            userId = userId,
             problemId = problemId,
             problemTitle = problemTitle,
             result = result.label,

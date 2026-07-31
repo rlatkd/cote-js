@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-07-31 21:05 — 인증 구현 완료(카카오 OIDC·JWT·WebFilter) — 실로그인 E2E만 사용자 검증 대기
+
+- **한 일**: ① **V5 재도입** — `users`(provider+provider_id UNIQUE·role 선반영)+`submission.user_id NOT NULL`, 주인 없는 제출이 있을 때만 시드 유저 생성·귀속(운영 빈 DB엔 무행) + R__ 시드 유저 6명 ② **JWT 코덱**(HS256, javax.crypto만) — 상수시간 서명 비교·타입 분리(access/refresh/state), **테스트 먼저 6종** ③ **id_token 검증기**(RS256) — alg 고정(바꿔치기 차단)·iss/aud(배열 대응)/exp/nonce, 자체 RSA 키쌍으로 위조 시나리오 **테스트 먼저 6종** ④ **카카오 어댑터** — 코드 교환(KOE 에러 본문 보존)·JWKS 캐시 6h·JWK→RSAPublicKey ⑤ **AuthService** — state·nonce 서명 쿠키(무상태 CSRF·리플레이 방어), upsert(동시 첫 로그인 경합은 UNIQUE로 승자 결정), access에 nick·role 클레임(요청당 DB 0회) ⑥ **엔드포인트 5종**+httpOnly 쿠키(access 1h=`/`, refresh 14d=`/api/auth`, 본문에 토큰 금지) ⑦ **WebFilter** — principal 전파+제출 401 가드(+컨트롤러 이중 방어), `NewSubmission.by: AuthPrincipal`로 "제출=로그인 필수"를 **타입 불변식**으로(body user 폐기) ⑧ web — Navbar 로그인/`@닉네임`/로그아웃(레이어 준수: layout(RSC)→props 주입), 제출 쿠키 포워딩, 401 안내 ⑨ `.env`→bootRun 주입, gen:api(+279줄), 문서(data-model·api.md·web.md·verification 절차9·TODO).
+- **사용자 논의 3건(전부 learning-notes 기록)**: ① Kotlin 타입 — "wrapper면 null 체크 남발?"→ non-null=primitive 컴파일+체크는 `?`에만 강제, 타 언어(Go zero value/TS 유니온/Python 방임) 비교 ② **"확실하지 않은 값 위에서 로직을 돌리지 않으려 primitive를 쓴다"**(실무 관행)→ make illegal states unrepresentable/parse-don't-validate로 일반화, 우리 코드의 실례(DTO nullable→도메인 non-null, `by: AuthPrincipal`) ③ SSE 대안 전체 비교 — 숏/롱폴링·SSE·WS·gRPC·Web Push 6방식 + **사용자 지적으로 축 추가**: "연결을 쥐는 비용(상태) vs 자주 맺는 비용(RPS)"이 수십만 규모에서 지배적, 우리 완충(채점 동안만 연결)·강등 경로(공개 피드→폴링+캐시) 정리.
+- **검증(실측)**: api 전체 빌드 그린(31 tests — 단위 25+IT 3, 신규 인증 12 포함) / web lint·build 그린 / **V5가 기존 dev DB에 정확히 적용**(guest 포함 7 시드 유저 생성·10건 귀속·NOT NULL) / 401 가드 `{"message":"로그인이 필요합니다"}` / me 401 / 로그인 302(kauth, scope openid+profile_nickname, state·nonce, oauth_state 서명 쿠키, **.env의 실제 client_id 주입 확인**) / gen:api 재생성+계약 체크.
+- **함정(실측)**: Boot 4는 `WebClient.Builder`를 자동 구성하지 않는다(모듈 분리) → 어댑터가 직접 `WebClient.create()`. Docker Desktop WSL 걸림 재발 → 프로세스 kill+`wsl --shutdown`+재기동으로 복구(재부팅 불필요 — 절차 확립).
+- **중단점**: 전체 미커밋. api·judged·web·인프라 **기동 중**. **실로그인 E2E(브라우저)만 남음** — verification 절차 9의 실로그인~로그아웃 행.
+- **다음**: 사용자 실로그인 검증 → 커밋 → 후속(refresh 자동 갱신, admin 인가, 스타터 코드 구조).
+
 ## 2026-07-30 23:05 — 관측성 슬라이스 완료(추적·OTel·로깅) + 인증 설계 확정 (ADR-0018·0019)
 
 - **의사결정(사용자 확정, 경위는 engineering-notes 2026-07-30)**: ① 인증 = JWT(access+refresh 회전)+httpOnly 쿠키 / Spring Security 미채택·직접 WebFilter / **카카오 OIDC 단독**(GitHub 추천이 사용자 지적 "국민 모두 카카오톡"으로 번복 — 국내 타깃에서 GitHub 도달률은 카카오의 부분집합) / 제출 로그인 필수 / 시드 제출 10건은 시드 유저 귀속(a안) ② OTel 도입 확정(보류 해제) ③ 스타터 코드 구조는 구현 시 재결정. OAuth2=프로토콜/프로바이더=구현 주체 범주 정리는 learning-notes '인증·보안'.

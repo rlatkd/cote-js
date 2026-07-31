@@ -23,6 +23,10 @@ interface TestCaseR2dbcRepository : CoroutineCrudRepository<TestCaseEntity, Long
     fun findByProblemIdOrderByOrd(problemId: Long): Flow<TestCaseEntity>
 }
 
+interface UserR2dbcRepository : CoroutineCrudRepository<UserEntity, Long> {
+    suspend fun findByProviderAndProviderId(provider: String, providerId: String): UserEntity?
+}
+
 interface SubmissionR2dbcRepository : CoroutineCrudRepository<SubmissionEntity, Long> {
     /** 채점 현황에는 정식 제출만 — 예제 실행(run)은 시험 삼아 돌린 것이라 기록으로 보이지 않는다. */
     fun findByModeOrderBySubmittedAtDesc(mode: String): Flow<SubmissionEntity>

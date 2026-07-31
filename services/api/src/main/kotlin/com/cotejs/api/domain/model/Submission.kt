@@ -65,7 +65,9 @@ data class CaseResult(
 
 data class Submission(
     val id: Long,
+    /** 표시용 닉네임(제출 시점 스냅샷). 소유 관계의 진실원은 [userId]. */
     val user: String,
+    val userId: Long,
     val problemId: Long,
     val problemTitle: String,
     val result: JudgeResult,
@@ -130,9 +132,9 @@ data class JudgedOutcome(
     val cases: List<CaseResult> = emptyList(),
 )
 
-/** 제출 커맨드 (web → api). */
+/** 제출 커맨드 (web → api). 제출은 로그인 필수라 주체가 항상 있다(ADR-0019). */
 data class NewSubmission(
-    val user: String,
+    val by: AuthPrincipal,
     val problemId: Long,
     val language: Language,
     val code: String,

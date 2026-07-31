@@ -90,19 +90,19 @@
 - [ ] **샌드박스 2단계** (별도 마일스톤): cgroups/namespaces/seccomp 직접 제어 — 케이스별 메모리 피크 정밀 측정(cgroup `memory.peak`), 언어 중립 MLE 판정, seccomp 화이트리스트. 리눅스 기준 개발 머신 결정 필요
 - [ ] judge 언어 확장: C++·Java·JavaScript 러너 추가(executor 인터페이스 불변 — 컴파일 단계 자리 이미 확보)
 
-## 다음 스프린트: 인증 (설계 확정 — [ADR-0019](decisions/0019-authentication-kakao-oidc.md), 2026-07-30)
+## 현재 스프린트: 인증 ([ADR-0019](decisions/0019-authentication-kakao-oidc.md)) — 구현 완료 (2026-07-31)
 
-> 결정은 전부 확정(카카오 OIDC 단독 / 자체 JWT+httpOnly 쿠키 / Spring Security 미채택·직접 WebFilter / 제출 로그인 필수 / 시드 제출은 시드 유저 귀속). **구현만 남았다.**
-
-- [x] **사용자 액션** (2026-07-30 완료): 카카오 앱 등록 — OIDC 활성화, Redirect URI 등록(개편 콘솔 위치: [앱 → 플랫폼 키 → REST API 키] 상세), 닉네임 필수 동의, Client Secret 활성화. **자격 증명은 `services/api/.env`(gitignore 확인됨)** — bootRun 로딩 배선은 구현 시
-- [ ] V5 마이그레이션 재도입 — `users` + `submission.user_id NOT NULL` + 시드 귀속 (초안은 이번 세션에 작성했다가 **코드 미배선 상태로 두면 제출·CI가 깨져** 되돌림 — 코드와 같은 커밋으로 재도입, 설계는 ADR-0019 5절)
-- [ ] JWT 코덱(HS256, JDK 내장) + 단위 테스트(왕복·만료·변조·타입) — 선별적 TDD 첫 적용 대상
-- [ ] 카카오 OIDC — 코드 교환(WebClient), JWKS 캐시, id_token 검증(RS256·iss·aud·exp·nonce) + 검증기 단위 테스트
-- [ ] AuthService + 엔드포인트(login/callback/refresh/logout/me), state·nonce 서명 쿠키
-- [ ] 인증 WebFilter — access 쿠키 검증→principal, **POST /api/submissions 401 가드**
-- [ ] SubmissionService가 principal 사용(body의 user 무시), 영속 계층 user_id 배선
-- [ ] web 배선 — 로그인 버튼, 세션 표시(/auth/me), Server Action 쿠키 포워딩, 401 안내
-- [ ] OpenAPI 재생성(`pnpm gen:api`) + 계약 체크
+- [x] **사용자 액션** (2026-07-30): 카카오 앱 등록 — OIDC 활성화, Redirect URI(개편 콘솔: [앱 → 플랫폼 키 → REST API 키] 상세), 닉네임 필수 동의, Client Secret. 자격 증명 `services/api/.env`(gitignore)
+- [x] **V5 재도입** (2026-07-31) — `users` + `submission.user_id NOT NULL` + 조건부 시드 귀속. 기존 개발 DB(guest 픽스처 포함)에 귀속 실측 확인
+- [x] JWT 코덱(HS256, JDK 내장) + 단위 테스트 6종(왕복·만료·변조·타키·타입 오용·깨진 입력) — 선별적 TDD
+- [x] 카카오 OIDC — 코드 교환(WebClient)·JWKS 캐시(6h)·id_token 검증기 + 단위 테스트 6종(서명·kid·alg 바꿔치기·iss/aud/exp/nonce)
+- [x] AuthService + 엔드포인트(login/callback/refresh/logout/me), state·nonce는 서명 쿠키(무상태)
+- [x] 인증 WebFilter — principal 전파 + **POST /api/submissions 401 가드**(실측: `401 로그인이 필요합니다`) + 컨트롤러 이중 방어
+- [x] `NewSubmission.by: AuthPrincipal` — body user 필드 폐기, 제출=로그인 필수를 타입 불변식으로. 영속 user_id 배선
+- [x] web 배선 — Navbar 카카오 로그인/`@닉네임`+로그아웃, 세션은 layout(RSC)→props, Server Action 쿠키 포워딩, 401 안내
+- [x] OpenAPI 재생성(auth 엔드포인트 +279줄) + 계약 체크 그린. api 전체 빌드(31 tests)·web 빌드 그린
+- [ ] **실로그인 E2E(사용자 브라우저)** — 카카오 동의→복귀→닉네임 표시→제출→소유 귀속→로그아웃 (verification 절차 9)
+- [ ] 후속: refresh 자동 갱신 web 배선(현재 access 만료 시 재로그인), 배포 시 secure 쿠키·시크릿 회전
 
 ## 보류 / 추후 재논의 (Deferred)
 

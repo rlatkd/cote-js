@@ -80,7 +80,9 @@ export function useProblemSolving(problem: Problem) {
         mode: kind,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "요청에 실패했습니다");
+      const message = e instanceof Error ? e.message : "요청에 실패했습니다";
+      // 제출은 로그인 필수(ADR-0019) — 401은 오류가 아니라 안내로 보여준다.
+      setError(message.includes("401") ? "로그인이 필요합니다 — 우측 상단에서 카카오 로그인" : message);
       setRunState("idle");
       return;
     }
