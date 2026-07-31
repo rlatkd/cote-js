@@ -6,7 +6,7 @@
 # 오탐할 상태였다(2026-07-28 발견).
 #
 # 최초 도입 시 1회: `git add --renormalize .` 후 별도 커밋으로 정리한다.
-# * text=auto eol=lf
+* text=auto eol=lf
 
 # 바이너리는 손대지 않는다.
 # *.woff2 binary
@@ -25,8 +25,8 @@
 *.tsx  linguist-detectable=true
 *.go  linguist-detectable=true
 *.kt  linguist-detectable=true
-*.kts linguist-detectable=true
 *.py  linguist-detectable=true
+*.java  linguist-detectable=true
 
 # 내가 쓴 코드가 아닌 것은 위 3종이어도 제외한다.
 # 생성물(코드젠 산출물 — 원본은 contracts/*.proto)

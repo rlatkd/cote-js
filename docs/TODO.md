@@ -94,7 +94,7 @@
 
 > 결정은 전부 확정(카카오 OIDC 단독 / 자체 JWT+httpOnly 쿠키 / Spring Security 미채택·직접 WebFilter / 제출 로그인 필수 / 시드 제출은 시드 유저 귀속). **구현만 남았다.**
 
-- [ ] **사용자 액션**: 카카오 개발자 앱 등록(OIDC 활성화, Redirect URI `http://localhost:4000/api/auth/callback/kakao`) → REST API 키·Client Secret 전달
+- [x] **사용자 액션** (2026-07-30 완료): 카카오 앱 등록 — OIDC 활성화, Redirect URI 등록(개편 콘솔 위치: [앱 → 플랫폼 키 → REST API 키] 상세), 닉네임 필수 동의, Client Secret 활성화. **자격 증명은 `services/api/.env`(gitignore 확인됨)** — bootRun 로딩 배선은 구현 시
 - [ ] V5 마이그레이션 재도입 — `users` + `submission.user_id NOT NULL` + 시드 귀속 (초안은 이번 세션에 작성했다가 **코드 미배선 상태로 두면 제출·CI가 깨져** 되돌림 — 코드와 같은 커밋으로 재도입, 설계는 ADR-0019 5절)
 - [ ] JWT 코덱(HS256, JDK 내장) + 단위 테스트(왕복·만료·변조·타입) — 선별적 TDD 첫 적용 대상
 - [ ] 카카오 OIDC — 코드 교환(WebClient), JWKS 캐시, id_token 검증(RS256·iss·aud·exp·nonce) + 검증기 단위 테스트
