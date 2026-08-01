@@ -66,7 +66,7 @@ go run ./cmd/judgecli -bundle <번들dir> -source <풀이.py> -time-ms 1000 -mem
 cd services/problem
 uv sync                      # 최초 1회 (이후 uv run이 알아서 동기화)
 uv run pytest -q             # 배관 테스트(LLM 불필요 — 페이크)
-uv run problem-generate --difficulty Silver --tags BFS   # 실생성 (GOOGLE_API_KEY 필요, .env)
+uv run --env-file .env problem-generate --difficulty Silver --tags BFS   # 실생성 (.env에 GOOGLE_API_KEY)
 uv run uvicorn problem.app:app --port 8000               # /health
 ```
 

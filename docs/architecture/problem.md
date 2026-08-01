@@ -24,7 +24,10 @@ src/problem/
 ├─ llm/           # 프로바이더 격리 — init_chat_model 팩토리. 개발=저가(Gemini 무료 티어),
 │                 # 주력은 품질 단계 재결정(사용자 확정 2026-08-01). 다변화(탈상관) 대비 주입 구조
 ├─ generation/    # 생성 체인 v0: 프롬프트 | 모델 | PydanticOutputParser
-├─ validation/    # (예정) 독립 풀이 합의·brute-force 앵커·stress testing·judge 실채점
+├─ validation/    # 1차 구현(2026-08-01): solver(독립 풀이 — 지문만 노출, solution_sketch 차단)
+│                 # + executor(로컬 subprocess — ⚠️임시, judge batch로 대체 예정)
+│                 # + consensus(순수 판정 — 실행기 주입, '풀이 간 합의 vs 초안 일치' 분리 진단)
+│                 # 2차 예정: brute-force 앵커·히든 케이스 생성·stress testing
 ├─ workflow/      # (예정) 파이프라인 지휘(생성→검증→발행) — 워크플로 엔진 미도입(ADR-0006)
 ├─ cli.py         # 수동 트리거(judgecli 대응물): uv run problem-generate
 └─ app.py         # FastAPI — 현재 /health만

@@ -122,8 +122,10 @@
 - [x] **LLM 프로바이더 전략 확정(사용자)** — 개발=저가/무료(Gemini 무료 티어)로 배관, 주력은 품질 단계 실측 비교 후 재결정. 어댑터 격리(`llm/provider.py`)
 - [x] **problem 스캐폴드** (2026-08-01) — Python 3.13+uv+FastAPI+LangChain 1.x, 생성 체인 v0(파서 방식)+CLI+/health, 페이크 테스트 3종 그린, CI problem 잡 추가
 - [x] protoc 버전 매트릭스 35.1 정렬(CI pin·api protobuf-java 4.35.1) — macOS 신규 개발 머신 합류로 드러난 어긋남, api 빌드 그린
-- [ ] **사용자 액션: Gemini API 키 발급** — `GOOGLE_API_KEY`를 `services/problem/.env`에 (AI Studio 무료 티어). 실호출 첫 생성은 키 이후
-- [ ] validation 모듈 1차 — 독립 풀이 N개 생성 → 실행 없이 합의 판정(로컬 실행기), brute-force 앵커. 실행기는 judge batch 재사용 전 임시
+- [x] **사용자 액션: Gemini API 키 발급** (2026-08-01) — `services/problem/.env`(gitignore 확인). **실생성 첫 검증 그린** — Silver/BFS 자체 소재 문제, 스키마 준수. 단 예제 출력의 정답 여부는 미검증(validation 모듈의 일)
+- [x] **validation 모듈 1차** (2026-08-01) — 독립 풀이 N개(지문만 노출 — `solution_sketch` 차단)·로컬 실행·합의 판정(순수 로직+실행기 주입). '풀이 간 합의 vs 초안 일치' 분리 진단, `problem-validate` CLI. **실측 E2E: 생성→풀이 3개→전원 일치→validated**. 테스트 7종 추가(총 10)
+- [ ] ⚠️ **임시 상태(파급 선언)**: LLM 생성 코드를 개발 머신 **무격리 subprocess**로 실행 중 — 샌드박스 원칙과 어긋남. Kafka 배선 시 judge batch 실채점으로 대체(executor.py 주석에도 명시)
+- [ ] validation 2차 — brute-force 앵커(작은 입력 대조+TLE 변별), 히든 케이스 생성(합의 출력을 정답으로 채택), stress testing·적대적 반례(engineering-notes 후보 ⑥⑦)
 - [ ] Kafka 배선 — python codegen(buf.gen.problem.yaml에 플러그인 추가)·generate 컨슈머·candidate 프로듀서
 - [ ] api 측 — 생성 요청 admin API·검수 큐 스키마(V7)·candidate 컨슈머
 - [ ] web admin — 검수 큐 UI(M3 검수 게이트)

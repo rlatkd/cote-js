@@ -189,7 +189,8 @@ curl -s -X POST localhost:4000/api/submissions \
 |---|---|---|
 | 배관 테스트 | `cd services/problem && uv run pytest -q` | 3 passed — 페이크 모델 초안 생성·파라미터 운반·스키마 불일치 실패 |
 | 헬스 | `uv run uvicorn problem.app:app --port 8000` 후 `curl /health` | `{"status":"ok"}` |
-| 실생성 (키 필요) | `uv run problem-generate --difficulty Silver --tags BFS` | ProblemDraft JSON — 제목·지문·예제·제약·풀이 스케치. 기존 문제 번안 아님(육안) |
+| 실생성 (키 필요) | `uv run --env-file .env problem-generate --difficulty Silver --tags BFS` | ProblemDraft JSON — 제목·지문·예제·제약·풀이 스케치. 기존 문제 번안 아님(육안). ✅ 2026-08-01 첫 실측 그린 |
+| 합의 검증 (키 필요) | `problem-generate ... > draft.json` 후 `uv run --env-file .env problem-validate draft.json --n 3` | ValidationResult JSON — 전원 일치 시 `validated: true`·exit 0, 불일치 시 사유(초안 오류 의심 진단 포함)·exit 1. ✅ 2026-08-01 첫 실측 그린(풀이 3/3 일치) |
 | 계약 | `cd contracts && buf lint && buf generate && buf generate --template buf.gen.problem.yaml` | lint 그린, 생성물 diff 없음(judge/gen에 problem 생성물 **없어야** 함) |
 
 ## 추가 예정 (해당 마일스톤 착수 시 이 문서에 절차 추가)

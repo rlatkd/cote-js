@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-08-01 16:57 — validation 1차: 합의 검증 E2E 관통 — 자답자채점 순환이 끊겼다
+
+- **CI 확인**: 직전 푸시(`e5bc14d` — 저장소명 `cote-js`로 변경돼 있음) 전부 성공 — 신규 problem 잡·protoc 35.1·2템플릿 드리프트 검사 첫 원격 실행 그린.
+- **한 일**: ① `validation/` 1차 — **solver**(독립 풀이 생성: **지문만 노출, `solution_sketch` 차단** — 노출하면 합의가 반향이 됨. 펜스 방어 제거) / **executor**(로컬 subprocess 실행+judge 규칙 출력 정규화 — ⚠️**무격리 임시**, 파급을 TODO·주석에 선언, judge batch로 대체 예정) / **consensus**(순수 판정+실행기 주입 — aggregate() 교훈 재적용. **'풀이 간 합의'와 '초안 기대 일치'를 분리 보고** — 풀이들이 다른 값에 합의하면 "초안 예제 출력 오류 의심" 진단, 정족수는 다수결이 아니라 n-1) ② `problem-validate` CLI(exit 코드로 판정) ③ 테스트 7종 추가(총 10 — 순수 판정·실행기 3분기·독립성·정규화) ④ 문서(TODO·architecture/problem·verification 절차 11).
+- **검증(실측)**: pytest 10 passed / **실전 E2E** — "우주 정거장의 에코 드론 관리"(구현·시뮬레이션) 생성 → 독립 풀이 3개 전원 실행 성공·두 예제 모두 기대 출력 일치(140·0) → `validated: true`. 검증 파이프라인의 첫 실물 판정.
+- **중단점**: 미커밋(이번 세션분 + 직전 문답 문서 5건). draft/validation 산출물은 스크래치에만(저장소 미포함).
+- **다음**: validation 2차(brute-force 앵커·히든 케이스 생성) 또는 Kafka 배선(python codegen — 임시 실행기 해소 겸). 권장은 **Kafka 배선 먼저**(임시 상태 조기 해소 + api 검수 큐로 이어지는 세로 슬라이스).
+
 ## 2026-08-01 15:10 — M3 착수: api↔AI 계약 + problem 서비스 첫 슬라이스 (ADR-0022)
 
 - **프로바이더 결정 경위(재발 방지)**: Claude가 Claude API를 기본값으로 깔고 진행하려다 **사용자 지적으로 중단** — 과금·키 발급 걸린 선택은 사용자 결정(개인 메모리 저장). 비교 후 사용자 확정: **저가/무료로 시작**(개발=Gemini 무료 티어 배관, 주력은 품질 단계 실측 재결정), 어댑터 격리.
@@ -13,7 +21,14 @@
 - **검증(실측)**: buf lint 그린, 2템플릿 생성 그린(judge/gen에 problem 생성물 없음 확인), pytest 3 passed, /health 200, api `gradlew build -x test` 그린(protobuf 4.35.1 정렬).
 - **함정(실측)**: **신규 macOS 개발 머신 합류로 protoc 버전 매트릭스 어긋남** — CI pin 33.1 vs brew 35.1 vs api 런타임 4.34.1. gencode(4.35.1)>런타임이면 클래스 로드 실패라 전부 35.1로 정렬(CI·gradle). 이 머신엔 Go·buf·protoc이 아예 없었음(기존 작업은 Windows) — brew 설치 경로를 RUN.md에 병기.
 - **중단점(15:24 세션 종료)**: 커밋·푸시 완료(`7d77169 feat: problem 서비스 기반 구축`). 이 푸시가 **변경된 CI의 첫 원격 실행**(신규 problem 잡·protoc 35.1 pin·2템플릿 드리프트 검사) — 결과 미확인. api 전체 테스트(Testcontainers)도 이 머신에서 미실행(빌드만).
-- **다음 세션 시작점**: ① CI 첫 실행 결과 확인(실패 시 러너 환경 이슈 우선 의심 — 7/28 pnpm 전례) ② **사용자 액션: Gemini API 키**(`GOOGLE_API_KEY` → `services/problem/.env`, AI Studio 무료) 후 `uv run problem-generate` 실생성 첫 검증(절차 11) ③ validation 모듈 1차(독립 풀이 합의) → Kafka 배선(python codegen) → api 검수 큐(V7)·admin. 시드 교체는 검수 게이트 완성 후.
+- **다음 세션 시작점**: ① CI 첫 실행 결과 확인(실패 시 러너 환경 이슈 우선 의심 — 7/28 pnpm 전례) ② ~~Gemini API 키~~ ③ validation 모듈 1차(독립 풀이 합의) → Kafka 배선(python codegen) → api 검수 큐(V7)·admin. 시드 교체는 검수 게이트 완성 후.
+
+### 16:50 추가 — Gemini 키 수령·실생성 첫 검증 그린
+
+- 사용자가 키 제공 → `services/problem/.env`(gitignore 실확인). 실행은 `uv run --env-file .env`(RUN·verification 절차 11 반영).
+- **실측**: `problem-generate --difficulty Silver --tags BFS` → "삼색 루미나의 신전" — 색상 순환 이동 BFS, 자체 소재, 스키마 완전 준수, 엣지(-1·0) 명세, 복잡도 근거 포함. 무료 티어 flash로 배관 품질 충분 확인.
+- **한계 명시**: 예제 출력의 정답 여부는 **미검증**(지문에 사소한 결함 1건 관찰 — "돌기둥(`num`)" 잔재 문구). 이게 바로 validation 모듈이 잡을 영역 — 다음 슬라이스의 실물 입력이 생겼다.
+- 사용자 문답 3건 기록: 모델 성능 필요성(반려율로 나타남 — 게이트가 하한 보장), Ollama 애로(M1 8GB 실측·자원 경합·능력), 무료 티어 쿼터(배관용 다리, 초과=종량 전환 신호) → engineering-notes.
 
 ## 2026-08-01 13:19 — 데이터 라이선스 확정(ADR-0021) — M3 선결 1/2 해소
 

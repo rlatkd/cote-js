@@ -21,6 +21,28 @@ class GenerationParams(BaseModel):
     instruction: str = Field(default="", description="관리자의 자유 서술 지시")
 
 
+class SolutionRun(BaseModel):
+    """풀이 하나의 예제별 실행 결과."""
+
+    outputs: list[str | None]  # 예제 순서대로. None = 실행 실패(에러·타임아웃)
+    matched_expected: bool  # 모든 예제에서 초안의 기대 출력과 일치했는가
+
+
+class ValidationResult(BaseModel):
+    """합의 검증 판정 — proto ValidationReport의 내부 대응물.
+
+    핵심 구분: '풀이들끼리의 합의'와 '초안 기대 출력과의 일치'는 다른 신호다.
+    풀이들이 서로 일치하는데 초안과 다르면 → 초안의 예제 출력이 틀렸을 가능성이
+    높다(생성 모델의 자답 오류). 둘을 분리 보고해야 반려 사유가 진단이 된다.
+    """
+
+    solutions_total: int
+    solutions_agreed: int  # 초안 기대 출력과 전 예제 일치한 풀이 수
+    validated: bool
+    reasons: list[str] = Field(default_factory=list)  # 반려·경고 사유(검수자용)
+    runs: list[SolutionRun] = Field(default_factory=list)
+
+
 class ProblemDraft(BaseModel):
     """LLM이 생성한 문제 초안 — 검증 전 상태.
 

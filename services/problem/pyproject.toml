@@ -26,3 +26,4 @@ dev = [
 
 [project.scripts]
 problem-generate = "problem.cli:main"
+problem-validate = "problem.validate_cli:main"
