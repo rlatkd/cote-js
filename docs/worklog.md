@@ -12,8 +12,8 @@
 - **한 일**: ① **api↔AI 계약 초안** — `contracts/proto/problem/v1`(generate·candidate): ValidationReport(합의 수·brute-force·judge 실채점), REJECTED도 발행(성공률 관측), 케이스 인라인+claim-check 진화 경로 주석 ② **코드젠 템플릿 분리** — `buf.gen.problem.yaml` 신설, 기본 템플릿에서 proto/problem 제외(judge 소유 디렉토리 오염 방지), CI 드리프트 검사 2템플릿화 ③ **problem 스캐폴드** — Python 3.13+uv+LangChain 1.x+FastAPI: domain(ProblemDraft)·llm(프로바이더 격리 `init_chat_model`)·generation(체인 v0=프롬프트|모델|PydanticOutputParser, 복제 금지·정답 유일·변별력 규칙을 프롬프트에 강제)·cli(`problem-generate`)·/health, 페이크 테스트 3종(초안 생성·파라미터 운반·스키마 불일치 실패) ④ **CI problem 잡**(uv sync --locked+pytest) ⑤ 문서: ADR-0022·architecture/problem.md 신설, RUN·verification 절차 11·contracts README·CLAUDE.md 2행.
 - **검증(실측)**: buf lint 그린, 2템플릿 생성 그린(judge/gen에 problem 생성물 없음 확인), pytest 3 passed, /health 200, api `gradlew build -x test` 그린(protobuf 4.35.1 정렬).
 - **함정(실측)**: **신규 macOS 개발 머신 합류로 protoc 버전 매트릭스 어긋남** — CI pin 33.1 vs brew 35.1 vs api 런타임 4.34.1. gencode(4.35.1)>런타임이면 클래스 로드 실패라 전부 35.1로 정렬(CI·gradle). 이 머신엔 Go·buf·protoc이 아예 없었음(기존 작업은 Windows) — brew 설치 경로를 RUN.md에 병기.
-- **중단점**: 전체 미커밋. api 전체 테스트(Testcontainers)는 이 머신에서 미실행(빌드만) — 다음 세션 인프라 기동 시 확인. **사용자 액션: Gemini API 키**(`GOOGLE_API_KEY` → `services/problem/.env`) — 실호출 첫 생성이 막혀 있는 유일 지점.
-- **다음**: validation 모듈 1차(독립 풀이 합의) → Kafka 배선(python codegen) → api 검수 큐(V7)·admin. 시드 교체는 검수 게이트 완성 후.
+- **중단점(15:24 세션 종료)**: 커밋·푸시 완료(`7d77169 feat: problem 서비스 기반 구축`). 이 푸시가 **변경된 CI의 첫 원격 실행**(신규 problem 잡·protoc 35.1 pin·2템플릿 드리프트 검사) — 결과 미확인. api 전체 테스트(Testcontainers)도 이 머신에서 미실행(빌드만).
+- **다음 세션 시작점**: ① CI 첫 실행 결과 확인(실패 시 러너 환경 이슈 우선 의심 — 7/28 pnpm 전례) ② **사용자 액션: Gemini API 키**(`GOOGLE_API_KEY` → `services/problem/.env`, AI Studio 무료) 후 `uv run problem-generate` 실생성 첫 검증(절차 11) ③ validation 모듈 1차(독립 풀이 합의) → Kafka 배선(python codegen) → api 검수 큐(V7)·admin. 시드 교체는 검수 게이트 완성 후.
 
 ## 2026-08-01 13:19 — 데이터 라이선스 확정(ADR-0021) — M3 선결 1/2 해소
 
