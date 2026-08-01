@@ -43,7 +43,7 @@ jobs:
       - run: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
       - uses: arduino/setup-protoc@v3
         with:
-          version: "33.1"
+          version: "35.1"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: lint
         working-directory: contracts
@@ -72,11 +72,11 @@ jobs:
       # 차이가 나면 실패시킨다 — "생성 후 커밋" 규율을 사람이 아닌 CI가 지킨다.
       - name: 생성물 동기화 검사
         run: |
-          cd contracts && buf generate && cd ..
+          cd contracts && buf generate && buf generate --template buf.gen.problem.yaml && cd ..
           # --ignore-cr-at-eol: 저장소 줄바꿈 정규화(.gitattributes)가 끝나기 전에도
           # Windows/Linux 차이로 오탐하지 않게 한다.
           if ! git diff --quiet --ignore-cr-at-eol -- services/judge/gen services/api/src/main/proto-gen; then
-            echo "::error::생성물이 .proto와 어긋납니다. 'cd contracts && buf generate' 후 커밋하세요."
+            echo "::error::생성물이 .proto와 어긋납니다. 'cd contracts && buf generate && buf generate --template buf.gen.problem.yaml' 후 커밋하세요."
             git diff --stat --ignore-cr-at-eol -- services/judge/gen services/api/src/main/proto-gen
             exit 1
           fi
@@ -114,6 +114,21 @@ jobs:
           cache: gradle
       # 통합 테스트(Testcontainers)는 Docker가 필요한데 ubuntu 러너에 기본 탑재돼 있다.
       - run: ./gradlew build --no-daemon
+
+  problem:
+    name: problem (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/problem
+    steps:
+      - uses: actions/checkout@v4
+      # 버전은 uv.lock이 진실원 — 워크플로에 파이썬 버전을 또 적지 않는다
+      # (web의 packageManager와 같은 원칙).
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --locked
+      # LLM 실호출 테스트는 없다 — 체인 배관은 페이크로 검증한다(ADR-0016).
+      - run: uv run pytest -q
 
   web:
     name: web (Next)

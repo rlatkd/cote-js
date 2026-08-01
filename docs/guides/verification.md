@@ -183,12 +183,23 @@ curl -s -X POST localhost:4000/api/submissions \
 | V6 데이터 | `SELECT DISTINCT result FROM submission` / `starter_template` 3행 / `problem_title` 컬럼 부재 | 저장값=enum name, 응답은 여전히 한국어 라벨(계약 불변) |
 | 스타터 병합 | `GET /api/problems/1000`의 `starterCode` | 3언어 — DB 오버라이드 NULL이어도 템플릿에서 채워짐 |
 
+### 11. M3 problem — 생성 체인 배관 (2026-08-01)
+
+| 항목 | 확인 방법 | 기대 |
+|---|---|---|
+| 배관 테스트 | `cd services/problem && uv run pytest -q` | 3 passed — 페이크 모델 초안 생성·파라미터 운반·스키마 불일치 실패 |
+| 헬스 | `uv run uvicorn problem.app:app --port 8000` 후 `curl /health` | `{"status":"ok"}` |
+| 실생성 (키 필요) | `uv run problem-generate --difficulty Silver --tags BFS` | ProblemDraft JSON — 제목·지문·예제·제약·풀이 스케치. 기존 문제 번안 아님(육안) |
+| 계약 | `cd contracts && buf lint && buf generate && buf generate --template buf.gen.problem.yaml` | lint 그린, 생성물 diff 없음(judge/gen에 problem 생성물 **없어야** 함) |
+
 ## 추가 예정 (해당 마일스톤 착수 시 이 문서에 절차 추가)
 
-- **problem/plagiarism**: 파이프라인 상태 전이, 유사도 질의 왕복
+- **problem 후속**: 검증 파이프라인(합의·brute-force·batch 채점) 상태 전이, Kafka 왕복 / **plagiarism**: 유사도 질의 왕복
 - **인증 후속**: 남의 제출 코드 조회 차단 등 세부 인가 경계(현재는 조회 전면 공개 정책)
 
 ## 갱신 이력
+
+- 2026-08-01 15:08 — 절차 11(M3 problem 배관) 신설: 페이크 테스트·헬스·실생성(키)·계약 2템플릿 생성 검사.
 
 - 2026-07-31 21:40 — 절차 10(M2·V6) 신설: Redis 팬아웃·rate limit 429·레인 동시성·저장값 코드화·스타터 병합.
 - 2026-07-31 21:02 — 절차 9(인증) 신설: V5·401 가드·로그인 302·실로그인·소유 귀속·로그아웃 + 토큰 정책은 단위 테스트가 상시 강제.

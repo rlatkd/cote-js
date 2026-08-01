@@ -1,0 +1,76 @@
+// 생성·검증을 마친 문제 후보 — problem → api. api가 소비해 검수 큐에 저장한다
+// (problem은 코어 DB 접근 금지 — 스키마당 단일 작성자, ADR-0006. 게시는 admin 승인 후 api가).
+// 토픽: problem.candidate
+// 초안(Draft): M3 구현 착수 시 실코드로 검증하며 확정한다.
+syntax = "proto3";
+
+package problem.v1;
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/error.proto";
+import "common/v1/trace.proto";
+
+option java_package = "com.cotejs.contracts.problem.v1";
+option java_multiple_files = true;
+
+// 입출력 쌍 — 공개 예제와 히든 케이스 공용.
+// 케이스 총량이 커지면(스트레스 테스트 대량 생성) Kafka 1MB 상한에 걸린다.
+// 그때는 judge 계약과 같은 claim-check(MinIO 번들 참조)로 진화한다 — 첫 슬라이스는 인라인.
+message IoPair {
+  string input = 1;
+  string output = 2;
+}
+
+// 자동 검증 리포트 — 검수자(사람)가 "무엇이 얼마나 검증됐는지" 보고 판단하는 근거.
+// 검증 설계: N개 독립 풀이 합의 + brute-force 대조 + batch 실채점(engineering-notes '생성 문제 정답 신뢰성').
+message ValidationReport {
+  // 독립 생성한 풀이 수와 그중 출력이 합의에 도달한 수.
+  uint32 solutions_total = 1;
+  uint32 solutions_agreed = 2;
+  // brute-force 대조 수행 여부(작은 입력 출력 일치 + 큰 입력 TLE 변별 확인).
+  bool brute_force_checked = 3;
+  // 대표 풀이가 judge(batch 레인) 실채점으로 전 케이스 통과했는지.
+  bool judge_verified = 4;
+  // 사람 검수자를 위한 자유 서술(생성 모델·반려 사유·특이사항).
+  string notes = 5;
+}
+
+enum CandidateStatus {
+  CANDIDATE_STATUS_UNSPECIFIED = 0;
+  // 자동 검증 통과 — 검수 큐 대상.
+  CANDIDATE_STATUS_VALIDATED = 1;
+  // 자동 검증 반려 — 게시 불가. api는 기록만 한다(생성 성공률 관측용).
+  CANDIDATE_STATUS_REJECTED = 2;
+}
+
+message ProblemCandidate {
+  // GenerationRequest.request_id 매칭 키.
+  int64 request_id = 1;
+
+  CandidateStatus status = 2;
+
+  // ---- 문제 본문 (api problem 스키마와 어휘를 맞춘다) ----
+  string title = 3;
+  string description = 4;   // 지문(markdown)
+  string input_spec = 5;    // 입력 형식 서술
+  string output_spec = 6;   // 출력 형식 서술
+  string difficulty = 7;
+  string tier = 8;
+  repeated string tags = 9;
+
+  // 제한 — 수치 규약(judge 계약과 동일). 시간 제한은 의도 풀이 실측의 여유 배수로 산정한다
+  // (learning-notes '오판정': 경계선 TLE 완화 관행).
+  uint32 time_limit_ms = 10;
+  uint32 memory_limit_mb = 11;
+
+  repeated IoPair examples = 12;      // 공개 예제(run 모드에서 사용)
+  repeated IoPair hidden_cases = 13;  // 히든 케이스(submit 채점용)
+
+  ValidationReport validation = 14;
+
+  // 파이프라인 자체가 실패한 경우(LLM 오류 등)의 구조화 표현. 정상 산출이면 비어 있다.
+  common.v1.Error failure = 15;
+
+  google.protobuf.Timestamp generated_at = 16;
+  common.v1.TraceContext trace = 17;
+}

@@ -1,0 +1,29 @@
+// 문제 생성 요청 — api(admin 트리거) → problem. api↔AI 경계도 Protobuf 단일 IDL(ADR-0009 방침).
+// 토픽: problem.generate
+// 초안(Draft): M3 구현 착수 시 실코드로 검증하며 확정한다(judge 계약과 같은 관행).
+syntax = "proto3";
+
+package problem.v1;
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/trace.proto";
+
+option java_package = "com.cotejs.contracts.problem.v1";
+option java_multiple_files = true;
+// Python(problem 서비스)은 파일 옵션이 필요 없다 — 생성 경로는 buf.gen.problem.yaml이 정한다.
+
+message GenerationRequest {
+  // api 코어 DB의 생성 요청 식별자. 후보(candidate) 매칭 키.
+  int64 request_id = 1;
+
+  // 생성 파라미터 — 값 어휘(티어 명칭 등)는 api가 진실원이고 여기선 운반만 한다.
+  // 채점 지식(judge 레지스트리)과 서빙 지식(api)을 가르는 기존 원칙과 동일하게,
+  // 생성 지식의 어휘 검증은 problem 파이프라인 안에서 한다.
+  string difficulty = 2;              // 예: "Silver"
+  repeated string tags = 3;           // 예: ["BFS", "그래프 탐색"]
+  // 관리자가 덧붙이는 자유 서술 지시(선택). 예: "격자 탐색 소재로".
+  string instruction = 4;
+
+  google.protobuf.Timestamp requested_at = 5;  // UTC 절대시각(ADR-0015)
+  common.v1.TraceContext trace = 6;            // 요청 흐름(ADR-0017)
+}

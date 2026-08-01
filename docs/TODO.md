@@ -81,7 +81,7 @@
 - [x] **첫 자동화 테스트** (2026-07-28) — judge executor 8종(출력 비교 경계·판정 우선순위·케이스 보존·미지원 언어·명세 불변식). 전략은 [ADR-0016](decisions/0016-test-strategy.md)
 - [x] **api 테스트** (2026-07-28) — 단위 13종(도메인 규칙·제출 정책) + **통합 3종**(Testcontainers Postgres로 멱등 저장 고정). [ADR-0016](decisions/0016-test-strategy.md)
 - [x] **CI 게이트** (2026-07-28) — [`.github/workflows/ci.yml`](../.github/workflows/ci.yml): contracts(`buf lint`·PR에서 `buf breaking`)·judge(`go vet/build/test`)·api(`gradlew build` — 통합 테스트 포함)·web(`lint`+`build`=계약 체크). 샌드박스 실채점·전구간 E2E는 flaky 위험으로 의도적 제외(수동 절차 유지)
-- [ ] **나머지 문제의 히든 테스트케이스** — 현재 1000번만 submit 채점 가능(예제 실행은 전 문제 가능). 단 시드 문제는 **버려질 픽스처**라 우선순위 낮음 — 데이터 라이선스 결론과 함께 판단
+- [ ] **나머지 문제의 히든 테스트케이스** — 현재 1000번만 submit 채점 가능(예제 실행은 전 문제 가능). [ADR-0021](decisions/0021-data-licensing.md)로 방향 확정: 시드는 M3 생성 문제로 교체 예정이므로 **기존 시드에 케이스를 더 붓지 않는다** — M3 교체 시 자연 해소
 - [x] `aggregate()` 주입 리팩터링 (2026-07-30) — 출력 조달자(`outputOf`) 주입으로 순수 함수화, 메서드→자유 함수(리시버 미사용이 드러낸 신호). 출력 비교 판정(AC/WA)을 파일시스템 없이 검증하는 테스트 추가([ADR-0016](decisions/0016-test-strategy.md)이 드러낸 부채 상환)
 - [x] **스타터 코드 구조 개선** (2026-07-31, V6) — 언어별 기본 템플릿(`starter_template`) + 문제별 오버라이드로 분리([ADR-0020](decisions/0020-data-debt-starter-templates.md))
 - [x] **web→api 추적 연결** (2026-07-30) — Next 서버가 `traceparent` 발급(신뢰 경계 안), 제출을 **Server Action으로 이전**, api는 파싱·검증 후 이어받기(`TraceContext.parse/child` + 테스트). [ADR-0018](decisions/0018-observability-tracing.md)
@@ -90,7 +90,7 @@
 - [ ] **샌드박스 2단계** (별도 마일스톤): cgroups/namespaces/seccomp 직접 제어 — 케이스별 메모리 피크 정밀 측정(cgroup `memory.peak`), 언어 중립 MLE 판정, seccomp 화이트리스트. 리눅스 기준 개발 머신 결정 필요
 - [ ] judge 언어 확장: C++·Java·JavaScript 러너 추가(executor 인터페이스 불변 — 컴파일 단계 자리 이미 확보)
 
-## 현재 스프린트: 인증 ([ADR-0019](decisions/0019-authentication-kakao-oidc.md)) — 구현 완료 (2026-07-31)
+## 현재 스프린트: 인증 ([ADR-0019](decisions/0019-authentication-kakao-oidc.md)) ✅ (구현 2026-07-31 · E2E 검증 2026-08-01)
 
 - [x] **사용자 액션** (2026-07-30): 카카오 앱 등록 — OIDC 활성화, Redirect URI(개편 콘솔: [앱 → 플랫폼 키 → REST API 키] 상세), 닉네임 필수 동의, Client Secret. 자격 증명 `services/api/.env`(gitignore)
 - [x] **V5 재도입** (2026-07-31) — `users` + `submission.user_id NOT NULL` + 조건부 시드 귀속. 기존 개발 DB(guest 픽스처 포함)에 귀속 실측 확인
@@ -101,8 +101,9 @@
 - [x] `NewSubmission.by: AuthPrincipal` — body user 필드 폐기, 제출=로그인 필수를 타입 불변식으로. 영속 user_id 배선
 - [x] web 배선 — Navbar 카카오 로그인/`@닉네임`+로그아웃, 세션은 layout(RSC)→props, Server Action 쿠키 포워딩, 401 안내
 - [x] OpenAPI 재생성(auth 엔드포인트 +279줄) + 계약 체크 그린. api 전체 빌드(31 tests)·web 빌드 그린
-- [ ] **실로그인 E2E(사용자 브라우저)** — 카카오 동의→복귀→닉네임 표시→제출→소유 귀속→로그아웃 (verification 절차 9)
-- [ ] 후속: refresh 자동 갱신 web 배선(현재 access 만료 시 재로그인), 배포 시 secure 쿠키·시크릿 회전
+- [x] **실로그인 E2E(사용자 브라우저)** (2026-08-01 사용자 확인) — 카카오 동의→복귀→닉네임 표시→제출→소유 귀속→로그아웃 (verification 절차 9)
+- [x] 후속: refresh 자동 갱신 web 배선 (2026-07-31 `SessionRefresher`로 완료 — 아래 스프린트)
+- [ ] 후속(배포 M5): secure 쿠키·시크릿 회전
 
 ## 현재 스프린트: 부채 상환 + M2 스케일아웃 (2026-07-31) ✅
 
@@ -115,13 +116,29 @@
 - [x] **페이지네이션** — `GET /api/submissions?limit&offset`(기본 50·상한 100), 전량 조회 계약 제거
 - [x] **샌드박스 점검** — cap-drop ALL·no-new-privileges·read-only·nobody·스왑 금지는 **1단계에 이미 적용돼 있음을 확인**. 잔여(케이스별 memory.peak·seccomp 화이트리스트)는 컨테이너 내 서브 cgroup 제어가 필요해 Docker CLI로 불가 — 리눅스 환경 결정 대기 유지
 
+## 현재 스프린트: M3 착수 — problem 서비스 ([ADR-0022](decisions/0022-m3-kickoff-problem-service.md)) 🔄
+
+- [x] **api↔AI 계약 초안** (2026-08-01) — `contracts/proto/problem/v1`(generate·candidate, ValidationReport·REJECTED 관측 포함), buf lint 그린. 코드젠 템플릿 분리(`buf.gen.problem.yaml` — judge 오염 방지), CI 드리프트 검사 2템플릿화
+- [x] **LLM 프로바이더 전략 확정(사용자)** — 개발=저가/무료(Gemini 무료 티어)로 배관, 주력은 품질 단계 실측 비교 후 재결정. 어댑터 격리(`llm/provider.py`)
+- [x] **problem 스캐폴드** (2026-08-01) — Python 3.13+uv+FastAPI+LangChain 1.x, 생성 체인 v0(파서 방식)+CLI+/health, 페이크 테스트 3종 그린, CI problem 잡 추가
+- [x] protoc 버전 매트릭스 35.1 정렬(CI pin·api protobuf-java 4.35.1) — macOS 신규 개발 머신 합류로 드러난 어긋남, api 빌드 그린
+- [ ] **사용자 액션: Gemini API 키 발급** — `GOOGLE_API_KEY`를 `services/problem/.env`에 (AI Studio 무료 티어). 실호출 첫 생성은 키 이후
+- [ ] validation 모듈 1차 — 독립 풀이 N개 생성 → 실행 없이 합의 판정(로컬 실행기), brute-force 앵커. 실행기는 judge batch 재사용 전 임시
+- [ ] Kafka 배선 — python codegen(buf.gen.problem.yaml에 플러그인 추가)·generate 컨슈머·candidate 프로듀서
+- [ ] api 측 — 생성 요청 admin API·검수 큐 스키마(V7)·candidate 컨슈머
+- [ ] web admin — 검수 큐 UI(M3 검수 게이트)
+- [ ] 시드 교체 — 검수 통과 생성 문제로 백준 파생 시드 5문제 대체(ADR-0021 부채)
+
 ## 보류 / 추후 재논의 (Deferred)
 
 - [ ] api 후속: ~~인증/인가~~(0019) · ~~페이지네이션~~ · ~~rate limiting~~(2026-07-31) → 잔여: **랭킹·통계(Redis sorted set — M5 리더보드와 함께)**, admin 문제 등록 API
 - [ ] M3 범위: 사람 검수 게이트 UI — web admin 라우트(검수 큐) + api admin API
+- [ ] M3 범위: **백준 파생 시드 5문제(1000·2231·1932·7576·9019) → 검수 통과한 생성 문제로 교체** ([ADR-0021](decisions/0021-data-licensing.md) 부채 — 공개 저장소의 시드 SQL도 재배포에 해당)
+- [ ] M3 범위: 외부 공개셋 채택 시 개별 라이선스 실확인(후보: Project Euler·ICPC 계열·HF 데이터셋 — 내부 용도 한정, [ADR-0021](decisions/0021-data-licensing.md))
+- [ ] **오판정 교정 경로** (2026-08-01 논의, learning-notes '오판정' 항 참조) — 문제 결함 발견 시 케이스 수정→batch 레인 전 제출 재채점(인프라는 있음, admin 트리거 부재), 유저 이의제기 채널. M3 검수 게이트와 함께 admin 축으로 판단
 - [ ] AI 아키텍처 확정 시 [architecture/](architecture/) 상세화 (problem.md/plagiarism.md)
 - [ ] api↔AI(problem·plagiarism) 경계 계약 — M3 착수 시 정의(방침: Protobuf 단일 IDL, [ADR-0009](decisions/0009-judge-kickoff-async-and-contracts.md))
 - [ ] **Kafka Streams 재검토** — 실시간 통계·채점 SLA 모니터링 등 스트림 집계 요구가 기능으로 들어올 때. 적용 후보·탈락 후보는 [engineering-notes](engineering-notes.md)
 - [ ] **Avro + Schema Registry 재검토** — 스키마 거버넌스(호환성 강제) 필요 시. Registry는 Protobuf도 지원하므로 IDL 교체 없이 추가 가능
-- [ ] 데이터 라이선스 문제 결론 (공개 데이터셋 vs 자체 시드 문제)
+- [x] **데이터 라이선스 결론** (2026-08-01, [ADR-0021](decisions/0021-data-licensing.md)) — 게시 문제=100% 자체 생산(M3 생성+검수), 외부 공개셋=내부 용도(few-shot 참고·M4 유사도 코퍼스)만+채택 시 라이선스 실확인, 크롤링·공개셋 게시 배제
 - [ ] 향후 문서 생성: 테스트 전략(테스트 도입 시), 배포 런북(K8s 시) — 데이터 모델은 [architecture/data-model.md](architecture/data-model.md)로 완료

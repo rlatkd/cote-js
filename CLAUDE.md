@@ -93,7 +93,8 @@
 | 테스트케이스 전달 | **claim-check** — MinIO 번들(버킷 `testdata`) + 메시지엔 키·sha256만, judge는 해시 기준 로컬 캐시 | 메시지 인라인(1MB 상한·반복 운반), judge→api HTTP 조회(동기 결합 재도입) |
 | 버전 정책 | **LTS/안정판 기준** — JDK 21 LTS, Boot 4.0.x(성숙 마이너), Node 22 LTS, Postgres 16. 최신 첫 릴리스 회피 | 최신 우선주의 |
 | Docker 사용 | **개발 = 인프라만** compose(postgres·kafka(KRaft 단일노드)·minio → redis 예정). 앱은 호스트 네이티브(핫리로드·디버거). 앱 컨테이너화는 배포 마일스톤(M5)에서 | 개발용 앱 컨테이너 |
-| 문제 생성 | LLM API + LangChain | 자체 모델 파인튜닝, LlamaIndex |
+| 문제 생성 | LLM API + LangChain — **프로바이더는 어댑터 격리, 개발 단계=저가/무료(Gemini 무료 티어), 주력은 품질 단계 재결정. 과금·키 발급 걸린 선택은 사용자 결정**([ADR-0022](docs/decisions/0022-m3-kickoff-problem-service.md)) | 자체 모델 파인튜닝(탈상관 관점 재확인 — learning-notes), LlamaIndex |
+| 문제 데이터 | **게시 문제 = 100% 자체 생산**(M3 생성+검수, 백준 파생 시드는 M3에서 교체) · 외부 공개셋은 **내부 용도만**(few-shot 참고·M4 유사도 코퍼스, 채택 시 라이선스 실확인) ([ADR-0021](docs/decisions/0021-data-licensing.md)) | 기존 사이트 크롤링, 공개셋 게시(라이선스 세탁 위험) |
 | 임베딩(유사도) | 자체 Sentence Transformer (PyTorch / HuggingFace) | 임베딩 API |
 | Vector 검색 | pgvector | FAISS / Milvus |
 | Main DB | PostgreSQL | MySQL |
@@ -118,6 +119,6 @@
 
 ### 모노레포 구조 (확정 — [ADR-0008](docs/decisions/0008-service-naming-and-group.md), 루트 구성은 [ADR-0010](docs/decisions/0010-contracts-root-group.md) 개정)
 
-- **`services/` = 제품 서비스 전체의 그룹** (순수 그룹 폴더, 자체 도구 설정 없음). 현재 `web`(Next/pnpm)·`api`(Kotlin/Gradle), 추후 `judge`(Go)·`problem`·`plagiarism`(Python)도 여기에. **각 서비스가 자기 빌드 도구를 자기 안에 소유.** 루트는 `services / infra / docs / contracts` **4개념**([ADR-0010](docs/decisions/0010-contracts-root-group.md) — `contracts/`=언어 중립 IDL 스키마 거처. 구 `@cotejs/contracts`(TS 타입 공유, 폐기)와 이름만 같고 다른 것).
+- **`services/` = 제품 서비스 전체의 그룹** (순수 그룹 폴더, 자체 도구 설정 없음). 현재 `web`(Next/pnpm)·`api`(Kotlin/Gradle)·`judge`(Go)·`problem`(Python/uv), 추후 `plagiarism`(Python)도 여기에. **각 서비스가 자기 빌드 도구를 자기 안에 소유.** 루트는 `services / infra / docs / contracts` **4개념**([ADR-0010](docs/decisions/0010-contracts-root-group.md) — `contracts/`=언어 중립 IDL 스키마 거처. 구 `@cotejs/contracts`(TS 타입 공유, 폐기)와 이름만 같고 다른 것).
 - **네이밍 = 2층 체계**: 상위 = **책임 영역**(`web` 화면 · `api` 비즈로직/서빙 · `judge` 채점 · `problem` 문제 제작 공정 · `plagiarism` 표절 탐지), 하위 = **처리 단계**(judge: executor·sandbox·verdict / problem: generation·validation·workflow / plagiarism: embedding·retrieval·scoring). 은유(구 arena·hub·setter·scout) 금지 — 경위는 [ADR-0008](docs/decisions/0008-service-naming-and-group.md).
 - **api = 문제 서빙, problem = 문제 제작** — 이름 겹침 주의. 구 tester는 problem의 `validation` 단계([ADR-0006](docs/decisions/0006-service-seams-and-ai-consolidation.md)).

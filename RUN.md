@@ -60,11 +60,24 @@ go run ./cmd/judgecli -bundle <번들dir> -source <풀이.py> -time-ms 1000 -mem
 
 번들 레이아웃: `<번들dir>/cases/01.in, 01.out, 02.in, ...`
 
+## problem (AI 문제 생성 — M3, uv 필요: `brew install uv`)
+
+```bash
+cd services/problem
+uv sync                      # 최초 1회 (이후 uv run이 알아서 동기화)
+uv run pytest -q             # 배관 테스트(LLM 불필요 — 페이크)
+uv run problem-generate --difficulty Silver --tags BFS   # 실생성 (GOOGLE_API_KEY 필요, .env)
+uv run uvicorn problem.app:app --port 8000               # /health
+```
+
 ## 계약(Protobuf) 코드 재생성 (`contracts/*.proto`를 바꿨을 때)
 
 ```bash
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest   # 최초 1회 (buf도: go install github.com/bufbuild/buf/cmd/buf@latest)
-cd contracts && buf lint && buf generate    # → services/judge/gen 재생성 → 커밋
+# macOS는 brew로도 가능: brew install go buf protobuf (protoc은 CI pin과 같은 35.x 확인)
+cd contracts && buf lint && buf generate && buf generate --template buf.gen.problem.yaml
+# → services/judge/gen + services/api/src/main/proto-gen 재생성 → 커밋
+# (problem/v1은 전용 템플릿 — judge에 Go 생성물을 만들지 않기 위함, ADR-0022)
 ```
 
 ## API 계약 타입 재생성 (api 응답 계약이 바뀌었을 때)

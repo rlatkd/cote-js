@@ -1,0 +1,17 @@
+# problem/v1 전용 코드 생성 — `cd contracts && buf generate --template buf.gen.problem.yaml`
+#
+# 본 템플릿을 분리한 이유: 기본 템플릿(buf.gen.yaml)의 Go 플러그인은 judge 소유
+# 디렉토리에 생성하는데, judge는 problem/v1의 소비자가 아니다. 플러그인별 경로
+# 필터가 없어(buf v2) 입력을 나눠 두 번 생성한다. 소비자별 생성 대상:
+#   - api(Java): problem.candidate 소비·problem.generate 발행
+#   - problem(Python): Kafka 배선 슬라이스에서 python 플러그인 추가 예정
+version: v2
+
+plugins:
+  - protoc_builtin: java
+    out: ../services/api/src/main/proto-gen
+
+inputs:
+  - directory: .
+    paths:
+      - proto/problem

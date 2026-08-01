@@ -6,8 +6,8 @@
 
 **이 폴더의 목적은 "메시지 정의"가 아니라 "규약의 강제"다.** 시간·실패·추적처럼 여러 서비스가 공유하는 개념을 여기 타입으로 두면, 규약이 문서가 아니라 **각 언어의 타입**이 되어 어길 수 없게 된다. 서로 다른 서비스가 각자 번역(ACL)만 하면 N×N으로 해석이 갈라지지만, 공표 언어가 있으면 번역이 얇아진다.
 
-- 현재: api↔judge Kafka 메시지 (Protobuf, [ADR-0009](../docs/decisions/0009-judge-kickoff-async-and-contracts.md))
-- 예정: api↔AI(problem·plagiarism) 경계 (M3~)
+- 현재: api↔judge Kafka 메시지 (Protobuf, [ADR-0009](../docs/decisions/0009-judge-kickoff-async-and-contracts.md)) · api↔problem 생성 파이프라인 (`problem/v1`, [ADR-0022](../docs/decisions/0022-m3-kickoff-problem-service.md))
+- 예정: api↔plagiarism 경계 (M4~)
 - **해당 없음**: web↔api REST — api가 OpenAPI 스펙을 생성하고 web이 codegen하는 방식([ADR-0007](../docs/decisions/0007-backend-kotlin-return.md))이라 원본이 api 코드다.
 
 > 구 `platform/contracts`(TS 타입 공유 패키지, 폐기)와 이름만 같고 다른 것 — 그건 동일 언어 전제의 라이브러리, 이건 폴리글랏 전제의 IDL 저장소.

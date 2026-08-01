@@ -1,0 +1,28 @@
+[project]
+name = "problem"
+version = "0.1.0"
+description = "AI 문제 생성·검증 파이프라인 — 생성(generation)·검증(validation)·지휘(workflow)"
+readme = "README.md"
+authors = [
+    { name = "rlatkd", email = "rlatkdgns042@naver.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.141.1",
+    "langchain>=1.0",
+    "langchain-google-genai>=4.3.2",
+    "pydantic>=2",
+    "uvicorn>=0.52.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[project.scripts]
+problem-generate = "problem.cli:main"

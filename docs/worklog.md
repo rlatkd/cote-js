@@ -6,6 +6,29 @@
 
 ---
 
+## 2026-08-01 15:10 — M3 착수: api↔AI 계약 + problem 서비스 첫 슬라이스 (ADR-0022)
+
+- **프로바이더 결정 경위(재발 방지)**: Claude가 Claude API를 기본값으로 깔고 진행하려다 **사용자 지적으로 중단** — 과금·키 발급 걸린 선택은 사용자 결정(개인 메모리 저장). 비교 후 사용자 확정: **저가/무료로 시작**(개발=Gemini 무료 티어 배관, 주력은 품질 단계 실측 재결정), 어댑터 격리.
+- **한 일**: ① **api↔AI 계약 초안** — `contracts/proto/problem/v1`(generate·candidate): ValidationReport(합의 수·brute-force·judge 실채점), REJECTED도 발행(성공률 관측), 케이스 인라인+claim-check 진화 경로 주석 ② **코드젠 템플릿 분리** — `buf.gen.problem.yaml` 신설, 기본 템플릿에서 proto/problem 제외(judge 소유 디렉토리 오염 방지), CI 드리프트 검사 2템플릿화 ③ **problem 스캐폴드** — Python 3.13+uv+LangChain 1.x+FastAPI: domain(ProblemDraft)·llm(프로바이더 격리 `init_chat_model`)·generation(체인 v0=프롬프트|모델|PydanticOutputParser, 복제 금지·정답 유일·변별력 규칙을 프롬프트에 강제)·cli(`problem-generate`)·/health, 페이크 테스트 3종(초안 생성·파라미터 운반·스키마 불일치 실패) ④ **CI problem 잡**(uv sync --locked+pytest) ⑤ 문서: ADR-0022·architecture/problem.md 신설, RUN·verification 절차 11·contracts README·CLAUDE.md 2행.
+- **검증(실측)**: buf lint 그린, 2템플릿 생성 그린(judge/gen에 problem 생성물 없음 확인), pytest 3 passed, /health 200, api `gradlew build -x test` 그린(protobuf 4.35.1 정렬).
+- **함정(실측)**: **신규 macOS 개발 머신 합류로 protoc 버전 매트릭스 어긋남** — CI pin 33.1 vs brew 35.1 vs api 런타임 4.34.1. gencode(4.35.1)>런타임이면 클래스 로드 실패라 전부 35.1로 정렬(CI·gradle). 이 머신엔 Go·buf·protoc이 아예 없었음(기존 작업은 Windows) — brew 설치 경로를 RUN.md에 병기.
+- **중단점**: 전체 미커밋. api 전체 테스트(Testcontainers)는 이 머신에서 미실행(빌드만) — 다음 세션 인프라 기동 시 확인. **사용자 액션: Gemini API 키**(`GOOGLE_API_KEY` → `services/problem/.env`) — 실호출 첫 생성이 막혀 있는 유일 지점.
+- **다음**: validation 모듈 1차(독립 풀이 합의) → Kafka 배선(python codegen) → api 검수 큐(V7)·admin. 시드 교체는 검수 게이트 완성 후.
+
+## 2026-08-01 13:19 — 데이터 라이선스 확정(ADR-0021) — M3 선결 1/2 해소
+
+- **결정(사용자 확정)**: **C안** — 게시 문제=100% 자체 생산(M3 생성물+검수, 수작성 소수), 외부 공개셋은 내부 용도(few-shot 참고·M4 유사도 코퍼스)만+채택 시 라이선스 실확인. 크롤링(A)·공개셋 게시(B)는 배제. [ADR-0021](decisions/0021-data-licensing.md) 발행, CLAUDE.md 확정 행 추가.
+- **실측 발견**: dev 시드 5문제(1000·2231·1932·7576·9019)가 실제 백준 ID·제목·제약 그대로의 파생물 — 공개 저장소의 시드 SQL도 재배포에 해당 → M3에서 생성 문제로 교체(TODO 등재).
+- **사용자 문답 5건(전부 기록)**: ① 외부 데이터의 역할 구분(생성 참고 vs 유사도 검증, 정답 검증과는 무관) → engineering-notes ② AI 생성 문제의 정답 검증(자답자채점 순환을 독립 풀이 합의+실채점으로 끊기, batch 레인=검증 인프라) → engineering-notes 구체화 ③ 오판정(false WA) 3계층과 "교정 가능성으로 설계" → learning-notes+TODO(오판정 교정 경로) ④ 기존 저지가 잘 채점하는 이유(엔진이 아니라 프로세스×군중, 생존 편향) → learning-notes ⑤ 축적의 세 형태(도구·지식은 이식 가능, 탈상관은 근사만)+로컬 LLM 파인튜닝 배제 근거(수렴 연산·축적 소비·능력 상한) → learning-notes, M3 파이프라인 후보 ⑥⑦⑧(stress testing·적대적 반례·모델 다변화) engineering-notes 등재.
+- **중단점**: 구현 없음(논의·문서 세션). 미커밋: ADR-0021+문서 정합(TODO·worklog·engineering/learning-notes·CLAUDE.md)+어제분 E2E 체크.
+- **다음**: M3 잔여 선결 = **api↔AI Protobuf 계약** 정의 → M3 파이프라인 설계(교차검증+stress testing 후보 포함) 착수 가능.
+
+## 2026-08-01 12:31 — 실로그인 E2E 사용자 검증 완료 — 인증 스프린트 마감
+
+- **한 일**: 사용자가 실로그인 E2E(verification 절차 9: 카카오 동의→복귀→닉네임 표시→제출→소유 귀속→로그아웃) 완료를 확인. 직전 두 세션의 미커밋분도 커밋됨(`8e6bad1` 인증, `9d26e13` V6·스케일아웃). TODO 인증 스프린트 ✅ 마감, refresh 자동 갱신 항목 정리(2026-07-31 완료분과 중복 해소, secure 쿠키·시크릿 회전은 배포 M5로 이관).
+- **중단점**: 열린 작업 없음. M1·M2 마감 + 인증 검증까지 완료된 클린 상태.
+- **다음**: **M3(AI 문제 생성)** — 선결: ① 데이터 라이선스 결론 ② api↔AI Protobuf 계약. 백로그: admin 문제 등록 API, 샌드박스 2단계(리눅스), 랭킹(M5).
+
 ## 2026-07-31 21:45 — 부채 상환(V6)·M2 스케일아웃 완료 — M1·M2 로드맵 마감 (ADR-0020)
 
 - **범위(사용자 지시 "AI 제외 전부")**: A 잔여 부채 + B M2 + D 샌드박스. M5(랭킹·콘테스트·K8s)는 미착수 마일스톤이라 제외로 해석.

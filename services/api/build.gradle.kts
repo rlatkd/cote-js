@@ -53,7 +53,7 @@ dependencies {
 	implementation("tools.jackson.module:jackson-module-kotlin")
 	// judge와의 Kafka 계약 — Protobuf 직렬화 + Kafka 클라이언트를 코루틴으로 직접 사용.
 	// spring-kafka(@KafkaListener)·reactor-kafka를 쓰지 않는 이유는 ADR-0012 참조.
-	implementation("com.google.protobuf:protobuf-java:4.34.1")
+	implementation("com.google.protobuf:protobuf-java:4.35.1")
 	implementation("org.apache.kafka:kafka-clients")
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive")
 	// 테스트 번들(claim-check) 발행 — S3 호환 비동기 클라이언트(로컬 MinIO → 배포 시 S3)
