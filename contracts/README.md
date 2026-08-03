@@ -16,13 +16,19 @@
 
 ```
 contracts/
+├─ buf.gen.yaml            # Go(judge)+Java(api) — proto/problem 제외
+├─ buf.gen.problem.yaml    # Java(api) — proto/problem만
+├─ buf.gen.python.yaml     # Python(problem) — 전체(problem은 judge·common의 소비자, ADR-0023)
 └─ proto/
    ├─ common/v1/           # 모든 서비스가 공유하는 개념 (ADR-0017)
    │  ├─ trace.proto       #   상관관계 컨텍스트 — 흐름을 잇는 실(W3C Trace Context 형식)
    │  └─ error.proto       #   실패 표현 — 귀책(누구 잘못)·재시도 가능 여부를 발신자가 명시
-   └─ judge/v1/            # api↔judge 채점 이음새 (버전 = 패키지에 포함)
-      ├─ submission.proto  #   실행 요청 (api·problem → judge)
-      └─ result.proto      #   판정 결과 (judge → api)
+   ├─ judge/v1/            # api·problem↔judge 채점 이음새 (버전 = 패키지에 포함)
+   │  ├─ submission.proto  #   실행 요청 (api·problem → judge. 검증 트래픽=음수 id 공간)
+   │  └─ result.proto      #   판정 결과 (judge → api·problem. 출력 동일성 해시 포함)
+   └─ problem/v1/          # api↔problem 생성 파이프라인 (ADR-0022)
+      ├─ generation.proto  #   생성 요청 (api → problem)
+      └─ candidate.proto   #   검증 리포트 포함 후보 (problem → api)
 ```
 
 ## 공통 규약 (여기 타입이 곧 규칙)
@@ -39,14 +45,17 @@ contracts/
 |---|---|---|
 | `submission.run` | `judge.v1.Submission` | api → judge (예제 실행, 저지연 레인) |
 | `submission.submit` | `judge.v1.Submission` | api → judge (정식 제출 레인) |
-| `submission.batch` | `judge.v1.Submission` | problem → judge (교차검증 대량 실행, 최저 우선 레인) |
-| `submission.result` | `judge.v1.JudgeResult` | judge → api |
+| `submission.batch` | `judge.v1.Submission` | problem → judge (교차검증 대량 실행, 최저 우선 레인. [ADR-0023](../docs/decisions/0023-problem-kafka-wiring.md)) |
+| `submission.result` | `judge.v1.JudgeResult` | judge → api·problem (problem은 그룹 없이 자기 검증 제출만 상관 수집) |
+| `problem.generate` | `problem.v1.GenerationRequest` | api → problem (생성 요청, [ADR-0022](../docs/decisions/0022-m3-kickoff-problem-service.md)) |
+| `problem.candidate` | `problem.v1.ProblemCandidate` | problem → api (검증 후보 — VALIDATED/REJECTED/파이프라인 실패) |
 
 테스트 데이터는 메시지에 싣지 않는다 — MinIO 번들 참조(키+해시)만 실어 나르는 **claim-check** 패턴([ADR-0009] 결정 2).
 
 ## 상태
 
-**초안(Draft).** 필드 구성은 judge 구현 착수 시 실코드로 검증하며 확정한다(특히 보류 결정 3건 — 샌드박스·언어 범위·SSE — 의 확정에 따라 조정 여지). 코드젠 도구(buf 등)·빌드 연동도 그때 확정.
+- `judge/v1`·`common/v1`: **실코드 검증 완료** — api·judge·problem 세 소비자가 실전에서 쓴다.
+- `problem/v1`: **초안(Draft)** — 필드 구성은 api 검수 큐(candidate 컨슈머) 구현 시 마저 확정.
 
 ## 스키마 진화 규칙 (Protobuf)
 

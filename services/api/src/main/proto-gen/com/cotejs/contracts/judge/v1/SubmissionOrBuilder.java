@@ -13,6 +13,10 @@ public interface SubmissionOrBuilder extends
   /**
    * <pre>
    * 코어 DB(submission.id)의 식별자. 결과 매칭 키.
+   *
+   * id 공간 분할(M3~): batch 레인의 검증 트래픽(problem이 발행하는 독립 풀이 실채점)은
+   * **음수 id**를 쓴다 — 코어 DB 시퀀스(양수)와 절대 충돌하지 않고, api 결과 컨슈머는
+   * 미지 제출을 스킵하므로(멱등 반영의 기존 규칙) 별도 분기 없이 공존한다.
    * </pre>
    *
    * <code>int64 submission_id = 1 [json_name = "submissionId"];</code>

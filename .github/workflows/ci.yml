@@ -72,12 +72,14 @@ jobs:
       # 차이가 나면 실패시킨다 — "생성 후 커밋" 규율을 사람이 아닌 CI가 지킨다.
       - name: 생성물 동기화 검사
         run: |
-          cd contracts && buf generate && buf generate --template buf.gen.problem.yaml && cd ..
+          cd contracts && buf generate && buf generate --template buf.gen.problem.yaml && buf generate --template buf.gen.python.yaml && cd ..
+          # python 생성물은 services/problem/src 안의 생성 전용 경로 3곳(common·judge·problem/v1)만 본다.
+          GEN_PATHS="services/judge/gen services/api/src/main/proto-gen services/problem/src/common services/problem/src/judge services/problem/src/problem/v1"
           # --ignore-cr-at-eol: 저장소 줄바꿈 정규화(.gitattributes)가 끝나기 전에도
           # Windows/Linux 차이로 오탐하지 않게 한다.
-          if ! git diff --quiet --ignore-cr-at-eol -- services/judge/gen services/api/src/main/proto-gen; then
-            echo "::error::생성물이 .proto와 어긋납니다. 'cd contracts && buf generate && buf generate --template buf.gen.problem.yaml' 후 커밋하세요."
-            git diff --stat --ignore-cr-at-eol -- services/judge/gen services/api/src/main/proto-gen
+          if ! git diff --quiet --ignore-cr-at-eol -- $GEN_PATHS; then
+            echo "::error::생성물이 .proto와 어긋납니다. 'cd contracts && buf generate && buf generate --template buf.gen.problem.yaml && buf generate --template buf.gen.python.yaml' 후 커밋하세요."
+            git diff --stat --ignore-cr-at-eol -- $GEN_PATHS
             exit 1
           fi
 

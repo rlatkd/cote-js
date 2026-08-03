@@ -289,6 +289,7 @@ func toProto(r domain.JudgeResult, trace *commonv1.TraceContext) *judgev1.JudgeR
 			Verdict:      verdictToProto(c.Verdict),
 			ExecTimeMs:   c.ExecTimeMS,
 			MemoryUsedKb: c.MemoryUsedKB,
+			OutputSha256: c.OutputSHA256,
 		})
 	}
 	return &judgev1.JudgeResult{

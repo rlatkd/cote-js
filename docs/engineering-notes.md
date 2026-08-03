@@ -7,7 +7,21 @@
 
 ## 진행 중 논의 (Deliberation Log)
 
-### LLM 프로바이더 선정 (2026-08-01 15:08) → ✅ 단계 전략 확정, 주력은 품질 단계 재결정
+### problem Kafka 배선 — 구현 판단 로그 (2026-08-03 21:10) → ✅ [ADR-0023](decisions/0023-problem-kafka-wiring.md)
+
+큰 판단(클라이언트 선정·해시 계약·음수 id·그룹 없는 결과 소비·python codegen 템플릿)은 ADR-0023에. 여기는 ADR에 안 담은 작은 판단들:
+
+- **합의 판정의 인터페이스를 "실행기 주입"에서 "결과 값 수신"으로 재변경** — 1차의 `RunFn(code, stdin)→stdout`은 실행이 (풀이×예제) 단위 동기 호출일 때의 형태다. judge 실채점은 풀이 1건=제출 1건(전 예제 일괄)이고 반환도 원문이 아니라 해시라 인터페이스가 맞지 않는다. 콜러블 주입을 유지하는 대신 **`evaluate_consensus(outcomes, draft)` 순수 함수**로 — 실행(비동기·Kafka)과 판정(순수)이 완전히 분리되고 테스트는 더 단순해졌다(aggregate 교훈의 재적용이자 진화).
+- **결과 대기 타임아웃의 처치** — 부분 도착이어도 전체 실패(JudgeUnavailable)로 올린다. 부분 결과로 합의를 돌리면 "judge가 느렸을 뿐인데 반려"가 나와 성공률 지표가 오염된다. 인프라 실패는 `failure(retryable=true)`, 초안 결함은 REJECTED — 이 구분이 이 슬라이스 오류 설계의 축.
+- **워커 종료 처리의 Windows 한계** — asyncio `add_signal_handler`가 Windows에서 제한적이라 KeyboardInterrupt+finally 정리로 단순화. 리눅스 배포(M5)에서 graceful shutdown(진행 중 파이프라인 완주 후 커밋) 재검토.
+- **프로브 request_id = 음수(-epoch)** — 검증 제출 id와 같은 발상: api가 발급하는 정식 request_id(양수 시퀀스 예정)와 개발 주입이 충돌하지 않게.
+- **미결(다음 슬라이스로)**: ① api candidate 컨슈머의 request_id 멱등 흡수(중복 후보 — at-least-once의 짝) ② 히든 케이스 생성에 필요한 출력 원문 조달(해시 한계 — ADR-0023 '뒤집히는 조건') ③ problem의 OTel SDK 도입 여부(현재 로그 trace_id만).
+
+### LLM 프로바이더 선정 (2026-08-01 15:08) → ✅ 단계 전략 확정, 주력은 품질 단계 재결정 → 개발 프로바이더 OpenRouter 전환 (2026-08-03)
+
+**후속(2026-08-03 22:44) — Gemini 보류, OpenRouter 전환(사용자 확정)**: Windows 머신 첫 실호출에서 Gemini가 429 `RESOURCE_EXHAUSTED` **"prepayment credits are depleted"** — 무료 티어 쿼터 에러("You exceeded your current quota")가 아니라 **결제 상태 에러**다. 같은 키가 8/1 macOS에선 동작했고, **신규 프로젝트의 새 키도 동일 에러** → 프로젝트 단위가 아니라 계정(결제 계정) 단위 문제로 판단. 검색 결과 동일 증상 다수 보고(결제 정상 계정 포함 — Google 쪽 동기화 이슈 추정, 공식 해결책 없음). 대안 비교(Groq 30RPM/OpenRouter 무료 28+종/GitHub Models/Mistral 2RPM/Cerebras) 후 **사용자 선택: OpenRouter** — 근거는 키 하나로 모델 다변화(검증 설계 후보 ⑧ 탈상관)와 무료 한도. **일단 무충전(일 50 요청)으로 시작, $10 충전(일 1,000 영구)은 부족해지면**(사용자 결정). 구현: `provider.py`에 `openrouter:` 프리픽스(OpenAI 호환 엔드포인트 — 집합소라 init_chat_model 네이티브 아님) + 호출 타임아웃 180s. Gemini 키는 .env에 보존(복구 시 재사용).
+
+**무료 모델 실측(2026-08-03, 같은 날 세 모델)**: ① `nemotron-3-ultra-550b:free` — 스모크는 2s인데 **풀이 생성 1건 19분+ 미완**(대형 모델 무료 티어의 생성 속도 상한) ② `gemma-4-31b:free` — 스모크 12s 성공 후 6분 뒤 **업스트림 공유 풀 고갈 429**(무료 모델은 이용자 공유 풀이라 시간대별 로터리) ③ `nemotron-3-super-120b-a12b:free` — **0.9s 응답, 개발용 확정**(NVIDIA 자체 호스팅·MoE 12B 활성). 교훈: **무료 모델 선정은 벤치마크가 아니라 가용성·속도 실측의 문제**고, 스모크 1콜 통과가 파이프라인 4콜 완주를 보장하지 않는다. 파이프라인의 재시도 가능 실패(`GENERATION_FAILED, retryable=true`)가 이 변동성을 흡수하는 설계임이 실전 확인됨.
 
 **경위**: M3 착수 시 Claude가 Claude API를 기본값으로 깔고 진행하려다 **사용자 지적**("멋대로 정한 것 같다")으로 중단 — 프로바이더는 과금·키 발급이 걸린 **사용자 결정 사항**(재발 방지 개인 메모리 저장). 비교축(품질/비용/생태계/키 발급) 제시 후 사용자 선택: **저가/무료로 시작** — 개발 단계는 Gemini 무료 티어 등으로 배관을 뚫고, 생성 품질 단계에서 주력을 실측 비교 후 재결정. 검증 다변화(탈상관)로 최종형은 복수 조합이 유력하므로 구현은 `init_chat_model` 뒤 격리. 미결: 주력 프로바이더(품질 단계), 다변화 시 모델 계열 구성.
 

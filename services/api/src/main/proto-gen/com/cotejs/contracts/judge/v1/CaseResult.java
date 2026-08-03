@@ -29,6 +29,7 @@ private static final long serialVersionUID = 0L;
   }
   private CaseResult() {
     verdict_ = 0;
+    outputSha256_ = "";
   }
 
   public static final com.google.protobuf.Descriptors.Descriptor
@@ -100,6 +101,63 @@ private static final long serialVersionUID = 0L;
     return memoryUsedKb_;
   }
 
+  public static final int OUTPUT_SHA256_FIELD_NUMBER = 5;
+  @SuppressWarnings("serial")
+  private volatile java.lang.Object outputSha256_ = "";
+  /**
+   * <pre>
+   * 정규화된 실제 출력의 sha256(hex) — 출력이 존재하는 판정(AC·WA)에서만 채워진다.
+   * 용도: problem의 합의 검증(M3)이 "풀이 간 합의 vs 초안 기대 일치"를 분리 진단하려면
+   * 출력의 동일성 비교가 필요한데, 출력 원문을 결과 토픽에 싣는 것은 과하다(크기·노출).
+   * 동일성 판단엔 해시로 충분하다. 정규화 규칙은 judge의 비교 규칙과 동일
+   * (CRLF→LF, 각 줄 후행 공백·탭 제거, 말미 빈 줄 제거) — 소비자는 기대 출력에
+   * 같은 규칙을 적용해 해시를 만들면 AC 여부와 무관하게 동일성을 판정할 수 있다.
+   * </pre>
+   *
+   * <code>string output_sha256 = 5 [json_name = "outputSha256"];</code>
+   * @return The outputSha256.
+   */
+  @java.lang.Override
+  public java.lang.String getOutputSha256() {
+    java.lang.Object ref = outputSha256_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      outputSha256_ = s;
+      return s;
+    }
+  }
+  /**
+   * <pre>
+   * 정규화된 실제 출력의 sha256(hex) — 출력이 존재하는 판정(AC·WA)에서만 채워진다.
+   * 용도: problem의 합의 검증(M3)이 "풀이 간 합의 vs 초안 기대 일치"를 분리 진단하려면
+   * 출력의 동일성 비교가 필요한데, 출력 원문을 결과 토픽에 싣는 것은 과하다(크기·노출).
+   * 동일성 판단엔 해시로 충분하다. 정규화 규칙은 judge의 비교 규칙과 동일
+   * (CRLF→LF, 각 줄 후행 공백·탭 제거, 말미 빈 줄 제거) — 소비자는 기대 출력에
+   * 같은 규칙을 적용해 해시를 만들면 AC 여부와 무관하게 동일성을 판정할 수 있다.
+   * </pre>
+   *
+   * <code>string output_sha256 = 5 [json_name = "outputSha256"];</code>
+   * @return The bytes for outputSha256.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getOutputSha256Bytes() {
+    java.lang.Object ref = outputSha256_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      outputSha256_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
   private byte memoizedIsInitialized = -1;
   @java.lang.Override
   public final boolean isInitialized() {
@@ -126,6 +184,9 @@ private static final long serialVersionUID = 0L;
     if (memoryUsedKb_ != 0) {
       output.writeUInt32(4, memoryUsedKb_);
     }
+    if (!com.google.protobuf.GeneratedMessage.isStringEmpty(outputSha256_)) {
+      com.google.protobuf.GeneratedMessage.writeString(output, 5, outputSha256_);
+    }
     getUnknownFields().writeTo(output);
   }
   private int computeSerializedSize_0() {
@@ -145,6 +206,9 @@ private static final long serialVersionUID = 0L;
     if (memoryUsedKb_ != 0) {
       size += com.google.protobuf.CodedOutputStream
         .computeUInt32Size(4, memoryUsedKb_);
+    }
+    if (!com.google.protobuf.GeneratedMessage.isStringEmpty(outputSha256_)) {
+      size += com.google.protobuf.GeneratedMessage.computeStringSize(5, outputSha256_);
     }
     return size;
   }
@@ -177,6 +241,8 @@ private static final long serialVersionUID = 0L;
         != other.getExecTimeMs()) return false;
     if (getMemoryUsedKb()
         != other.getMemoryUsedKb()) return false;
+    if (!getOutputSha256()
+        .equals(other.getOutputSha256())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -196,6 +262,8 @@ private static final long serialVersionUID = 0L;
     hash = (53 * hash) + getExecTimeMs();
     hash = (37 * hash) + MEMORY_USED_KB_FIELD_NUMBER;
     hash = (53 * hash) + getMemoryUsedKb();
+    hash = (37 * hash) + OUTPUT_SHA256_FIELD_NUMBER;
+    hash = (53 * hash) + getOutputSha256().hashCode();
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -331,6 +399,7 @@ private static final long serialVersionUID = 0L;
       verdict_ = 0;
       execTimeMs_ = 0;
       memoryUsedKb_ = 0;
+      outputSha256_ = "";
       return this;
     }
 
@@ -376,6 +445,9 @@ private static final long serialVersionUID = 0L;
       if (((from_bitField0_ & 0x00000008) != 0)) {
         result.memoryUsedKb_ = memoryUsedKb_;
       }
+      if (((from_bitField0_ & 0x00000010) != 0)) {
+        result.outputSha256_ = outputSha256_;
+      }
     }
 
     @java.lang.Override
@@ -401,6 +473,11 @@ private static final long serialVersionUID = 0L;
       }
       if (other.getMemoryUsedKb() != 0) {
         setMemoryUsedKb(other.getMemoryUsedKb());
+      }
+      if (!other.getOutputSha256().isEmpty()) {
+        outputSha256_ = other.outputSha256_;
+        bitField0_ |= 0x00000010;
+        onChanged();
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -448,6 +525,11 @@ private static final long serialVersionUID = 0L;
               bitField0_ |= 0x00000008;
               break;
             } // case 32
+            case 42: {
+              outputSha256_ = input.readStringRequireUtf8();
+              bitField0_ |= 0x00000010;
+              break;
+            } // case 42
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -609,6 +691,123 @@ private static final long serialVersionUID = 0L;
     public Builder clearMemoryUsedKb() {
       bitField0_ = (bitField0_ & ~0x00000008);
       memoryUsedKb_ = 0;
+      onChanged();
+      return this;
+    }
+
+    private java.lang.Object outputSha256_ = "";
+    /**
+     * <pre>
+     * 정규화된 실제 출력의 sha256(hex) — 출력이 존재하는 판정(AC·WA)에서만 채워진다.
+     * 용도: problem의 합의 검증(M3)이 "풀이 간 합의 vs 초안 기대 일치"를 분리 진단하려면
+     * 출력의 동일성 비교가 필요한데, 출력 원문을 결과 토픽에 싣는 것은 과하다(크기·노출).
+     * 동일성 판단엔 해시로 충분하다. 정규화 규칙은 judge의 비교 규칙과 동일
+     * (CRLF→LF, 각 줄 후행 공백·탭 제거, 말미 빈 줄 제거) — 소비자는 기대 출력에
+     * 같은 규칙을 적용해 해시를 만들면 AC 여부와 무관하게 동일성을 판정할 수 있다.
+     * </pre>
+     *
+     * <code>string output_sha256 = 5 [json_name = "outputSha256"];</code>
+     * @return The outputSha256.
+     */
+    public java.lang.String getOutputSha256() {
+      java.lang.Object ref = outputSha256_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        outputSha256_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <pre>
+     * 정규화된 실제 출력의 sha256(hex) — 출력이 존재하는 판정(AC·WA)에서만 채워진다.
+     * 용도: problem의 합의 검증(M3)이 "풀이 간 합의 vs 초안 기대 일치"를 분리 진단하려면
+     * 출력의 동일성 비교가 필요한데, 출력 원문을 결과 토픽에 싣는 것은 과하다(크기·노출).
+     * 동일성 판단엔 해시로 충분하다. 정규화 규칙은 judge의 비교 규칙과 동일
+     * (CRLF→LF, 각 줄 후행 공백·탭 제거, 말미 빈 줄 제거) — 소비자는 기대 출력에
+     * 같은 규칙을 적용해 해시를 만들면 AC 여부와 무관하게 동일성을 판정할 수 있다.
+     * </pre>
+     *
+     * <code>string output_sha256 = 5 [json_name = "outputSha256"];</code>
+     * @return The bytes for outputSha256.
+     */
+    public com.google.protobuf.ByteString
+        getOutputSha256Bytes() {
+      java.lang.Object ref = outputSha256_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        outputSha256_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <pre>
+     * 정규화된 실제 출력의 sha256(hex) — 출력이 존재하는 판정(AC·WA)에서만 채워진다.
+     * 용도: problem의 합의 검증(M3)이 "풀이 간 합의 vs 초안 기대 일치"를 분리 진단하려면
+     * 출력의 동일성 비교가 필요한데, 출력 원문을 결과 토픽에 싣는 것은 과하다(크기·노출).
+     * 동일성 판단엔 해시로 충분하다. 정규화 규칙은 judge의 비교 규칙과 동일
+     * (CRLF→LF, 각 줄 후행 공백·탭 제거, 말미 빈 줄 제거) — 소비자는 기대 출력에
+     * 같은 규칙을 적용해 해시를 만들면 AC 여부와 무관하게 동일성을 판정할 수 있다.
+     * </pre>
+     *
+     * <code>string output_sha256 = 5 [json_name = "outputSha256"];</code>
+     * @param value The outputSha256 to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOutputSha256(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      outputSha256_ = value;
+      bitField0_ |= 0x00000010;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * 정규화된 실제 출력의 sha256(hex) — 출력이 존재하는 판정(AC·WA)에서만 채워진다.
+     * 용도: problem의 합의 검증(M3)이 "풀이 간 합의 vs 초안 기대 일치"를 분리 진단하려면
+     * 출력의 동일성 비교가 필요한데, 출력 원문을 결과 토픽에 싣는 것은 과하다(크기·노출).
+     * 동일성 판단엔 해시로 충분하다. 정규화 규칙은 judge의 비교 규칙과 동일
+     * (CRLF→LF, 각 줄 후행 공백·탭 제거, 말미 빈 줄 제거) — 소비자는 기대 출력에
+     * 같은 규칙을 적용해 해시를 만들면 AC 여부와 무관하게 동일성을 판정할 수 있다.
+     * </pre>
+     *
+     * <code>string output_sha256 = 5 [json_name = "outputSha256"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearOutputSha256() {
+      outputSha256_ = getDefaultInstance().getOutputSha256();
+      bitField0_ = (bitField0_ & ~0x00000010);
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * 정규화된 실제 출력의 sha256(hex) — 출력이 존재하는 판정(AC·WA)에서만 채워진다.
+     * 용도: problem의 합의 검증(M3)이 "풀이 간 합의 vs 초안 기대 일치"를 분리 진단하려면
+     * 출력의 동일성 비교가 필요한데, 출력 원문을 결과 토픽에 싣는 것은 과하다(크기·노출).
+     * 동일성 판단엔 해시로 충분하다. 정규화 규칙은 judge의 비교 규칙과 동일
+     * (CRLF→LF, 각 줄 후행 공백·탭 제거, 말미 빈 줄 제거) — 소비자는 기대 출력에
+     * 같은 규칙을 적용해 해시를 만들면 AC 여부와 무관하게 동일성을 판정할 수 있다.
+     * </pre>
+     *
+     * <code>string output_sha256 = 5 [json_name = "outputSha256"];</code>
+     * @param value The bytes for outputSha256 to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOutputSha256Bytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      outputSha256_ = value;
+      bitField0_ |= 0x00000010;
       onChanged();
       return this;
     }

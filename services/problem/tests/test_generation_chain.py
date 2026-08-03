@@ -61,3 +61,18 @@ def test_스키마_불일치_출력은_실패한다():
     chain = build_generation_chain(model)
     with pytest.raises(OutputParserException):
         chain.invoke({"difficulty": "Silver", "tags": "BFS", "instruction": "(없음)"})
+
+
+def test_openrouter_스펙은_호환_엔드포인트로_향한다(monkeypatch):
+    # 집합소(OpenRouter)는 init_chat_model 네이티브가 아니라 OpenAI 호환 접속 —
+    # 프리픽스 파싱·base_url·모델 id 보존을 고정한다(키는 페이크, 네트워크 없음).
+    from problem.llm.provider import chat_model
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test")
+    model = chat_model("openrouter:qwen/qwen3-235b-a22b:free")
+    assert model.model_name == "qwen/qwen3-235b-a22b:free"  # ":free" 접미사까지 보존
+    assert "openrouter.ai" in str(model.openai_api_base)
+
+    monkeypatch.delenv("OPENROUTER_API_KEY")
+    with pytest.raises(ValueError, match="OPENROUTER_API_KEY"):
+        chat_model("openrouter:any/model")

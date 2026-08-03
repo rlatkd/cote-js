@@ -30,8 +30,8 @@ func TestOutputMatches(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := outputMatches(c.got, c.expected); got != c.want {
-				t.Errorf("outputMatches(%q, %q) = %v, want %v", c.got, c.expected, got, c.want)
+			if got := normalize(c.got) == normalize(c.expected); got != c.want {
+				t.Errorf("normalize 비교(%q, %q) = %v, want %v", c.got, c.expected, got, c.want)
 			}
 		})
 	}
@@ -138,6 +138,28 @@ func TestAggregateComparesOutputs(t *testing.T) {
 	}
 	if result.Verdict != domain.VerdictWrongAnswer {
 		t.Errorf("종합 = %v, want WA (첫 실패)", result.Verdict)
+	}
+}
+
+// 출력 해시 계약(problem 합의 검증의 전제) — ① 해시는 **정규화된** 출력에서 계산된다:
+// 정규화상 동치인 출력("3"과 "3\n")은 같은 해시여야 소비자의 동일성 비교가 성립한다.
+// ② AC 케이스의 해시 = 기대 출력을 같은 규칙으로 정규화해 만든 해시(소비자 측 재현 규칙).
+// ③ 출력이 없는 판정(TLE 등)에선 채우지 않는다.
+func TestAggregateOutputDigestContract(t *testing.T) {
+	result := aggregate(
+		domain.Task{SubmissionID: 1},
+		[]bundleCase{{expected: "3\n"}, {expected: "3\n"}, {expected: "3\n"}},
+		[]domain.RawCaseResult{{No: 1}, {No: 2}, {No: 3, TimedOut: true}},
+		func(no int) string { return map[int]string{1: "3", 2: "3\r\n", 3: ""}[no] },
+	)
+
+	want := outputDigest(normalize("3\n"))
+	if result.Cases[0].OutputSHA256 != want || result.Cases[1].OutputSHA256 != want {
+		t.Errorf("정규화 동치 출력의 해시 불일치: %q, %q, want %q",
+			result.Cases[0].OutputSHA256, result.Cases[1].OutputSHA256, want)
+	}
+	if result.Cases[2].OutputSHA256 != "" {
+		t.Errorf("출력 없는 판정(TLE)에 해시가 채워짐: %q", result.Cases[2].OutputSHA256)
 	}
 }
 

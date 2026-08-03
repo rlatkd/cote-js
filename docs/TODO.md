@@ -124,10 +124,12 @@
 - [x] protoc 버전 매트릭스 35.1 정렬(CI pin·api protobuf-java 4.35.1) — macOS 신규 개발 머신 합류로 드러난 어긋남, api 빌드 그린
 - [x] **사용자 액션: Gemini API 키 발급** (2026-08-01) — `services/problem/.env`(gitignore 확인). **실생성 첫 검증 그린** — Silver/BFS 자체 소재 문제, 스키마 준수. 단 예제 출력의 정답 여부는 미검증(validation 모듈의 일)
 - [x] **validation 모듈 1차** (2026-08-01) — 독립 풀이 N개(지문만 노출 — `solution_sketch` 차단)·로컬 실행·합의 판정(순수 로직+실행기 주입). '풀이 간 합의 vs 초안 일치' 분리 진단, `problem-validate` CLI. **실측 E2E: 생성→풀이 3개→전원 일치→validated**. 테스트 7종 추가(총 10)
-- [ ] ⚠️ **임시 상태(파급 선언)**: LLM 생성 코드를 개발 머신 **무격리 subprocess**로 실행 중 — 샌드박스 원칙과 어긋남. Kafka 배선 시 judge batch 실채점으로 대체(executor.py 주석에도 명시)
-- [ ] validation 2차 — brute-force 앵커(작은 입력 대조+TLE 변별), 히든 케이스 생성(합의 출력을 정답으로 채택), stress testing·적대적 반례(engineering-notes 후보 ⑥⑦)
-- [ ] Kafka 배선 — python codegen(buf.gen.problem.yaml에 플러그인 추가)·generate 컨슈머·candidate 프로듀서
-- [ ] api 측 — 생성 요청 admin API·검수 큐 스키마(V7)·candidate 컨슈머
+- [x] ~~⚠️ 임시 상태(파급 선언): 무격리 subprocess 실행~~ → **해소** (2026-08-03, [ADR-0023](decisions/0023-problem-kafka-wiring.md)) — executor.py 삭제, judge batch 레인 실채점으로 대체(음수 submission_id 공간·`CaseResult.output_sha256` 계약 보강)
+- [x] **Kafka 배선** (2026-08-03, [ADR-0023](decisions/0023-problem-kafka-wiring.md)) — python codegen(`buf.gen.python.yaml` 신설, 전체 proto)·`problem-worker`(generate 수동커밋 소비→파이프라인→candidate 발행)·`problem-probe`(개발 주입기)·aiokafka+minio-py. judge 실채점 경로 실측 그린(수제 풀이 2정답+1오답 → validated·오답 변별)
+- [x] **개발 프로바이더 OpenRouter 전환** (2026-08-03 사용자 확정, 경위는 engineering-notes) — Gemini 계정 결제 이슈(prepay 429, 신규 키도 동일 → 계정 단위)로 보류. `openrouter:` 프리픽스 어댑터+타임아웃 180s, 무료 모델 실측 3종 → `nemotron-3-super-120b` 확정(0.9s). 무충전(일 50 요청)으로 시작, $10 충전은 부족 시
+- [ ] ⚠️ **행복 경로 왕복 1회 미완**(probe→worker→실생성→풀이 3개→judge 실채점→VALIDATED 후보) — 배선·실패 경로·재전달은 전부 실측됐고(초안 생성·failure 후보 2종 실전 확인), 남은 건 살아있는 모델로 **재시도 1회뿐**: judged+problem-worker 기동 후 `problem-probe`(verification 절차 11 '워커 왕복'). 550B 저속·gemma 풀 고갈로 이번 세션 미완주
+- [ ] validation 2차 — brute-force 앵커(작은 입력 대조+TLE 변별), 히든 케이스 생성(합의 출력을 정답으로 채택 — **출력 원문 필요: 해시로는 부족, judge 출력 아티팩트 claim-check 재검토**, ADR-0023 한계), stress testing·적대적 반례(engineering-notes 후보 ⑥⑦)
+- [ ] api 측 — 생성 요청 admin API·검수 큐 스키마(V7)·candidate 컨슈머(중복 후보 request_id 멱등 흡수 포함 — ADR-0023 전제)
 - [ ] web admin — 검수 큐 UI(M3 검수 게이트)
 - [ ] 시드 교체 — 검수 통과 생성 문제로 백준 파생 시드 5문제 대체(ADR-0021 부채)
 

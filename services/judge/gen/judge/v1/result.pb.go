@@ -93,11 +93,18 @@ func (Verdict) EnumDescriptor() ([]byte, []int) {
 }
 
 type CaseResult struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	No            uint32                 `protobuf:"varint,1,opt,name=no,proto3" json:"no,omitempty"`
-	Verdict       Verdict                `protobuf:"varint,2,opt,name=verdict,proto3,enum=judge.v1.Verdict" json:"verdict,omitempty"`
-	ExecTimeMs    uint32                 `protobuf:"varint,3,opt,name=exec_time_ms,json=execTimeMs,proto3" json:"exec_time_ms,omitempty"`
-	MemoryUsedKb  uint32                 `protobuf:"varint,4,opt,name=memory_used_kb,json=memoryUsedKb,proto3" json:"memory_used_kb,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	No           uint32                 `protobuf:"varint,1,opt,name=no,proto3" json:"no,omitempty"`
+	Verdict      Verdict                `protobuf:"varint,2,opt,name=verdict,proto3,enum=judge.v1.Verdict" json:"verdict,omitempty"`
+	ExecTimeMs   uint32                 `protobuf:"varint,3,opt,name=exec_time_ms,json=execTimeMs,proto3" json:"exec_time_ms,omitempty"`
+	MemoryUsedKb uint32                 `protobuf:"varint,4,opt,name=memory_used_kb,json=memoryUsedKb,proto3" json:"memory_used_kb,omitempty"`
+	// 정규화된 실제 출력의 sha256(hex) — 출력이 존재하는 판정(AC·WA)에서만 채워진다.
+	// 용도: problem의 합의 검증(M3)이 "풀이 간 합의 vs 초안 기대 일치"를 분리 진단하려면
+	// 출력의 동일성 비교가 필요한데, 출력 원문을 결과 토픽에 싣는 것은 과하다(크기·노출).
+	// 동일성 판단엔 해시로 충분하다. 정규화 규칙은 judge의 비교 규칙과 동일
+	// (CRLF→LF, 각 줄 후행 공백·탭 제거, 말미 빈 줄 제거) — 소비자는 기대 출력에
+	// 같은 규칙을 적용해 해시를 만들면 AC 여부와 무관하게 동일성을 판정할 수 있다.
+	OutputSha256  string `protobuf:"bytes,5,opt,name=output_sha256,json=outputSha256,proto3" json:"output_sha256,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -158,6 +165,13 @@ func (x *CaseResult) GetMemoryUsedKb() uint32 {
 		return x.MemoryUsedKb
 	}
 	return 0
+}
+
+func (x *CaseResult) GetOutputSha256() string {
+	if x != nil {
+		return x.OutputSha256
+	}
+	return ""
 }
 
 type JudgeResult struct {
@@ -284,14 +298,15 @@ var File_judge_v1_result_proto protoreflect.FileDescriptor
 
 const file_judge_v1_result_proto_rawDesc = "" +
 	"\n" +
-	"\x15judge/v1/result.proto\x12\bjudge.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15common/v1/error.proto\x1a\x15common/v1/trace.proto\"\x91\x01\n" +
+	"\x15judge/v1/result.proto\x12\bjudge.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15common/v1/error.proto\x1a\x15common/v1/trace.proto\"\xb6\x01\n" +
 	"\n" +
 	"CaseResult\x12\x0e\n" +
 	"\x02no\x18\x01 \x01(\rR\x02no\x12+\n" +
 	"\averdict\x18\x02 \x01(\x0e2\x11.judge.v1.VerdictR\averdict\x12 \n" +
 	"\fexec_time_ms\x18\x03 \x01(\rR\n" +
 	"execTimeMs\x12$\n" +
-	"\x0ememory_used_kb\x18\x04 \x01(\rR\fmemoryUsedKb\"\x90\x03\n" +
+	"\x0ememory_used_kb\x18\x04 \x01(\rR\fmemoryUsedKb\x12#\n" +
+	"\routput_sha256\x18\x05 \x01(\tR\foutputSha256\"\x90\x03\n" +
 	"\vJudgeResult\x12#\n" +
 	"\rsubmission_id\x18\x01 \x01(\x03R\fsubmissionId\x12+\n" +
 	"\averdict\x18\x02 \x01(\x0e2\x11.judge.v1.VerdictR\averdict\x12 \n" +

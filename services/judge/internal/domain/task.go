@@ -31,6 +31,9 @@ type CaseResult struct {
 	Verdict      Verdict
 	ExecTimeMS   uint32
 	MemoryUsedKB uint32
+	// 정규화된 실제 출력의 sha256(hex). 출력이 존재하는 판정(AC·WA)에서만 채워진다 —
+	// problem의 합의 검증이 출력 동일성을 원문 노출 없이 비교하는 데 쓴다(계약 주석 참조).
+	OutputSHA256 string
 }
 
 type JudgeResult struct {

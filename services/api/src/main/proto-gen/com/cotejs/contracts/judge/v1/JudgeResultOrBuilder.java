@@ -86,7 +86,7 @@ public interface JudgeResultOrBuilder extends
    *
    * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
    * @deprecated judge.v1.JudgeResult.error_message is deprecated.
-   *     See judge/v1/result.proto;l=51
+   *     See judge/v1/result.proto;l=59
    * @return The errorMessage.
    */
   @java.lang.Deprecated java.lang.String getErrorMessage();
@@ -101,7 +101,7 @@ public interface JudgeResultOrBuilder extends
    *
    * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
    * @deprecated judge.v1.JudgeResult.error_message is deprecated.
-   *     See judge/v1/result.proto;l=51
+   *     See judge/v1/result.proto;l=59
    * @return The bytes for errorMessage.
    */
   @java.lang.Deprecated com.google.protobuf.ByteString

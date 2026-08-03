@@ -183,15 +183,20 @@ curl -s -X POST localhost:4000/api/submissions \
 | V6 데이터 | `SELECT DISTINCT result FROM submission` / `starter_template` 3행 / `problem_title` 컬럼 부재 | 저장값=enum name, 응답은 여전히 한국어 라벨(계약 불변) |
 | 스타터 병합 | `GET /api/problems/1000`의 `starterCode` | 3언어 — DB 오버라이드 NULL이어도 템플릿에서 채워짐 |
 
-### 11. M3 problem — 생성 체인 배관 (2026-08-01)
+### 11. M3 problem — 생성 체인·Kafka 배선·judge 실채점 검증 (2026-08-03 개정)
+
+사전: 인프라 기동(`cd infra && docker compose up -d` — 토픽에 `problem.generate`·`problem.candidate` 포함 확인) + judge 워커(`cd services/judge && go run ./cmd/judged`).
 
 | 항목 | 확인 방법 | 기대 |
 |---|---|---|
-| 배관 테스트 | `cd services/problem && uv run pytest -q` | 3 passed — 페이크 모델 초안 생성·파라미터 운반·스키마 불일치 실패 |
+| 배관 테스트 | `cd services/problem && uv run pytest -q` | 16 passed — 합의 순수 판정·정규화=judge 규칙·JudgeResult 매핑·번들 결정성·경계 번역(반려≠실패)·프롬프트 독립성 |
 | 헬스 | `uv run uvicorn problem.app:app --port 8000` 후 `curl /health` | `{"status":"ok"}` |
 | 실생성 (키 필요) | `uv run --env-file .env problem-generate --difficulty Silver --tags BFS` | ProblemDraft JSON — 제목·지문·예제·제약·풀이 스케치. 기존 문제 번안 아님(육안). ✅ 2026-08-01 첫 실측 그린 |
-| 합의 검증 (키 필요) | `problem-generate ... > draft.json` 후 `uv run --env-file .env problem-validate draft.json --n 3` | ValidationResult JSON — 전원 일치 시 `validated: true`·exit 0, 불일치 시 사유(초안 오류 의심 진단 포함)·exit 1. ✅ 2026-08-01 첫 실측 그린(풀이 3/3 일치) |
-| 계약 | `cd contracts && buf lint && buf generate && buf generate --template buf.gen.problem.yaml` | lint 그린, 생성물 diff 없음(judge/gen에 problem 생성물 **없어야** 함) |
+| **judge 실채점 경로 (키 불필요)** | 초안 JSON + 수제 풀이 파일로 `uv run problem-validate draft.json --solutions s1.py s2.py s3.py` | 번들 MinIO 발행→`submission.batch` 발행(음수 id)→judged 채점→해시 상관 수집→합의. 정답 2+오답 1이면 `validated: true`·agreed 2/3·exit 0. judged 로그에 `submission_id=-…, lane=submission.batch`. ✅ 2026-08-03 첫 실측 그린 |
+| 합의 검증 (키 필요) | `problem-generate ... > draft.json` 후 `uv run --env-file .env problem-validate draft.json --n 3` | ValidationResult JSON — 전원 일치 시 `validated: true`·exit 0, 불일치 시 사유(초안 오류 의심 진단 포함)·exit 1 |
+| **워커 왕복 (키 필요)** | `uv run --env-file .env problem-worker` 기동 후 별도 터미널에서 `uv run problem-probe --difficulty Silver --tags BFS` | 프로브가 요청 발행 → 워커 로그(생성 요청 수신→초안 생성→검증 제출 발행→합의 판정→후보 발행, 같은 trace_id) → 프로브가 후보 수신 출력(status=VALIDATED면 exit 0, REJECTED면 1) |
+| 실패 층위 | judged를 끈 채 워커 왕복 실행 | 후보가 `failure(code=JUDGE_UNAVAILABLE, retryable=true)`로 발행 — REJECTED가 아님(성공률 관측 비오염) |
+| 계약 | `cd contracts && buf lint && buf generate && buf generate --template buf.gen.problem.yaml && buf generate --template buf.gen.python.yaml` | lint 그린, 생성물 diff 없음(judge/gen에 problem 생성물 **없어야** 함, python 생성물은 `services/problem/src/{common,judge,problem/v1}`) |
 
 ## 추가 예정 (해당 마일스톤 착수 시 이 문서에 절차 추가)
 
@@ -200,6 +205,7 @@ curl -s -X POST localhost:4000/api/submissions \
 
 ## 갱신 이력
 
+- 2026-08-03 21:05 — 절차 11 개정([ADR-0023](../decisions/0023-problem-kafka-wiring.md)): judge 실채점 경로(키 불필요·수제 풀이)·워커 왕복(problem-worker/probe)·실패 층위(JUDGE_UNAVAILABLE≠REJECTED)·계약 3템플릿. 무격리 subprocess 검증 항목 제거(실행기 삭제됨).
 - 2026-08-01 15:08 — 절차 11(M3 problem 배관) 신설: 페이크 테스트·헬스·실생성(키)·계약 2템플릿 생성 검사.
 
 - 2026-07-31 21:40 — 절차 10(M2·V6) 신설: Redis 팬아웃·rate limit 429·레인 동시성·저장값 코드화·스타터 병합.

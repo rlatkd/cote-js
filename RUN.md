@@ -60,24 +60,32 @@ go run ./cmd/judgecli -bundle <번들dir> -source <풀이.py> -time-ms 1000 -mem
 
 번들 레이아웃: `<번들dir>/cases/01.in, 01.out, 02.in, ...`
 
-## problem (AI 문제 생성 — M3, uv 필요: `brew install uv`)
+## problem (AI 문제 생성 — M3, uv 필요: macOS `brew install uv` / Windows `irm https://astral.sh/uv/install.ps1 | iex`)
 
 ```bash
 cd services/problem
 uv sync                      # 최초 1회 (이후 uv run이 알아서 동기화)
-uv run pytest -q             # 배관 테스트(LLM 불필요 — 페이크)
+uv run pytest -q             # 배관 테스트(LLM·Kafka 불필요 — 페이크·순수 값)
 uv run --env-file .env problem-generate --difficulty Silver --tags BFS   # 실생성 (.env에 GOOGLE_API_KEY)
 uv run uvicorn problem.app:app --port 8000               # /health
+
+# Kafka 배선(ADR-0023) — 사전: 인프라 + judged(batch 실채점에 필요)
+uv run --env-file .env problem-worker                    # 워커: problem.generate 소비 → 후보 발행
+uv run problem-probe --difficulty Silver --tags BFS      # 개발용 주입기: 요청 발행 + 후보 대기(exit 0=VALIDATED)
+uv run --env-file .env problem-validate draft.json --n 3               # 수동 검증(judge 실채점 경유)
+uv run problem-validate draft.json --solutions s1.py s2.py s3.py       # LLM 없이 실행 경로만(수제 풀이)
 ```
 
 ## 계약(Protobuf) 코드 재생성 (`contracts/*.proto`를 바꿨을 때)
 
 ```bash
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest   # 최초 1회 (buf도: go install github.com/bufbuild/buf/cmd/buf@latest)
-# macOS는 brew로도 가능: brew install go buf protobuf (protoc은 CI pin과 같은 35.x 확인)
-cd contracts && buf lint && buf generate && buf generate --template buf.gen.problem.yaml
-# → services/judge/gen + services/api/src/main/proto-gen 재생성 → 커밋
-# (problem/v1은 전용 템플릿 — judge에 Go 생성물을 만들지 않기 위함, ADR-0022)
+# macOS는 brew로도 가능: brew install go buf protobuf / Windows는 protoc 릴리스 zip을 PATH에.
+# protoc은 CI pin과 같은 35.x 확인(`protoc --version`) — 다르면 생성물 드리프트로 CI가 깨진다.
+cd contracts && buf lint && buf generate && buf generate --template buf.gen.problem.yaml && buf generate --template buf.gen.python.yaml
+# → services/judge/gen + services/api/src/main/proto-gen + services/problem/src/{common,judge,problem/v1} 재생성 → 커밋
+# (problem/v1 Java는 전용 템플릿 — judge에 Go 생성물을 만들지 않기 위함, ADR-0022.
+#  Python은 전체 proto — problem이 judge/common의 소비자이기 때문, ADR-0023)
 ```
 
 ## API 계약 타입 재생성 (api 응답 계약이 바뀌었을 때)

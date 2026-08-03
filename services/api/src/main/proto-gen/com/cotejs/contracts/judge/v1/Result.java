@@ -47,30 +47,30 @@ public final class Result extends com.google.protobuf.GeneratedFile {
     java.lang.String[] descriptorData = {
       "\n\025judge/v1/result.proto\022\010judge.v1\032\037googl" +
       "e/protobuf/timestamp.proto\032\025common/v1/er" +
-      "ror.proto\032\025common/v1/trace.proto\"\221\001\n\nCas" +
+      "ror.proto\032\025common/v1/trace.proto\"\266\001\n\nCas" +
       "eResult\022\016\n\002no\030\001 \001(\rR\002no\022+\n\007verdict\030\002 \001(\016" +
       "2\021.judge.v1.VerdictR\007verdict\022 \n\014exec_tim" +
       "e_ms\030\003 \001(\rR\nexecTimeMs\022$\n\016memory_used_kb" +
-      "\030\004 \001(\rR\014memoryUsedKb\"\220\003\n\013JudgeResult\022#\n\r" +
-      "submission_id\030\001 \001(\003R\014submissionId\022+\n\007ver" +
-      "dict\030\002 \001(\0162\021.judge.v1.VerdictR\007verdict\022 " +
-      "\n\014exec_time_ms\030\003 \001(\rR\nexecTimeMs\022$\n\016memo" +
-      "ry_used_kb\030\004 \001(\rR\014memoryUsedKb\022*\n\005cases\030" +
-      "\005 \003(\0132\024.judge.v1.CaseResultR\005cases\022\'\n\rer" +
-      "ror_message\030\006 \001(\tB\002\030\001R\014errorMessage\0227\n\tj" +
-      "udged_at\030\007 \001(\0132\032.google.protobuf.Timesta" +
-      "mpR\010judgedAt\022*\n\007failure\030\010 \001(\0132\020.common.v" +
-      "1.ErrorR\007failure\022-\n\005trace\030\t \001(\0132\027.common" +
-      ".v1.TraceContextR\005trace*\350\001\n\007Verdict\022\027\n\023V" +
-      "ERDICT_UNSPECIFIED\020\000\022\024\n\020VERDICT_ACCEPTED" +
-      "\020\001\022\030\n\024VERDICT_WRONG_ANSWER\020\002\022\031\n\025VERDICT_" +
-      "COMPILE_ERROR\020\003\022\031\n\025VERDICT_RUNTIME_ERROR" +
-      "\020\004\022\037\n\033VERDICT_TIME_LIMIT_EXCEEDED\020\005\022!\n\035V" +
-      "ERDICT_MEMORY_LIMIT_EXCEEDED\020\006\022\032\n\026VERDIC" +
-      "T_INTERNAL_ERROR\020\007B_\n\035com.cotejs.contrac" +
-      "ts.judge.v1P\001Z<github.com/rlatkd/cotejs/" +
-      "services/judge/gen/judge/v1;judgev1b\006pro" +
-      "to3"
+      "\030\004 \001(\rR\014memoryUsedKb\022#\n\routput_sha256\030\005 " +
+      "\001(\tR\014outputSha256\"\220\003\n\013JudgeResult\022#\n\rsub" +
+      "mission_id\030\001 \001(\003R\014submissionId\022+\n\007verdic" +
+      "t\030\002 \001(\0162\021.judge.v1.VerdictR\007verdict\022 \n\014e" +
+      "xec_time_ms\030\003 \001(\rR\nexecTimeMs\022$\n\016memory_" +
+      "used_kb\030\004 \001(\rR\014memoryUsedKb\022*\n\005cases\030\005 \003" +
+      "(\0132\024.judge.v1.CaseResultR\005cases\022\'\n\rerror" +
+      "_message\030\006 \001(\tB\002\030\001R\014errorMessage\0227\n\tjudg" +
+      "ed_at\030\007 \001(\0132\032.google.protobuf.TimestampR" +
+      "\010judgedAt\022*\n\007failure\030\010 \001(\0132\020.common.v1.E" +
+      "rrorR\007failure\022-\n\005trace\030\t \001(\0132\027.common.v1" +
+      ".TraceContextR\005trace*\350\001\n\007Verdict\022\027\n\023VERD" +
+      "ICT_UNSPECIFIED\020\000\022\024\n\020VERDICT_ACCEPTED\020\001\022" +
+      "\030\n\024VERDICT_WRONG_ANSWER\020\002\022\031\n\025VERDICT_COM" +
+      "PILE_ERROR\020\003\022\031\n\025VERDICT_RUNTIME_ERROR\020\004\022" +
+      "\037\n\033VERDICT_TIME_LIMIT_EXCEEDED\020\005\022!\n\035VERD" +
+      "ICT_MEMORY_LIMIT_EXCEEDED\020\006\022\032\n\026VERDICT_I" +
+      "NTERNAL_ERROR\020\007B_\n\035com.cotejs.contracts." +
+      "judge.v1P\001Z<github.com/rlatkd/cotejs/ser" +
+      "vices/judge/gen/judge/v1;judgev1b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -84,7 +84,7 @@ public final class Result extends com.google.protobuf.GeneratedFile {
     internal_static_judge_v1_CaseResult_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_judge_v1_CaseResult_descriptor,
-        new java.lang.String[] { "No", "Verdict", "ExecTimeMs", "MemoryUsedKb", });
+        new java.lang.String[] { "No", "Verdict", "ExecTimeMs", "MemoryUsedKb", "OutputSha256", });
     internal_static_judge_v1_JudgeResult_descriptor =
       getDescriptor().getMessageType(1);
     internal_static_judge_v1_JudgeResult_fieldAccessorTable = new

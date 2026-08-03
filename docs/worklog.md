@@ -6,6 +6,22 @@
 
 ---
 
+## 2026-08-03 21:15 — problem Kafka 배선 완료 — 무격리 실행 해소, LLM 코드도 샌드박스로 (ADR-0023)
+
+- **한 일**: ① **계약 보강** — `judge/v1.CaseResult.output_sha256`(정규화 출력 해시 — 합의 진단('풀이 간 합의 vs 초안 일치')을 원문 노출 없이 보존, judge는 판정과 같은 코드 경로에서 계산) + `Submission.submission_id` 음수 공간 규약(검증 트래픽, 계약 주석) ② **judge Go 반영** — outputDigest·toProto, 해시 계약 테스트 추가 ③ **Python codegen** — `buf.gen.python.yaml` 신설(problem은 judge/common 소비자라 **전체 proto**, 생성 루트=src=import 루트), 생성물 커밋, protobuf 7.35.1 ④ **problem 재구조화** — `validation/`: normalize(judge 규칙 미러)+bundle(결정적 tar.gz·MinIO claim-check)+**judge_runner**(batch 발행·result 상관 수집 — 그룹 없음·latest)+consensus(순수 함수화: 실행기 주입→결과 값 수신), **executor.py 삭제**(임시 상태 해소) / `messaging/`: config·translate(ACL·자식 스팬)·**worker**(`problem-worker` — generate 수동커밋 소비→파이프라인→candidate 발행)·**probe**(`problem-probe` 주입기) / `workflow/pipeline`(지휘: 생성→풀이→실채점→합의→후보, 실패 2층위 분리 — REJECTED vs failure(retryable)) ⑤ **클라이언트 선정** — aiokafka(순수 파이썬 asyncio — franz-go의 cgo 회피와 같은 근거)·minio-py ⑥ infra 토픽 2종(`problem.generate/candidate`)·CI 드리프트 3템플릿 ⑦ 문서: ADR-0023, ADR 인덱스 0018~0023 보충(누락 부채), architecture/problem·verification 절차 11 개정·RUN·contracts README·CLAUDE.md·learning-notes 4건·engineering-notes 판단 로그.
+- **검증(실측)**: problem pytest **16 passed**(합의·정규화=judge 규칙·JudgeResult 매핑·번들 결정성·경계 번역) / judge `go test` 그린(해시 계약 포함) / api `gradlew build -x test` 그린(재생성 Java) / `buf lint`·`buf breaking`(vs main) 그린 / **judge 실채점 경로 E2E** — 수제 초안+풀이 3개(정답2·오답1)로 `problem-validate --solutions` → 번들 MinIO 발행→batch 발행(**음수 id**)→judged 채점(AC·AC·WA)→해시 상관 수집→`validated:true, agreed 2/3`, 오답 풀이는 다른 해시로 변별. judged 로그에 `lane=submission.batch` 확인.
+- **환경(이 머신 = Windows 첫 M3 작업)**: uv 설치, protoc 33.1→**35.1 교체**(CI pin 정렬 — 구본은 `go/bin/protoc-33.1.exe.bak`), RUN.md에 Windows 경로 병기.
+- **미실측 1건 → 부분 해소(21:20)**: 사용자가 키 제공 → `.env` 생성(gitignore 실확인). **Kafka 왕복 자체는 실측 그린** — probe 발행→워커 소비→후보 수신, trace_id 전 구간 동일·자식 스팬 연결. 단 **LLM 호출이 429 RESOURCE_EXHAUSTED**("prepayment credits are depleted" — 해당 Google 프로젝트가 선불 크레딧 모드·소진 상태, RPM 제한 아님)로 실패 → **실패 층위 설계가 실전 확인됨**: REJECTED가 아니라 `failure(code=GENERATION_FAILED, origin=PROVIDER, retryable=true)`로 발행(성공률 관측 비오염).
+
+### 22:50 추가 — 개발 프로바이더 OpenRouter 전환(사용자 확정) · 행복 경로는 재시도 1회 남기고 마감
+
+- **Gemini 진단**: 신규 프로젝트의 새 키도 동일 429 → 프로젝트가 아니라 **계정(결제 계정) 단위** 문제. 검색: 동일 증상 다수 보고(결제 정상 계정 포함, Google 동기화 이슈 추정·공식 해결책 없음). 무료 티어 대안 비교(Groq/OpenRouter/GitHub Models/Mistral/Cerebras) 후 **사용자 확정: OpenRouter, 무충전(일 50)으로 시작**($10 충전=일 1,000 영구는 부족 시).
+- **한 일**: `provider.py`에 `openrouter:` 프리픽스(OpenAI 호환 — 집합소라 init_chat_model 네이티브 아님)+`langchain-openai`+**호출 타임아웃 180s**(550B 무한 대기 실측 후 추가), 테스트 1종 추가(**총 17 passed**). `.env`에 OPENROUTER 키+모델(Gemini 키는 보존).
+- **실측(모델 로터리)**: ① ultra-550b:free — 초안은 성공(2m47s, "포탈 미로 탈출")했으나 **풀이 1건 19분+ 미완주** ② gemma-4-31b:free — 스모크 12s 성공 → 6분 뒤 **업스트림 공유 풀 고갈 429**(이때 재전달→즉시 실패→retryable failure 후보 발행 = **at-least-once 재전달과 실패 층위가 실전에서 같이 확인됨**) ③ **super-120b-a12b:free — 0.9s, 개발용 확정**. 무료 모델은 가용성 로터리라는 교훈은 engineering-notes에.
+- **중단점(사용자 지시로 마감)**: ⚠️ **행복 경로 왕복 1회만 미완**(TODO에 명시) — 배선·실패 경로·재전달·judge 실채점 경로는 전부 실측 완료라, 남은 건 확정 모델로 judged+worker 기동 후 `problem-probe` 1회. 전 프로세스 종료(judged·worker 내림), 인프라 컨테이너만 기동 유지. 커밋은 사용자.
+- **중단점**: 전체 미커밋(커밋은 사용자). 인프라(레디스·jaeger 포함)+judged 기동 중. api·web은 미기동(이 슬라이스 무관).
+- **다음**: ① 사용자: Gemini 키(.env) → 워커 왕복 실측 ② api 측 — 생성 요청 admin API·검수 큐 스키마(V7)·candidate 컨슈머(request_id 멱등) ③ web admin 검수 큐 UI ④ validation 2차(brute-force 앵커·히든 케이스 — 출력 원문 조달 설계 포함).
+
 ## 2026-08-01 16:57 — validation 1차: 합의 검증 E2E 관통 — 자답자채점 순환이 끊겼다
 
 - **CI 확인**: 직전 푸시(`e5bc14d` — 저장소명 `cote-js`로 변경돼 있음) 전부 성공 — 신규 problem 잡·protoc 35.1·2템플릿 드리프트 검사 첫 원격 실행 그린.

@@ -8,9 +8,13 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "aiokafka>=0.14.0",
     "fastapi>=0.141.1",
     "langchain>=1.0",
     "langchain-google-genai>=4.3.2",
+    "langchain-openai>=1.4.1",
+    "minio>=7.2.20",
+    "protobuf>=7.35.1",
     "pydantic>=2",
     "uvicorn>=0.52.0",
 ]
@@ -27,3 +31,5 @@ dev = [
 [project.scripts]
 problem-generate = "problem.cli:main"
 problem-validate = "problem.validate_cli:main"
+problem-worker = "problem.messaging.worker:main"
+problem-probe = "problem.messaging.probe:main"

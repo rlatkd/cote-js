@@ -86,6 +86,7 @@
 | 코드젠 | **buf CLI + 로컬 플러그인**(`buf generate`), 생성물 커밋. **BSR(호스팅 SaaS) 미사용 — 외부 솔루션 의존 금지(오픈소스는 무방, 사용자 방침)**. `buf breaking`으로 스키마 호환성 검사 ([ADR-0011](docs/decisions/0011-codegen-and-kafka-client.md)) | BSR 원격 플러그인, protoc 직접 |
 | judge 라이브러리 | **franz-go**(Kafka, 순수 Go — cgo 회피)·**minio-go**(S3 호환) ([ADR-0011](docs/decisions/0011-codegen-and-kafka-client.md)) | confluent-kafka-go(cgo), sarama, kafka-go |
 | api 라이브러리 | **kafka-clients 직접 사용 + 코루틴**(프로듀서=콜백→suspend, 컨슈머=단일 병렬도 IO 디스패처)·**AWS SDK v2 S3 async**(MinIO) ([ADR-0012](docs/decisions/0012-api-judge-wiring.md)) | reactor-kafka(Boot 4의 kafka-clients 4.x와 바이너리 비호환), spring-kafka(스레드 점유형) |
+| problem 라이브러리 | **aiokafka**(Kafka, 순수 파이썬 asyncio — 네이티브 의존 회피·FastAPI 스택 일관)·**minio-py**. 검증 실행=judge batch 레인(음수 id 공간, 출력 동일성은 `CaseResult.output_sha256`) ([ADR-0023](docs/decisions/0023-problem-kafka-wiring.md)) | confluent-kafka-python(librdkafka C 확장), kafka-python(동기·정체), 무격리 로컬 실행(제거됨) |
 | 실시간 알림 | **SSE** `/api/submissions/stream` — 팬아웃은 **Redis pub/sub**(M2 전환 완료, 2026-07-31. Redis 다운 시 알림만 유실 — 채점 무관) | WebSocket(양방향 불필요), 폴링(대규모 공개 피드 강등 경로로만 보류) |
 | 관측(추적·로깅) | **OpenTelemetry + Jaeger(자가호스팅)** — 전파는 W3C `traceparent` 단일(web 시작→api→Kafka 헤더→judge), **trace_id = 전 구간 로그 상관관계 id**(서비스별 reqId 금지), 업무 키 `submission_id` 병기. api=Java 에이전트(MDC 자동 주입)·judge=Go SDK 수동·web=`@vercel/otel` ([ADR-0018](docs/decisions/0018-observability-tracing.md)) | Micrometer(폴리글랏 못 덮음), Zipkin, Tempo(운영 관측 M5에서 재검토), 관측 SaaS |
 | 인증 | **카카오 OIDC 단독 위임 + 자체 JWT(access+refresh 회전, httpOnly 쿠키) + 직접 WebFilter**(Spring Security 미채택, 암호 원시연산만 JDK 내장). 제출(run·submit)=로그인 필수, 조회·SSE=공개. 이메일 동의항목 미사용(`sub`+닉네임) ([ADR-0019](docs/decisions/0019-authentication-kakao-oidc.md)) | GitHub(후속 보류 — 국내 타깃 도달률 열세), 자체 가입(배제), Keycloak 등 자체 AS(과설계), 세션+Redis |
@@ -93,7 +94,7 @@
 | 테스트케이스 전달 | **claim-check** — MinIO 번들(버킷 `testdata`) + 메시지엔 키·sha256만, judge는 해시 기준 로컬 캐시 | 메시지 인라인(1MB 상한·반복 운반), judge→api HTTP 조회(동기 결합 재도입) |
 | 버전 정책 | **LTS/안정판 기준** — JDK 21 LTS, Boot 4.0.x(성숙 마이너), Node 22 LTS, Postgres 16. 최신 첫 릴리스 회피 | 최신 우선주의 |
 | Docker 사용 | **개발 = 인프라만** compose(postgres·kafka(KRaft 단일노드)·minio → redis 예정). 앱은 호스트 네이티브(핫리로드·디버거). 앱 컨테이너화는 배포 마일스톤(M5)에서 | 개발용 앱 컨테이너 |
-| 문제 생성 | LLM API + LangChain — **프로바이더는 어댑터 격리, 개발 단계=저가/무료(Gemini 무료 티어), 주력은 품질 단계 재결정. 과금·키 발급 걸린 선택은 사용자 결정**([ADR-0022](docs/decisions/0022-m3-kickoff-problem-service.md)) | 자체 모델 파인튜닝(탈상관 관점 재확인 — learning-notes), LlamaIndex |
+| 문제 생성 | LLM API + LangChain — **프로바이더는 어댑터 격리, 개발 단계=저가/무료: OpenRouter 무료 모델**(현행 `nemotron-3-super-120b`, 무충전 일 50 요청 — 2026-08-03 사용자 확정. Gemini는 계정 결제 이슈로 보류, 키는 .env 보존), **주력은 품질 단계 재결정. 과금·키 발급 걸린 선택은 사용자 결정**([ADR-0022](docs/decisions/0022-m3-kickoff-problem-service.md), 경위는 engineering-notes) | 자체 모델 파인튜닝(탈상관 관점 재확인 — learning-notes), LlamaIndex |
 | 문제 데이터 | **게시 문제 = 100% 자체 생산**(M3 생성+검수, 백준 파생 시드는 M3에서 교체) · 외부 공개셋은 **내부 용도만**(few-shot 참고·M4 유사도 코퍼스, 채택 시 라이선스 실확인) ([ADR-0021](docs/decisions/0021-data-licensing.md)) | 기존 사이트 크롤링, 공개셋 게시(라이선스 세탁 위험) |
 | 임베딩(유사도) | 자체 Sentence Transformer (PyTorch / HuggingFace) | 임베딩 API |
 | Vector 검색 | pgvector | FAISS / Milvus |

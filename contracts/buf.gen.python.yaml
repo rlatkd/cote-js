@@ -1,0 +1,24 @@
+# Python(problem 서비스) 코드 생성 — `cd contracts && buf generate --template buf.gen.python.yaml`
+#
+# 템플릿을 또 나눈 이유: problem은 자기 계약(problem/v1)만이 아니라 judge/v1(batch 레인
+# 실채점 발행·결과 소비)과 common/v1(trace·error)의 **소비자**이므로 전체 proto가 필요하다.
+# 기본 템플릿(buf.gen.yaml)은 problem/v1을 제외하고, buf.gen.problem.yaml은 problem/v1만
+# 포함하므로 어느 쪽에도 python 플러그인을 얹을 수 없다(buf v2엔 플러그인별 경로 필터가 없다).
+#
+# 생성 경로가 src/ 바로 아래인 이유: protoc의 python 생성물은 proto 경로를 그대로
+# 미러링하며(judge/v1/submission_pb2.py), 생성물 간 import도 그 절대 경로를 쓴다
+# (from common.v1 import trace_pb2). 따라서 생성 루트가 import 루트(src/)여야 한다.
+# problem/v1은 기존 problem 패키지의 서브패키지(src/problem/v1/)로 들어간다 —
+# src/common·src/judge와 함께 "생성물 전용" 경로다(직접 수정 금지, 커밋 대상).
+version: v2
+
+plugins:
+  # python 생성기는 Java와 같이 protoc 내장(별도 플러그인 바이너리 없음, PATH의 protoc 필요).
+  - protoc_builtin: python
+    out: ../services/problem/src
+  # 타입 스텁(.pyi) — 생성물은 동적 클래스라 스텁이 없으면 IDE·타입 체커가 장님이 된다.
+  - protoc_builtin: pyi
+    out: ../services/problem/src
+
+inputs:
+  - directory: .

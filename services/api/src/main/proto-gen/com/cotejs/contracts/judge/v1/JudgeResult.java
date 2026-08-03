@@ -170,7 +170,7 @@ private static final long serialVersionUID = 0L;
    *
    * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
    * @deprecated judge.v1.JudgeResult.error_message is deprecated.
-   *     See judge/v1/result.proto;l=51
+   *     See judge/v1/result.proto;l=59
    * @return The errorMessage.
    */
   @java.lang.Override
@@ -197,7 +197,7 @@ private static final long serialVersionUID = 0L;
    *
    * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
    * @deprecated judge.v1.JudgeResult.error_message is deprecated.
-   *     See judge/v1/result.proto;l=51
+   *     See judge/v1/result.proto;l=59
    * @return The bytes for errorMessage.
    */
   @java.lang.Override
@@ -1338,7 +1338,7 @@ private static final long serialVersionUID = 0L;
      *
      * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
      * @deprecated judge.v1.JudgeResult.error_message is deprecated.
-     *     See judge/v1/result.proto;l=51
+     *     See judge/v1/result.proto;l=59
      * @return The errorMessage.
      */
     @java.lang.Deprecated public java.lang.String getErrorMessage() {
@@ -1364,7 +1364,7 @@ private static final long serialVersionUID = 0L;
      *
      * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
      * @deprecated judge.v1.JudgeResult.error_message is deprecated.
-     *     See judge/v1/result.proto;l=51
+     *     See judge/v1/result.proto;l=59
      * @return The bytes for errorMessage.
      */
     @java.lang.Deprecated public com.google.protobuf.ByteString
@@ -1391,7 +1391,7 @@ private static final long serialVersionUID = 0L;
      *
      * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
      * @deprecated judge.v1.JudgeResult.error_message is deprecated.
-     *     See judge/v1/result.proto;l=51
+     *     See judge/v1/result.proto;l=59
      * @param value The errorMessage to set.
      * @return This builder for chaining.
      */
@@ -1414,7 +1414,7 @@ private static final long serialVersionUID = 0L;
      *
      * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
      * @deprecated judge.v1.JudgeResult.error_message is deprecated.
-     *     See judge/v1/result.proto;l=51
+     *     See judge/v1/result.proto;l=59
      * @return This builder for chaining.
      */
     @java.lang.Deprecated public Builder clearErrorMessage() {
@@ -1434,7 +1434,7 @@ private static final long serialVersionUID = 0L;
      *
      * <code>string error_message = 6 [json_name = "errorMessage", deprecated = true];</code>
      * @deprecated judge.v1.JudgeResult.error_message is deprecated.
-     *     See judge/v1/result.proto;l=51
+     *     See judge/v1/result.proto;l=59
      * @param value The bytes for errorMessage to set.
      * @return This builder for chaining.
      */

@@ -38,4 +38,34 @@ public interface CaseResultOrBuilder extends
    * @return The memoryUsedKb.
    */
   int getMemoryUsedKb();
+
+  /**
+   * <pre>
+   * 정규화된 실제 출력의 sha256(hex) — 출력이 존재하는 판정(AC·WA)에서만 채워진다.
+   * 용도: problem의 합의 검증(M3)이 "풀이 간 합의 vs 초안 기대 일치"를 분리 진단하려면
+   * 출력의 동일성 비교가 필요한데, 출력 원문을 결과 토픽에 싣는 것은 과하다(크기·노출).
+   * 동일성 판단엔 해시로 충분하다. 정규화 규칙은 judge의 비교 규칙과 동일
+   * (CRLF→LF, 각 줄 후행 공백·탭 제거, 말미 빈 줄 제거) — 소비자는 기대 출력에
+   * 같은 규칙을 적용해 해시를 만들면 AC 여부와 무관하게 동일성을 판정할 수 있다.
+   * </pre>
+   *
+   * <code>string output_sha256 = 5 [json_name = "outputSha256"];</code>
+   * @return The outputSha256.
+   */
+  java.lang.String getOutputSha256();
+  /**
+   * <pre>
+   * 정규화된 실제 출력의 sha256(hex) — 출력이 존재하는 판정(AC·WA)에서만 채워진다.
+   * 용도: problem의 합의 검증(M3)이 "풀이 간 합의 vs 초안 기대 일치"를 분리 진단하려면
+   * 출력의 동일성 비교가 필요한데, 출력 원문을 결과 토픽에 싣는 것은 과하다(크기·노출).
+   * 동일성 판단엔 해시로 충분하다. 정규화 규칙은 judge의 비교 규칙과 동일
+   * (CRLF→LF, 각 줄 후행 공백·탭 제거, 말미 빈 줄 제거) — 소비자는 기대 출력에
+   * 같은 규칙을 적용해 해시를 만들면 AC 여부와 무관하게 동일성을 판정할 수 있다.
+   * </pre>
+   *
+   * <code>string output_sha256 = 5 [json_name = "outputSha256"];</code>
+   * @return The bytes for outputSha256.
+   */
+  com.google.protobuf.ByteString
+      getOutputSha256Bytes();
 }

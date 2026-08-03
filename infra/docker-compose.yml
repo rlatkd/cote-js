@@ -58,7 +58,8 @@ services:
       timeout: 10s
       retries: 12
 
-  # 토픽 명시 생성(one-shot) — submission.{run,submit,batch}(QoS 3레인) + submission.result. ADR-0006·0009.
+  # 토픽 명시 생성(one-shot) — submission.{run,submit,batch}(QoS 3레인) + submission.result(ADR-0006·0009)
+  # + problem.{generate,candidate}(api↔problem 생성 파이프라인, ADR-0022).
   kafka-init:
     image: cotejs-kafka:4.1
     container_name: cotejs-kafka-init
@@ -68,7 +69,7 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        for t in submission.run submission.submit submission.batch submission.result; do
+        for t in submission.run submission.submit submission.batch submission.result problem.generate problem.candidate; do
           /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 \
             --create --if-not-exists --topic "$$t" --partitions 1 --replication-factor 1
         done

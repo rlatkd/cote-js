@@ -4,6 +4,8 @@ package executor
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"os"
@@ -115,11 +117,14 @@ func aggregate(task domain.Task, cases []bundleCase, raws []domain.RawCaseResult
 		case raw.ExitCode != 0:
 			cr.Verdict = domain.VerdictRuntimeError
 		default:
-			if outputMatches(outputOf(no), c.expected) {
+			got := normalize(outputOf(no))
+			if got == normalize(c.expected) {
 				cr.Verdict = domain.VerdictAccepted
 			} else {
 				cr.Verdict = domain.VerdictWrongAnswer
 			}
+			// 출력 동일성 해시 — 판정과 같은 정규화 결과에서 계산해 둘이 어긋날 수 없다.
+			cr.OutputSHA256 = outputDigest(got)
 		}
 
 		result.Cases = append(result.Cases, cr)
@@ -223,9 +228,11 @@ func prepareWorkspace(task domain.Task, langSpec language.Spec, cases []bundleCa
 	return workDir, nil
 }
 
-// outputMatches — 표준 저지 비교: 각 줄의 후행 공백 제거 + 마지막 빈 줄들 무시.
-func outputMatches(got, expected string) bool {
-	return normalize(got) == normalize(expected)
+// outputDigest — 정규화된 출력의 sha256(hex). 소비자(problem 합의 검증)가 기대 출력에
+// 같은 정규화를 적용해 해시를 만들면 원문 없이 동일성을 판정할 수 있다(계약 규칙).
+func outputDigest(normalized string) string {
+	sum := sha256.Sum256([]byte(normalized))
+	return hex.EncodeToString(sum[:])
 }
 
 func normalize(s string) string {

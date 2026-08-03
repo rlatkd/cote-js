@@ -22,9 +22,16 @@ class GenerationParams(BaseModel):
 
 
 class SolutionRun(BaseModel):
-    """풀이 하나의 예제별 실행 결과."""
+    """풀이 하나의 예제별 실행 결과.
 
-    outputs: list[str | None]  # 예제 순서대로. None = 실행 실패(에러·타임아웃)
+    identities: 예제 순서대로의 **출력 동일성 식별자**(정규화 출력의 sha256 hex).
+    원문이 아니라 식별자인 이유: 실행 주체가 judge(batch 레인)라 결과 토픽에는
+    출력 원문이 실리지 않고 해시만 온다(judge/v1 CaseResult.output_sha256).
+    합의 판정에 필요한 것은 동일성 비교뿐이므로 식별자로 충분하다.
+    None = 실행 실패(에러·타임아웃·시스템 장애).
+    """
+
+    identities: list[str | None]
     matched_expected: bool  # 모든 예제에서 초안의 기대 출력과 일치했는가
 
 

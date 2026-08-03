@@ -31,3 +31,9 @@
 | [0015](0015-cross-service-time-contract.md) | 서비스 경계의 시간 규약 — UTC 절대시각 통일 | Accepted |
 | [0016](0016-test-strategy.md) | 테스트 전략 — 선별적 TDD·커버리지 비목표·금지 규칙 | Accepted |
 | [0017](0017-published-language.md) | `contracts/`를 서비스 간 공표 언어로 격상 — 공통 타입(trace·error) | Accepted |
+| [0018](0018-observability-tracing.md) | 관측(추적·로깅) — OpenTelemetry + Jaeger 자가호스팅, trace_id 단일 상관관계 | Accepted |
+| [0019](0019-authentication-kakao-oidc.md) | 인증 — 카카오 OIDC 단독 위임 + 자체 JWT + 직접 WebFilter | Accepted |
+| [0020](0020-data-debt-starter-templates.md) | 데이터 부채 상환(V6) — 스타터 템플릿 분리·저장값 enum name화 | Accepted |
+| [0021](0021-data-licensing.md) | 데이터 라이선스 — 게시 문제 100% 자체 생산, 외부 공개셋은 내부 용도만 | Accepted |
+| [0022](0022-m3-kickoff-problem-service.md) | M3 착수 — api↔AI 계약(Protobuf/Kafka)·LLM 프로바이더 전략·problem 기반 | Accepted |
+| [0023](0023-problem-kafka-wiring.md) | problem Kafka 배선 — judge batch 실채점 대체·출력 해시 계약·aiokafka | Accepted |
