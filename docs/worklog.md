@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-08-06 22:30 — 디자인 방향 전환 착수: 다크 터미널 · `/lab` 격리 실험실 신설 (미커밋)
+
+- **성격**: 구현이 아니라 **디자인 의사결정 세션**. 코드 산출물은 `services/web/app/lab/` **하나뿐**이고 본 서비스(전역 스타일·기존 화면·컴포넌트)는 **한 줄도 안 건드렸다**(사용자 지시: "의사결정이 다 끝나면 그 후에 본 서비스에 작업하자").
+- **계기**: 사용자가 opencode·OpenClaw·OpenClaude·OpenCodex 등 2026년 "open*" 오픈소스 AI 도구들의 디자인을 레퍼런스로 제시(opencode TUI 스플래시 스크린샷). 조사 결과 이 계열의 공통 언어는 순수 블랙·무채색 지배·액센트 극단 절제·회색 3단 위계·모노 전면·큰 여백.
+- **한 일**: ① `/lab` 격리 실험실 5화면 신설 — `home`·`problems`·`status`(본 서비스 대응) + `verification`·`me`(신규 제안). 헤더로 상호 이동 ② **6축 노브 시스템**([theme.ts](../services/web/app/lab/theme.ts)) — TERMINAL(터미널 어휘량)·DENSITY·CONTRAST·WARMTH·ACCENT·PIXEL을 슬라이더로 실시간 조절하고 수치 문자열을 뱉는 조절 패널. 2026-07 액센트 색 결정 때 쓴 "말로 겨루지 말고 비교 가능한 도구를 쥐여준다"의 재적용 ③ 로그인 상태 토글(개인 스트립 유무 비교).
+- **시안 반복 8회(v1→v8)와 그 교훈**: v2에서 레퍼런스의 **레이아웃까지 베껴 홈을 스플래시로** 만듦 → 사용자 지적("무슨 메인페이지를 이렇게 만들었냐"). v5(전면 TUI)는 감이 좋았으나 "너무 터미널" → **과함의 정체는 우리가 갖지 않은 것을 있는 척한 요소**(tmux 윈도우 번호·`NORMAL` 모드·동작 안 하는 `:` 커맨드 라인·키보드 내비 안내)로 진단하고 그것만 걷어냄. 페인 프레임·웜 배색·비트맵 서체는 거짓말을 하지 않아 남김.
+- **확정(사용자 결정)**: ① 노브 값 **`terminal=65 density=0 contrast=70 warmth=100 accent=0 pixel=55`** ② 팔레트 = **Gruvbox 계열 웜**(순수 흑백은 할레이션으로 눈이 아프다 → 배경 `#232120`·본문 웜 크림 `#ebdbb2`) ③ 서체 = 비트맵(Silkscreen), 한글은 폴백 ④ 히어로 **유지** ⑤ 홈은 **스크롤 금지**(페인 안에서만 스크롤) ⑥ 로그인 개인화 = **(b) 상단 스트립**, 단 **비로그인에도 자리는 유지**하고 내용만 교체(레이아웃 출렁임 방지) ⑦ VERIFICATION은 별도 페이지, 활동 스파크라인 등 개인 지표는 마이페이지로.
+- **미결**: **홈의 PIPELINE 패널** — 유지 / 제거 / **숫자 빼고 공정만(추천)** 3안 제시 후 사용자 답변 대기.
+- **부수 결론(별건 논의)**: `opencote` 개명은 **가능**하나 라이선스가 선결(현재 LICENSE 없음 = 전권 유보라 "아무나 쓰게"가 거짓), 백준 파생 시드가 남은 채 MIT를 붙이면 권리 없는 것의 재라이선스가 되므로 **시드 자작 교체 → MIT → 개명** 순서. 상세는 engineering-notes.
+- **내 오류 2건(재발 방지)**: ① `cote-js`의 `-js`를 "ADR-0005(TS 전면) 시절의 화석"으로 **검증 없이 단정**하고 그 위에 "작업 원칙 4 재발 사건"이라는 진단까지 쌓음 → git 확인 결과 **최초 커밋(07-09)부터 있던 이름**으로 NestJS 결정(07-11)보다 이틀 빠름. `.js`가 Node/Next/Vue처럼 관용적 접미사라는 걸 문자 그대로 파싱한 것(작업 원칙 3 위반) ② 시드 교체 소요를 근거 없이 "30분~1시간"으로 제시 — 구현 난이도를 판단 기준으로 삼지 말라는 작업 원칙 1 위반이기도.
+- **검증**: `/lab` 5개 라우트 전부 200, 컴파일 그린. api·인프라는 **미기동**(Docker Desktop이 이 머신에서 또 걸림 — kill+`wsl --shutdown`+재기동으로도 5분 내 미복구, 사용자 지시로 중단). `/lab`은 데이터가 정적이라 api 없이 동작.
+- **중단점**: `services/web/app/lab/` 전체 **커밋하지 않는다**(사용자 결정) — 결정을 내리기 위한 임시 페이지이고 확정 후 삭제할 것이라. 따라서 **저장소에 남는 산출물은 문서뿐**이고, 랩 코드는 워킹 트리에만 있다(untracked — `git clean` 주의). 확정 팔레트 실측값·구조 결정은 [engineering-notes](engineering-notes.md)에 코드 없이 재현 가능하게 적어뒀다. 직전 커밋은 `245feeb`(Kafka 배선).
+- **다음**: ① PIPELINE 3안 중 택1 → 홈 확정 ② 나머지 화면(problems·status·verification·me) 개별 검토 ③ 확정 후 본 서비스 적용(전역 토큰·기존 화면) — 이때 다크 기본 전환은 [ADR-0002](decisions/0002-poc-scope-and-design.md)의 "라이트 기본" 결정을 뒤집는 것이라 **새 ADR 필요** ④ 08-03 세션의 잔여물(행복 경로 왕복 1회, CI 첫 실행 결과 확인)은 그대로 남아 있음.
+
 ## 2026-08-03 21:15 — problem Kafka 배선 완료 — 무격리 실행 해소, LLM 코드도 샌드박스로 (ADR-0023)
 
 - **한 일**: ① **계약 보강** — `judge/v1.CaseResult.output_sha256`(정규화 출력 해시 — 합의 진단('풀이 간 합의 vs 초안 일치')을 원문 노출 없이 보존, judge는 판정과 같은 코드 경로에서 계산) + `Submission.submission_id` 음수 공간 규약(검증 트래픽, 계약 주석) ② **judge Go 반영** — outputDigest·toProto, 해시 계약 테스트 추가 ③ **Python codegen** — `buf.gen.python.yaml` 신설(problem은 judge/common 소비자라 **전체 proto**, 생성 루트=src=import 루트), 생성물 커밋, protobuf 7.35.1 ④ **problem 재구조화** — `validation/`: normalize(judge 규칙 미러)+bundle(결정적 tar.gz·MinIO claim-check)+**judge_runner**(batch 발행·result 상관 수집 — 그룹 없음·latest)+consensus(순수 함수화: 실행기 주입→결과 값 수신), **executor.py 삭제**(임시 상태 해소) / `messaging/`: config·translate(ACL·자식 스팬)·**worker**(`problem-worker` — generate 수동커밋 소비→파이프라인→candidate 발행)·**probe**(`problem-probe` 주입기) / `workflow/pipeline`(지휘: 생성→풀이→실채점→합의→후보, 실패 2층위 분리 — REJECTED vs failure(retryable)) ⑤ **클라이언트 선정** — aiokafka(순수 파이썬 asyncio — franz-go의 cgo 회피와 같은 근거)·minio-py ⑥ infra 토픽 2종(`problem.generate/candidate`)·CI 드리프트 3템플릿 ⑦ 문서: ADR-0023, ADR 인덱스 0018~0023 보충(누락 부채), architecture/problem·verification 절차 11 개정·RUN·contracts README·CLAUDE.md·learning-notes 4건·engineering-notes 판단 로그.

@@ -133,7 +133,24 @@
 - [ ] web admin — 검수 큐 UI(M3 검수 게이트)
 - [ ] 시드 교체 — 검수 통과 생성 문제로 백준 파생 시드 5문제 대체(ADR-0021 부채)
 
+## 현재 스프린트: 디자인 방향 전환 — 다크 터미널 (2026-08-06) 🔄
+
+> 격리 실험실 `services/web/app/lab/`에서만 진행. **본 서비스는 아직 무변경**(사용자 지시: 의사결정 완료 후 적용).
+>
+> ⚠️ **랩 코드는 커밋하지 않고, 확정 후 삭제한다**(사용자 결정 2026-08-06). 워킹 트리에만 있으므로 `git clean` 시 날아간다 — 그래도 **결정은 문서에 자립해 있다**: 확정 팔레트 실측값·구조 결정은 [engineering-notes](engineering-notes.md) '디자인 방향 전환', 원리는 [learning-notes](learning-notes.md) '디자인'.
+
+- [x] **`/lab` 실험실 신설** (2026-08-06) — 5화면(`home`·`problems`·`status` = 본 서비스 대응 / `verification`·`me` = 신규 제안), 헤더로 상호 이동. 전역 스타일·기존 컴포넌트 무변경(토큰 래퍼 오버라이드 + 오버레이로 이중 격리)
+- [x] **6축 노브 시스템**([theme.ts](../services/web/app/lab/theme.ts)) — TERMINAL·DENSITY·CONTRAST·WARMTH·ACCENT·PIXEL 실시간 조절 + 수치 문자열 출력. 로그인 상태 토글 포함
+- [x] **홈 확정 사항** — 노브 `terminal=65 density=0 contrast=70 warmth=100 accent=0 pixel=55` · Gruvbox 계열 웜 팔레트 · 비트맵 서체(한글 폴백) · 히어로 유지 · **무스크롤**(페인 내부 스크롤) · 로그인 스트립은 **비로그인에도 자리 유지**
+- [ ] ⚠️ **홈 미결: PIPELINE 패널** — ① 유지 ② 제거 ③ **숫자 빼고 공정 4단계만 + `/verification` 링크(추천)**. 쟁점: 사용자 행동으로 이어지지 않는 admin 성격 vs 프로젝트 차별점을 보여주는 유일한 창
+- [ ] 나머지 4화면 개별 검토(`problems`의 쿼리 줄 · `status`의 케이스 블록 · `verification` · `me`)
+- [ ] **본 서비스 적용** — 확정 후. ⚠️ **다크 기본 전환은 [ADR-0002](decisions/0002-poc-scope-and-design.md)의 "라이트 기본"(2026-07-11 사용자 결정)을 뒤집으므로 새 ADR 발행 필요**. 적용 시 조절 패널 제거, 확정 값을 `globals.css` 다크 팔레트로 이관
+- [ ] `/lab/login` 시안 — 별도 로그인 페이지(현재는 Navbar 버튼이 바로 카카오로 감)
+
 ## 보류 / 추후 재논의 (Deferred)
+
+- [ ] **프로젝트 개명 `cote-js` → `opencote`** (2026-08-06 논의) — 가능하나 **라이선스가 선결**. 순서: ① 백준 파생 시드 5문제 자작 교체(ADR-0021 부채) → ② LICENSE(MIT) 부착 → ③ 개명. 지금은 README에 `Copyright … All rights reserved / License: TBD — MIT 예정` 한 줄로 충분. 잔여 리스크는 상표(opencode와 한 글자 차·동일 카테고리). 경위는 [engineering-notes](engineering-notes.md)
+- [ ] **LICENSE 부착** — 현재 없음 = 법적 전권 유보라 "아무나 쓸 수 있게"라는 의도가 집행되지 않는 상태. **기여자가 생기면 비용이 뛰므로**(전원 동의 필요) 외부 PR 유입 전에 처리
 
 - [ ] api 후속: ~~인증/인가~~(0019) · ~~페이지네이션~~ · ~~rate limiting~~(2026-07-31) → 잔여: **랭킹·통계(Redis sorted set — M5 리더보드와 함께)**, admin 문제 등록 API
 - [ ] M3 범위: 사람 검수 게이트 UI — web admin 라우트(검수 큐) + api admin API
