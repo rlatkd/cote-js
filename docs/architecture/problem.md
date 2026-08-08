@@ -18,6 +18,8 @@
 | judge → problem | Kafka `submission.result` (judge/v1) | 결과 상관 수집 — **그룹 없음·latest**(작업 분배가 아니라 pub/sub: 그룹이면 다중 워커에서 자기 결과를 놓친다). 출력 동일성은 `CaseResult.output_sha256`(정규화 출력 해시 — 원문 비노출) |
 | problem → MinIO | `testdata` 버킷 `bundles/<sha256>.tgz` | 예제 번들 claim-check 발행 — api와 같은 레이아웃(`cases/NN.in|out`)·결정적 패킹·콘텐츠 주소 키 |
 
+> ⏸ **생성 트리거는 미결이다(2026-08-08).** problem은 **순수 요청 구동** — `problem.generate` 1건 = 문제 1건이고, 스케줄러·주기 배치·재고 규칙이 **없다**. 게다가 위 표의 `api → problem`을 실제로 발행하는 **admin API가 아직 없어**, 현재 요청을 넣을 수 있는 건 개발용 `problem-probe`뿐이다. 즉 **이 서비스는 지금 스스로 깨어날 이유가 없다 — 안 도는 게 정상이지 장애가 아니다.** 선택지(관리자 온디맨드 / 재고 기반 / 고정 주기)와 보류 근거는 [engineering-notes](../engineering-notes.md) 'problem 생성 트리거'. 결정은 반려율이 관측되는 시점(검수 큐 가동 후)으로 미뤘다.
+
 ## 내부 구조 (처리 단계 네이밍 — ADR-0008)
 
 ```
